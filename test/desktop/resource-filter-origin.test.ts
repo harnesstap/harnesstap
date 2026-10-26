@@ -164,7 +164,7 @@ describe("library origin filter chrome", () => {
     );
     expect(typeBadges).toContain('data-density="pills"');
     expect(typeBadges).toContain("apply-diff-type-badge-label");
-    expect(typeBadges).toContain("resourceTypeTabLabel(type)");
+    expect(typeBadges).toContain("resourceTypeTabUnit(type, count)");
     expect(typeBadges).toContain("resourceTypeTabTooltip");
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(designSource).toContain("pills everywhere");

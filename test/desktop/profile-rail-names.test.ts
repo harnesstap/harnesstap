@@ -20,10 +20,8 @@ describe("Profiles rail names", () => {
     expect(name).toContain("white-space: nowrap;");
   });
 
-  test("reserve no width for the hover grip or the Edit action", () => {
-    for (const selector of [".profile-item-handle", ".profile-item-action"]) {
-      expect(block(selector)).toContain("position: absolute;");
-    }
+  test("reserve no width for the hover grip", () => {
+    expect(block(".profile-item-handle")).toContain("position: absolute;");
     expect(block(".profile-item")).toContain("position: relative;");
     expect(block(".profile-item")).not.toMatch(/\bgap:/);
   });

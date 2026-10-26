@@ -173,7 +173,6 @@ export function useScopeController(input: ScopeControllerInput) {
   const [profileFilter, setProfileFilter] = useState("");
   const [profileRailOrder, setProfileRailOrder] = useState(loadProfileRailOrder);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
-  const [inventoryEditMode, setInventoryEditMode] = useState(false);
   const [previewChanges, setPreviewChanges] = useState(false);
   const [previewRetryKey, setPreviewRetryKey] = useState(0);
 
@@ -344,13 +343,8 @@ export function useScopeController(input: ScopeControllerInput) {
     setProfileSelectionIntent("user");
     setSelectedProfile(name);
     setEditingProfile((current) => (current ? name : null));
-    setInventoryEditMode(false);
     setPreviewChanges(false);
   }, []);
-
-  useEffect(() => {
-    setInventoryEditMode(false);
-  }, [view]);
 
   const openEditProfile = useCallback((name: string) => {
     setProfileSelectionIntent("user");
@@ -1653,8 +1647,6 @@ export function useScopeController(input: ScopeControllerInput) {
     editingProfile,
     openEditProfile,
     closeEditProfile,
-    inventoryEditMode,
-    setInventoryEditMode,
     previewChanges,
     setPreviewChanges,
     activeProfileUntrackedCount,

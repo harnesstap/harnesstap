@@ -69,7 +69,7 @@ import {
 import {
   ALL_RESOURCE_TYPE_TAB,
   resolveResourceTypeTab,
-  resourceTypeTabLabel,
+  resourceTypeTabUnit,
   resourceTypeTabTooltip,
   visibleResourceTypeTabs,
 } from "../lib/resource-type-tabs";
@@ -429,7 +429,9 @@ function TargetPreviewTypeBadges({
           >
             <TypeIcon type={type} />
             <span>{count}</span>
-            <span className="apply-diff-type-badge-label">{resourceTypeTabLabel(type)}</span>
+            <span className="apply-diff-type-badge-label">
+              {resourceTypeTabUnit(type, count)}
+            </span>
           </span>
         );
       })}
@@ -702,7 +704,7 @@ function ProfilePluginPackageRow({
       </ResourceRowLeading>
       <ResourceRowIdentity label={plugin.name} />
       <ResourceRowTrailing>
-        <span className="enabled-detail muted">@{plugin.version}</span>
+        <span className="enabled-detail muted">v{plugin.version}</span>
       </ResourceRowTrailing>
     </ResourceRowRoot>
   );
@@ -1333,7 +1335,9 @@ function FileChangesSection({
             className="compare-title-action"
             busy={committingManagedChanges}
             spinnerSize={ICON_SIZE}
-            label="Commit live file updates into profile"
+            showLabel
+            label="Save edits to profile"
+            title="Copy the live file edits into this profile"
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -1466,7 +1470,6 @@ export interface LiveStatePanelProps {
   previewChanges?: boolean;
   onClosePreview?: () => void;
   editMode?: boolean;
-  onToggleEditMode?: () => void;
   /** When the rail already has Re-apply as the accent CTA, demote Add all. */
   railPrimaryIsReapply?: boolean;
   onCommitManagedChanges?: () => Promise<void>;
@@ -1531,7 +1534,6 @@ export function LiveStatePanel({
   previewChanges = false,
   onClosePreview,
   editMode = false,
-  onToggleEditMode,
   railPrimaryIsReapply = false,
   onCommitManagedChanges,
   committingManagedChanges = false,
@@ -1805,7 +1807,7 @@ export function LiveStatePanel({
     && (!projectReady || previewWarning === PROJECT_NOT_TRACKED_WARNING);
   const showNotTrackedActions = showBootstrapBanner;
   const inactiveHeaderHint = !selectedIsActive
-    ? "Applies when you Apply this profile"
+    ? "Not applied yet. Apply from the sidebar."
     : view === "project" && !appliedProp
       ? "Found on disk. Apply to track these with this profile."
       : null;
@@ -1952,6 +1954,7 @@ export function LiveStatePanel({
               .filter(Boolean)
               .join(" ")}
             aria-label="Target preview"
+            data-state="open"
           >
             <div className="contents-header">
               <span>Target preview</span>
@@ -2166,7 +2169,6 @@ export function LiveStatePanel({
             selectedProfile={selectedProfile}
             selectedIsActive={selectedIsActive}
             editMode={editMode}
-            onToggleEditMode={onToggleEditMode}
             railPrimaryIsReapply={railPrimaryIsReapply}
             inactiveHeaderHint={inactiveHeaderHint}
             onAddResource={onAddResource}

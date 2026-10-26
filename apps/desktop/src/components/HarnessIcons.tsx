@@ -1,6 +1,7 @@
 import type { ReactNode, SVGProps } from "react";
 import { HARNESS_MARKS } from "../lib/harness-marks";
 import { harnessDisplayName } from "../lib/harness-meta";
+import { ChromeTooltip } from "./ChromeTooltip";
 
 const ICON_SIZE = 14;
 
@@ -97,15 +98,13 @@ export function HarnessIcon({
   tooltip?: boolean;
 }): ReactNode {
   const name = harnessDisplayName(id);
-  return (
-    <span
-      className={`harness-icon harness-icon-${id}`}
-      {...(tooltip ? { title: name } : {})}
-    >
+  const icon = (
+    <span className={`harness-icon harness-icon-${id}`}>
       <HarnessMark id={id} size={size} />
       <span className="sr-only">{name}</span>
     </span>
   );
+  return tooltip ? <ChromeTooltip content={name}>{icon}</ChromeTooltip> : icon;
 }
 
 export function RelatedHarnessIcons({

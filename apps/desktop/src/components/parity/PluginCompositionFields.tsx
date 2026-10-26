@@ -13,7 +13,8 @@ export interface PluginCompositionFieldsProps {
   onInspectResource?: (resource: LibraryResource) => void;
   disabled: boolean;
   emptyUnfilteredLabel?: string;
-  footer?: ReactNode;
+  /** Sits at the right of the Composition heading, e.g. the add button. */
+  headerAction?: ReactNode;
   /** Parent items of a kept-in-sync profile, listed inline first. */
   inherited?: InheritedRowsInput;
   /** Shown under the Composition heading, e.g. a missing parent. */
@@ -31,13 +32,16 @@ export function PluginCompositionFields({
   onInspectResource,
   disabled,
   emptyUnfilteredLabel = "No library items available.",
-  footer,
+  headerAction,
   inherited,
   notice,
 }: PluginCompositionFieldsProps) {
   return (
     <section className="edit-profile-section" aria-label="Composition">
-      <h3>Composition</h3>
+      <div className="composition-heading">
+        <h3>Composition</h3>
+        {headerAction}
+      </div>
       {notice}
       <div className="plugin-composition-pane">
         <div className="compose-library compose-library-unified">
@@ -59,7 +63,6 @@ export function PluginCompositionFields({
             />
           )}
         </div>
-        {footer}
       </div>
     </section>
   );

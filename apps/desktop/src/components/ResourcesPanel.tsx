@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, FolderDown, FolderInput, FilterX, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Check, CircleArrowUp, FolderDown, FolderInput, FilterX, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import { ChromeTooltip } from "./ChromeTooltip";
@@ -1243,13 +1243,6 @@ export function ResourcesPanel({
               />
             ) : null}
             <IconActionButton
-              label="Import"
-              title="Import"
-              disabled={disabled || !baseUrl}
-              onClick={() => setImportOpen(true)}
-              icon={<FolderDown size={16} aria-hidden />}
-            />
-            <IconActionButton
               label="Tracked directories"
               title="Tracked directories"
               disabled={disabled || !baseUrl}
@@ -1267,7 +1260,7 @@ export function ResourcesPanel({
                 || outdatedCount === 0
               }
               onClick={() => setOriginUpdateConfirmOpen(true)}
-              icon={<RefreshCw size={16} aria-hidden />}
+              icon={<CircleArrowUp size={16} aria-hidden />}
             />
           </div>
         </div>
@@ -1279,7 +1272,6 @@ export function ResourcesPanel({
             resources={snapshotEntries}
             state={filterState}
             onChange={applyFilterChange}
-            onClear={() => applyFilterChange(resetResourceFilterState())}
             disabled={disabled || showSkeleton || Boolean(error)}
             searchInputRef={filterRef}
           />

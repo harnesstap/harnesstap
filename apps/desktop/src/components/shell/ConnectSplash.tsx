@@ -142,9 +142,14 @@ export function ReconnectBanner({ retryBusy, onRetry }: ReconnectBannerProps) {
 
   return (
     <Banner
-      tone="info"
+      tone="neutral"
       className="connection-banner"
-      message="Reconnecting..."
+      message={
+        <span className="banner-message-with-icon">
+          <ButtonSpinner size={16} />
+          {CONNECT_SPLASH_COPY.reconnecting}
+        </span>
+      }
       onRetry={showRetry ? onRetry : undefined}
       retryBusy={retryBusy}
       role="status"

@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, Pencil } from "lucide-react";
 import { ToggleGroup } from "radix-ui";
 import {
   ALL_RESOURCE_TYPE_TAB,
@@ -19,6 +19,7 @@ import {
   resourceTypeTabTooltip,
   resourceTypeTabUnit,
   TYPE_TABS_LESS_LABEL,
+  typeTabsMoreAriaLabel,
   typeTabsMoreLabel,
   visibleResourceTypeTabs,
   type ResourceTypeTabEmptyMode,
@@ -46,7 +47,7 @@ export interface ResourceTypeTabsProps {
   /** `compact` hides type text on a nowrap chip row. Do not use on Add to profile. */
   density?: ResourceTypeTabDensity;
   /**
-   * `collapse` is Add to profile / Add to plugin: one row with trailing `N more`.
+   * `collapse` is Add to profile / Add to plugin: one row with a trailing `+N` button.
    * Expanded `Less` sits below the wrapping pills, right-aligned.
    * Library and Global/Project inventory stay `wrap`.
    */
@@ -270,7 +271,9 @@ export function ResourceTypeTabs({
           >
             {inner}
             {review ? (
-              <span className="resource-type-tab-attention" aria-hidden />
+              <span className="resource-type-tab-attention" aria-hidden>
+                <Pencil size={8} strokeWidth={3} />
+              </span>
             ) : null}
           </ToggleGroup.Item>
         );
@@ -288,6 +291,7 @@ export function ResourceTypeTabs({
         .join(" ")}
       disabled={disabled}
       aria-expanded={expanded}
+      aria-label={expanded ? undefined : typeTabsMoreAriaLabel(hiddenCount)}
       onClick={() => {
         setExpanded((current) => !current);
       }}

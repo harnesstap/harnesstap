@@ -81,7 +81,6 @@ import type {
   LibraryPlugin,
   LibraryResource,
 } from "../lib/types";
-import { ChromeTooltip } from "./ChromeTooltip";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EditedChip } from "./EditedChip";
 import { DuplicateDialog } from "./DuplicateDialog";
@@ -1016,14 +1015,14 @@ export function PluginPackageDetail({
       case "frozen": {
         const frozen = frozenDetail?.plugin ?? null;
         if (frozen) {
-          return `@${frozen.version}`;
+          return `v${frozen.version}`;
         }
-        return frozenVersion ? `@${frozenVersion}` : "";
+        return frozenVersion ? `v${frozenVersion}` : "";
       }
       case "history":
       case "head":
         return detail
-          ? `@${detail.plugin.version}`
+          ? `v${detail.plugin.version}`
           : "";
       default: {
         const _exhaustive: never = historyMode;
@@ -1080,6 +1079,9 @@ export function PluginPackageDetail({
           }}
         >
           {detail?.plugin.name ?? selector}
+          {versionSuffix ? (
+            <span className="mono library-detail-version">{versionSuffix}</span>
+          ) : null}
           {fieldsReadOnly ? null : (
             <IconActionButton
               className="library-field-edit-trigger"
@@ -1093,9 +1095,6 @@ export function PluginPackageDetail({
             />
           )}
         </span>
-        {versionSuffix ? (
-          <span className="mono library-detail-version">{versionSuffix}</span>
-        ) : null}
         {editedChip}
       </>
     );
@@ -1724,19 +1723,15 @@ export function PluginPackageDetail({
             <div className="banner">{record.parent_missing}</div>
           ) : null
         }
-        footer={
-          <ChromeTooltip content={isProfile ? "Add to profile" : "Add to plugin"}>
-            <button
-              type="button"
-              className="scope-inventory-fab icon-action primary"
-              data-testid="plugin-composition-fab"
-              aria-label={isProfile ? "Add to profile" : "Add to plugin"}
-              disabled={pickersDisabled}
-              onClick={() => setAddModalOpen(true)}
-            >
-              <Plus size={20} strokeWidth={2} aria-hidden />
-            </button>
-          </ChromeTooltip>
+        headerAction={
+          <IconActionButton
+            data-testid="plugin-composition-add"
+            label={isProfile ? "Add to profile" : "Add to plugin"}
+            title={isProfile ? "Add to profile" : "Add to plugin"}
+            disabled={pickersDisabled}
+            onClick={() => setAddModalOpen(true)}
+            icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+          />
         }
       />
     </>
