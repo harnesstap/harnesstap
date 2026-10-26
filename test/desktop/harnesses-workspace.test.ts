@@ -77,8 +77,8 @@ describe("Harnesses workspace sidebar width", () => {
     expect(sidebar).toContain("max-width: 16rem");
     expect(sidebar).toContain("min-width: 11rem");
     expect(stylesSource).not.toContain(".harness-list-sidebar .empty-state");
-    expect(stylesSource).toContain(".harness-list-empty-hint");
-    expect(sidebarSource).toContain("None set up yet.");
+    expect(stylesSource).not.toContain(".harness-list-empty-hint");
+    expect(sidebarSource).not.toContain("None set up yet.");
     expect(sidebarSource).not.toContain("harnesses-empty");
     expect(workspaceSource).toContain('testId="harnesses-empty"');
     expect(workspaceSource).toContain("DETECT_HARNESSES_COMMAND");
@@ -96,9 +96,11 @@ describe("Harnesses workspace sidebar width", () => {
     );
   });
 
-  it("refreshes harness inventory from the sidebar action cluster", () => {
-    expect(sidebarSource).toContain('testId="harnesses-refresh"');
-    expect(sidebarSource).toContain('label="Refresh harnesses"');
+  it("refreshes harness inventory from the header actions, not the sidebar", () => {
+    expect(sidebarSource).not.toContain("harnesses-refresh");
+    expect(sidebarSource).not.toContain("WorkspaceRefreshButton");
+    expect(workspaceSource).toContain('testId="harnesses-refresh"');
+    expect(workspaceSource).toContain('label="Refresh harnesses"');
     expect(workspaceSource).toContain("onRefresh={ctrl.refresh}");
   });
 

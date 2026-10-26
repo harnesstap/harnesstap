@@ -121,7 +121,7 @@ describe("resource inspect content preview", () => {
     expect(fieldRowSource).toContain('label="Edit"');
     expect(fieldRowSource).toContain("Pencil");
     expect(fieldRowSource).toContain("library-field-edit-trigger");
-    expect(bodySource).not.toContain("Delete from library + disk is unavailable");
+    expect(bodySource).not.toContain("Files on disk can't be deleted here.");
     expect(bodySource).toContain('label="Disk delete blocked"');
     expect(bodySource).toContain("onRegisterCancelFieldEdit");
   });

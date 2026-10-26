@@ -60,7 +60,7 @@ describe("apply snapshot dialog and action toast", () => {
       new Date("2026-10-10T18:00:20.000Z"),
     );
     expect(copy.taken).toBe("Taken just now");
-    expect(copy.changed).toBe("Wrote 7, removed 1, kept 2");
+    expect(copy.changed).toBe("Applied. Wrote 7 files, removed 1 file, kept 2.");
     expect(copy.undo).toBe(
       "Undo with ht revert 01ARZ3NDEKTSV4RRFFQ69G5FAV",
     );
@@ -92,7 +92,7 @@ describe("apply snapshot dialog and action toast", () => {
       },
       "2026-10-10T18:00:00.000Z",
     );
-    expect(toast.title).toBe("Wrote 1, removed 1, kept 1");
+    expect(toast.title).toBe("Applied. Wrote 1 file, removed 1 file, kept 1.");
     expect(toast.snapshot).toEqual({
       id: "snap-1",
       takenAt: "2026-10-10T18:00:00.000Z",

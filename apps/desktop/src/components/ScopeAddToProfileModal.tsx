@@ -39,6 +39,7 @@ import {
   ResourceRowLeading,
   ResourceRowRoot,
 } from "./ui/resource-row";
+import { DisabledReason } from "./DisabledReason";
 
 const ICON_SIZE = 14;
 
@@ -343,36 +344,38 @@ export function ScopeAddToProfileModal({
               <X size={16} aria-hidden />
               Cancel
             </button>
-            <button
-              className={["btn", "primary", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              disabled={controlsDisabled || selectedCount < 1}
-              aria-busy={adding}
-              onClick={() => {
-                const picks = visible
-                  .filter((entry) => selectedIds.has(entry.id))
-                  .map(pickFromEntry);
-                if (picks.length < 1) {
-                  return;
-                }
-                setAdding(true);
-                void onAdd(picks)
-                  .then(() => {
-                    onClose();
-                  })
-                  .catch((caught) => {
-                    setError(
-                      caught instanceof Error ? caught.message : addErrorFallback,
-                    );
-                  })
-                  .finally(() => {
-                    setAdding(false);
-                  });
-              }}
-            >
-              {adding ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-              Add
-            </button>
+            <DisabledReason reason={selectedCount < 1 && !controlsDisabled ? "Pick at least one resource" : null}>
+              <button
+                className={["btn", "primary", adding ? "is-busy" : ""].filter(Boolean).join(" ")}
+                type="button"
+                disabled={controlsDisabled || selectedCount < 1}
+                aria-busy={adding}
+                onClick={() => {
+                  const picks = visible
+                    .filter((entry) => selectedIds.has(entry.id))
+                    .map(pickFromEntry);
+                  if (picks.length < 1) {
+                    return;
+                  }
+                  setAdding(true);
+                  void onAdd(picks)
+                    .then(() => {
+                      onClose();
+                    })
+                    .catch((caught) => {
+                      setError(
+                        caught instanceof Error ? caught.message : addErrorFallback,
+                      );
+                    })
+                    .finally(() => {
+                      setAdding(false);
+                    });
+                }}
+              >
+                {adding ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+                Add
+              </button>
+            </DisabledReason>
           </div>
         </div>
       )}

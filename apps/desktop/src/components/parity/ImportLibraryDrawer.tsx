@@ -20,6 +20,7 @@ import { Check, FolderDown, FolderOpen, X } from "lucide-react";
 import { ButtonSpinner } from "../ButtonSpinner";
 import { FullScreenPanel } from "../FullScreenPanel";
 import { IconActionButton } from "../IconActionButton";
+import { DisabledReason } from "../DisabledReason";
 
 export interface ImportLibraryDrawerProps {
   open: boolean;
@@ -133,6 +134,14 @@ export function ImportLibraryDrawer({
       }
     }
   }, [addSource, baseUrl, hasProject, kind, pluginName, token]);
+  let importBlockedReason: string | null = null;
+  if (kind === "add" && !addSource.trim()) {
+    importBlockedReason = "Enter a source";
+  } else if (kind !== "add" && !hasProject) {
+    importBlockedReason = "Choose a project";
+  } else if (kind === "from_project" && !pluginName.trim()) {
+    importBlockedReason = "Enter a plugin name";
+  }
 
   const buildRequest = (includeAttach: boolean): LibraryImportRequest => {
     const attachProfile =
@@ -245,17 +254,19 @@ export function ImportLibraryDrawer({
               {busy ? "Importing..." : "Import"}
             </button>
           ) : (
-            <button
-              className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
-              type="button"
-              data-testid="import-library-submit"
-              onClick={() => void runPreview()}
-              disabled={!canContinue || controlsDisabled}
-              aria-busy={busy}
-            >
-              {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
-              {busy ? "Previewing..." : "Continue"}
-            </button>
+            <DisabledReason reason={!canContinue && !controlsDisabled ? importBlockedReason : null}>
+              <button
+                className={["btn", "primary", busy ? "is-busy" : ""].filter(Boolean).join(" ")}
+                type="button"
+                data-testid="import-library-submit"
+                onClick={() => void runPreview()}
+                disabled={!canContinue || controlsDisabled}
+                aria-busy={busy}
+              >
+                {busy ? <ButtonSpinner size={16} /> : <Check size={16} aria-hidden />}
+                {busy ? "Previewing..." : "Continue"}
+              </button>
+            </DisabledReason>
           )}
         </>
       }
