@@ -16,7 +16,7 @@ import {
 } from "../../lib/profile-rail-order";
 import type { ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
-import { noResultsTitle } from "../../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, noResultsTitle } from "../../lib/empty-copy";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { profileHeaderStatus } from "../../lib/reapply";
 import { ButtonSpinner } from "../ButtonSpinner";
@@ -383,10 +383,11 @@ export function ProfilesRail({
         )}
         {!profilesError && visibleProfiles.length > 0 && filteredProfiles.length === 0 && (
           <EmptyState
+            variant="no-match"
             title={noResultsTitle(profileFilter)}
             body="Try a different name, description, or tag."
             action={{
-              label: "Clear filter",
+              label: CLEAR_FILTER_LABEL,
               onClick: () => setProfileFilter(""),
               icon: <FilterX size={16} strokeWidth={2} aria-hidden="true" />,
             }}

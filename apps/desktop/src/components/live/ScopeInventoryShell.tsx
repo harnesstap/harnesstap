@@ -11,7 +11,7 @@ import {
 } from "../../lib/profile-inventory";
 import type { ProfileContentsResource } from "../../lib/types";
 import { toast } from "../../state/toast-store";
-import { catalogListEmptyKind, noResultsTitle } from "../../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, catalogListEmptyKind, noResultsTitle } from "../../lib/empty-copy";
 import { EMPTY_PROFILE_COPY } from "../../lib/ui-copy";
 import {
   collectDiscardPathRows,
@@ -645,12 +645,13 @@ export function ScopeInventoryShell({
               filterActive: search.trim().length > 0 || typeTab !== null,
             }) === "filter-empty" ? (
               <EmptyState
+                variant="no-match"
                 title={noResultsTitle(search)}
                 body="Clear the filter to see every resource."
                 action={
                   search.trim()
                     ? {
-                        label: "Clear filter",
+                        label: CLEAR_FILTER_LABEL,
                         onClick: () => onSearch(""),
                         icon: <FilterX size={16} aria-hidden />,
                       }

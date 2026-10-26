@@ -48,7 +48,7 @@ function cssBlock(source: string, selector: string): string {
 
 describe("library origin filter chrome", () => {
   test("keeps name search without sidebar Type chips", () => {
-    expect(sidebarSource).toContain('placeholder="Filter by name"');
+    expect(sidebarSource).toContain('placeholder="Filter by name or description"');
     expect(sidebarSource).toContain("Updated");
     expect(sidebarSource).toContain("Namespace");
     expect(sidebarSource).toContain("Origin");

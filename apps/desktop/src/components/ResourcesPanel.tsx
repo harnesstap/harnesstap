@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useRegisterCommands } from "../state/command-registry";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
-import { noResultsTitle } from "../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, noResultsTitle } from "../lib/empty-copy";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryResourceList } from "./library/LibraryResourceList";
@@ -1105,10 +1105,11 @@ export function ResourcesPanel({
           <>
             {typeTabs}
             <EmptyState
+              variant="no-match"
               title={noResultsTitle(filterState.search)}
-              body="Clear filters to see everything."
+              body="Clear the filter to see every resource."
               action={{
-                label: "Clear filters",
+                label: CLEAR_FILTER_LABEL,
                 onClick: () => applyFilterChange(resetResourceFilterState()),
                 icon: <FilterX size={16} aria-hidden />,
               }}

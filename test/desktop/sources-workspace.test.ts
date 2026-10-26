@@ -145,11 +145,13 @@ describe("sources workspace chrome", () => {
     expect(listPaneSource).toContain("unfilteredCount");
     expect(workspaceSource).toContain("unfilteredHitCount");
     expect(listPaneSource).toContain("discoverListEmptyCopy");
-    expect(listPaneSource).toContain("Clear filters");
+    expect(listPaneSource).toContain("CLEAR_FILTER_LABEL");
+    expect(listPaneSource).not.toContain("Clear filters");
     expect(listPaneSource).toContain('testId="discover-empty"');
     expect(listPaneSource).toContain('className="discover-empty"');
     expect(listPaneSource).toContain("EmptyState");
-    expect(listPaneSource).toContain("Clear search");
+    expect(listPaneSource).not.toContain("Clear search");
+    expect(listPaneSource).toContain('variant={empty.action ? "no-match" : undefined}');
     expect(workspaceSource).toContain(
       "const [fetchedSourceIds, setFetchedSourceIds] = useState<Set<string>>(",
     );
@@ -693,8 +695,8 @@ describe("sources install panels and Cloud browse retirement", () => {
     expect(designSource).toContain("Add {plugin} to current profile {profile}");
     expect(designSource).toContain("Pin to plugin");
     expect(designSource).toContain("Create plugin");
-    expect(designSource).toContain("No results for");
-    expect(designSource).toContain("Clear search");
+    expect(designSource).toContain("No matches for");
+    expect(designSource).toContain("**Clear filter**");
     expect(designSource).toContain("full-screen panels");
     expect(designSource).toContain("ResourceRowRoot");
     expect(designSource).toContain("InUseMark");

@@ -200,7 +200,7 @@ export function ResourceFilterSidebar({
             ref={searchInputRef}
             className="resources-panel-filter"
             type="search"
-            placeholder="Filter by name"
+            placeholder="Filter by name or description"
             value={searchInput}
             data-workspace-filter=""
             onChange={(event) => setSearchInput(event.target.value)}

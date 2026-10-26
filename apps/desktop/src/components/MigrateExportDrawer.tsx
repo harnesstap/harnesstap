@@ -292,7 +292,7 @@ export function MigrateExportDrawer({
             value={targetFilter}
             onChange={(event) => setTargetFilter(event.target.value)}
             disabled={controlsDisabled}
-            placeholder="Search by name"
+            placeholder="Search by name or description"
           />
         </div>
         <div
