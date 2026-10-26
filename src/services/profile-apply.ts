@@ -691,6 +691,7 @@ export async function applyProfilePlugin(
     scope: "user",
     skipSync: skipPluginSync,
     ignoreMissingInstall: Boolean(options.dryRun),
+    planOnly: Boolean(options.dryRun),
     yes: options.yes,
     interactive: options.interactive,
     profileName: profilePlugin.name,

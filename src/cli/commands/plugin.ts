@@ -131,6 +131,7 @@ import {
   collectPluginPinsForPrepare,
   preparePluginPinsForApply,
   PinnedPluginInstallConsentError,
+  type PlannedPluginInstall,
   type SyncPluginPinsForApplyResult,
 } from "../../services/plugin-pin-apply.js";
 import { resolvePluginInstallScope, type InstallPluginPinResult } from "../../services/plugin-install.js";
@@ -409,6 +410,12 @@ function printPluginInstallLine(install: InstallPluginPinResult): void {
   }
 }
 
+function printPlannedPluginInstallLine(planned: PlannedPluginInstall): void {
+  console.log(
+    `  ${ui.icons.bullet} would install ${planned.name} ${planned.version} ${ui.theme.muted(`(${planned.ref})`)}`,
+  );
+}
+
 function printPluginApplyPostSyncSummary(
   sync: SyncPluginPinsForApplyResult,
   extraMaterializedCount: number,
@@ -616,9 +623,15 @@ export async function handleProjectApplyCommand(
       scope: resolvePluginInstallScope(projectRoot, Boolean(getGitOrigin(projectRoot))),
       ignoreMissingInstall: Boolean(opts.ignorePluginVersions || opts.dryRun),
       installInexactPins: Boolean(opts.ignorePluginVersions && !opts.dryRun),
+      planOnly: Boolean(opts.dryRun),
       yes: Boolean(opts.yes),
       interactive: opts.noInteractive === true ? false : opts.interactive,
       progress: {
+        onPlanned: (planned) => {
+          pluginProgressState.current?.stop();
+          pluginProgressState.current = null;
+          printPlannedPluginInstallLine(planned);
+        },
         onInstallStart: (ref) => {
           pluginProgressState.current?.stop();
           pluginProgressState.current = createProgress(`Installing ${ref}...`);

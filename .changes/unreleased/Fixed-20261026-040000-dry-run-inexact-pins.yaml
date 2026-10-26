@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht apply --dry-run` (and the Desktop apply preview) no longer fails with "No local version of ... is installed" when a dependency pinned to `*` or a range is not installed yet; the plan resolves it from the marketplace and shows "would install <plugin> <version>" without writing to your harness or plugin cache. A dry run also no longer registers marketplaces with Claude Code or Cursor, and no longer marks exact pins as synced, so the next real apply installs them fully.'
+time: 2026-10-26T13:52:09.000000Z
+custom:
+  Issue: ""
