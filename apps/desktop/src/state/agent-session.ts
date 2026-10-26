@@ -14,6 +14,26 @@ export type AgentPhase = "connecting" | "connected" | "disconnected";
 
 export const HEALTH_POLL_MS = 2000;
 export const RECONNECT_POLL_MS = 500;
+/** Failed reconnect probes (about 3s) before Desktop restarts the agent itself. */
+export const AUTO_RESTART_AFTER_FAILURES = 6;
+/** Automatic restarts per disconnect; after that the user has Restart agent. */
+export const MAX_AUTO_RESTARTS = 2;
+
+/**
+ * Whether the reconnect loop should restart the agent instead of probing again.
+ * Only the desktop app can restart it; the browser dev shell just keeps probing.
+ */
+export function shouldAutoRestartAgent(input: {
+  tauri: boolean;
+  failedProbes: number;
+  restartsSoFar: number;
+}): boolean {
+  return (
+    input.tauri
+    && input.restartsSoFar < MAX_AUTO_RESTARTS
+    && input.failedProbes >= AUTO_RESTART_AFTER_FAILURES * (input.restartsSoFar + 1)
+  );
+}
 
 /** Bound connection handle. A new object is produced on every (re)connect. */
 export interface AgentClient {
@@ -61,10 +81,11 @@ function isAbortError(error: unknown): boolean {
 }
 
 /**
- * Owns the sidecar connection: initial connect, manual retry (restart), and
- * reconnect after the dev watcher rebuilds `ht-agent` (`sidecar-reloaded`).
- * After the first successful connect, a failed health probe dims the shell
- * instead of returning to the splash.
+ * Owns the sidecar connection: initial connect, Restart agent, and reconnect
+ * after the dev watcher rebuilds `ht-agent` (`sidecar-reloaded`). After the
+ * first successful connect, a failed health probe dims the shell instead of
+ * returning to the splash, and the agent is restarted automatically when it
+ * stays down.
  */
 export function useAgentSession(): AgentSession {
   const [connection, setConnection] = useState<ConnectionState | null>(null);
@@ -181,8 +202,32 @@ export function useAgentSession(): AgentSession {
       return;
     }
     const controller = new AbortController();
+    const tauri = hasTauriRuntime();
+    let failedProbes = 0;
+    let restartsSoFar = 0;
     void (async () => {
       while (!controller.signal.aborted) {
+        if (
+          !retryBusyRef.current
+          && shouldAutoRestartAgent({ tauri, failedProbes, restartsSoFar })
+        ) {
+          restartsSoFar += 1;
+          retryBusyRef.current = true;
+          setRetryBusy(true);
+          try {
+            const next = await connectAgent({ restart: true });
+            if (!controller.signal.aborted) {
+              applyConnection(next);
+            }
+            return;
+          } catch {
+            // Keep probing; Restart agent stays available in the banner.
+          } finally {
+            retryBusyRef.current = false;
+            setRetryBusy(false);
+          }
+          continue;
+        }
         try {
           const health = await probeHealth(connection.client.baseUrl, {
             signal: controller.signal,
@@ -200,6 +245,7 @@ export function useAgentSession(): AgentSession {
           if (controller.signal.aborted || isAbortError(reconnectError)) {
             return;
           }
+          failedProbes += 1;
           try {
             await sleep(RECONNECT_POLL_MS, controller.signal);
           } catch {

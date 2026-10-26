@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatAgentStartError } from "../../apps/desktop/src/lib/agent-start-error.ts";
 import {
+  AUTO_RESTART_AFTER_FAILURES,
+  MAX_AUTO_RESTARTS,
+  shouldAutoRestartAgent,
+} from "../../apps/desktop/src/state/agent-session.ts";
+import {
   AGENT_START_COPY,
   CONNECT_SPLASH_COPY,
 } from "../../apps/desktop/src/lib/ui-copy.ts";
@@ -55,5 +60,52 @@ describe("ConnectSplash copy", () => {
     expect(source).toContain("CONNECT_SPLASH_COPY.openLogs");
     expect(source).not.toContain("Failed to fetch");
     expect(source).not.toContain("Sidecar connection failed");
+  });
+});
+
+describe("agent restart without commands", () => {
+  it("restarts the agent automatically in the desktop app after it stays down", () => {
+    expect(
+      shouldAutoRestartAgent({ tauri: true, failedProbes: AUTO_RESTART_AFTER_FAILURES - 1, restartsSoFar: 0 }),
+    ).toBe(false);
+    expect(
+      shouldAutoRestartAgent({ tauri: true, failedProbes: AUTO_RESTART_AFTER_FAILURES, restartsSoFar: 0 }),
+    ).toBe(true);
+    expect(
+      shouldAutoRestartAgent({ tauri: true, failedProbes: AUTO_RESTART_AFTER_FAILURES, restartsSoFar: 1 }),
+    ).toBe(false);
+    expect(
+      shouldAutoRestartAgent({ tauri: true, failedProbes: AUTO_RESTART_AFTER_FAILURES * 2, restartsSoFar: 1 }),
+    ).toBe(true);
+    expect(
+      shouldAutoRestartAgent({ tauri: true, failedProbes: 1000, restartsSoFar: MAX_AUTO_RESTARTS }),
+    ).toBe(false);
+    expect(
+      shouldAutoRestartAgent({ tauri: false, failedProbes: 1000, restartsSoFar: 0 }),
+    ).toBe(false);
+  });
+
+  it("offers Restart agent on the splash and the reconnect banner", () => {
+    const splash = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/shell/ConnectSplash.tsx"),
+      "utf8",
+    );
+    expect(splash).toContain("CONNECT_SPLASH_COPY.restartAgent");
+    expect(splash).toContain("retryLabel={CONNECT_SPLASH_COPY.restartAgent}");
+    expect(CONNECT_SPLASH_COPY.restartAgent).toBe("Restart agent");
+  });
+
+  it("start errors point at Restart agent, never at a process or a folder to inspect", () => {
+    expect(AGENT_START_COPY.portInUse).toContain("Restart agent");
+    expect(AGENT_START_COPY.portInUse).not.toMatch(/7474|process/);
+    expect(AGENT_START_COPY.homeNotWritable).toContain("Restart agent");
+    expect(
+      formatAgentStartError("ht-agent sidecar did not report its port"),
+    ).toBe(CONNECT_SPLASH_COPY.unreachable);
+    const rust = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src-tauri/src/lib.rs"),
+      "utf8",
+    );
+    expect(rust).not.toContain("check ~/.harnesstap");
   });
 });

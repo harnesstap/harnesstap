@@ -97,7 +97,7 @@ export function ConnectSplash({
               aria-busy={retryBusy}
             >
               {retryBusy ? <ButtonSpinner size={16} /> : <RefreshCw size={16} aria-hidden />}
-              {CONNECT_SPLASH_COPY.retry}
+              {retryBusy ? CONNECT_SPLASH_COPY.restarting : CONNECT_SPLASH_COPY.restartAgent}
             </button>
             {logPath ? (
               <button
@@ -131,7 +131,10 @@ export interface ReconnectBannerProps {
   onRetry: () => void;
 }
 
-/** Later disconnects: keep the shell, announce reconnect, offer Retry after 5s. */
+/**
+ * Later disconnects: keep the shell and announce the reconnect. The session
+ * restarts the agent by itself; after 5s the banner also offers Restart agent.
+ */
 export function ReconnectBanner({ retryBusy, onRetry }: ReconnectBannerProps) {
   const [showRetry, setShowRetry] = useState(false);
 
@@ -152,6 +155,9 @@ export function ReconnectBanner({ retryBusy, onRetry }: ReconnectBannerProps) {
       }
       onRetry={showRetry ? onRetry : undefined}
       retryBusy={retryBusy}
+      retryLabel={CONNECT_SPLASH_COPY.restartAgent}
+      retryShowLabel
+      retryBusyLabel={CONNECT_SPLASH_COPY.restarting}
       role="status"
       testId="reconnect-banner"
     />

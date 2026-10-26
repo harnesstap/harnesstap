@@ -10,6 +10,9 @@ export interface BannerProps {
   onRetry?: () => void;
   retryBusy?: boolean;
   retryLabel?: string;
+  /** Show the retry label next to its icon (for actions that are not a plain Retry). */
+  retryShowLabel?: boolean;
+  retryBusyLabel?: string;
   onDismiss?: () => void;
   /** Extra actions rendered before Retry / Dismiss. */
   children?: ReactNode;
@@ -25,6 +28,8 @@ export function Banner({
   onRetry,
   retryBusy = false,
   retryLabel = "Retry",
+  retryShowLabel = false,
+  retryBusyLabel = "Retrying...",
   onDismiss,
   children,
   className,
@@ -45,7 +50,8 @@ export function Banner({
           {children}
           {onRetry ? (
             <IconActionButton
-              label={retryBusy ? "Retrying..." : retryLabel}
+              label={retryBusy ? retryBusyLabel : retryLabel}
+              showLabel={retryShowLabel}
               busy={retryBusy}
               onClick={onRetry}
               icon={<RefreshCw size={16} strokeWidth={2} aria-hidden="true" />}
