@@ -144,7 +144,7 @@ export async function handleHarnessSettingsPut(
     return jsonResponse(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = /unknown harness|required|git origin/i.test(message)
+    const status = /unknown harness|required/i.test(message)
       ? 400
       : 500;
     return jsonResponse({ error: "harness_settings_failed", message }, { status });

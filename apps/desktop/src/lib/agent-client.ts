@@ -6,6 +6,7 @@ import {
 } from "./api/http";
 import { formatSidecarDetail, type SidecarDiagnostics } from "./sidecar-diagnostics";
 import { CONNECT_SPLASH_COPY } from "./ui-copy";
+import { desktopAgentText } from "./desktop-agent-message";
 import type {
   AgentHealth,
   AgentSwitchFinalEvent,
@@ -1456,7 +1457,9 @@ export function subscribeSwitchEvents(
         if (isFinalEvent(parsed)) {
           settled = true;
           source?.close();
-          onComplete(parsed);
+          onComplete(
+            parsed.error ? { ...parsed, error: desktopAgentText(parsed.error) } : parsed,
+          );
           return;
         }
         onEvent(parsed);

@@ -1,10 +1,9 @@
 import { requireAgentBearerAuth } from "../auth.js";
 import { jsonResponse } from "../http.js";
-import { GIT_ORIGIN_HINTS } from "../../cli/shared.js";
-import { getProject, getProjectByOrigin } from "../../models/project.js";
 import { getSnapshot, listSnapshots } from "../../models/snapshot.js";
 import { executeRevert, resolveRevertPlan } from "../../services/snapshot-revert.js";
-import { getGitOrigin, normalizeGitUrl } from "../../services/git.js";
+import { getProject } from "../../models/project.js";
+import { findProjectForRoot } from "../../services/project-identity.js";
 import type { Snapshot } from "../../types.js";
 
 const HISTORY_PATH = "/v1/project/history";
@@ -33,17 +32,6 @@ export async function tryHandle(
     const message = error instanceof Error ? error.message : String(error);
     return jsonResponse({ error: "internal_error", message }, { status: 500 });
   }
-}
-
-function noGitOriginResponse(): Response {
-  return jsonResponse(
-    {
-      error: "no_git_origin",
-      message: "No git remote origin configured.",
-      hints: [...GIT_ORIGIN_HINTS],
-    },
-    { status: 400 },
-  );
 }
 
 function flattenPlatformFiles(
@@ -76,11 +64,8 @@ function handleHistoryGet(request: Request): Response {
       { status: 400 },
     );
   }
-  const gitOrigin = getGitOrigin(projectPath);
-  if (!gitOrigin) {
-    return noGitOriginResponse();
-  }
-  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  // Projects without a git remote are keyed by folder (services/project-identity.ts).
+  const project = findProjectForRoot(projectPath);
   if (!project) {
     return jsonResponse({ snapshots: [], project_linked: false });
   }
@@ -131,11 +116,6 @@ async function handleRevertPost(
     );
   }
 
-  const gitOrigin = getGitOrigin(projectPath);
-  if (!gitOrigin) {
-    return noGitOriginResponse();
-  }
-
   const snapshot = getSnapshot(snapshotId);
   if (!snapshot) {
     return jsonResponse(
@@ -143,14 +123,14 @@ async function handleRevertPost(
       { status: 404 },
     );
   }
-  const project = getProject(snapshot.project_id);
-  if (!project) {
+  if (!getProject(snapshot.project_id)) {
     return jsonResponse(
       { error: "snapshot_project_not_found", message: "Snapshot project not found." },
       { status: 404 },
     );
   }
-  if (normalizeGitUrl(project.git_origin) !== normalizeGitUrl(gitOrigin)) {
+  const project = findProjectForRoot(projectPath);
+  if (!project || project.id !== snapshot.project_id) {
     return jsonResponse(
       {
         error: "snapshot_project_mismatch",

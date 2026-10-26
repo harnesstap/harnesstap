@@ -10,6 +10,7 @@ import {
 import type { GithubAuthStatus, GithubPendingLogin } from "../lib/types";
 import { Copy, ExternalLink, LogIn, LogOut, X } from "lucide-react";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { desktopAgentText } from "../lib/desktop-agent-message";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -72,7 +73,7 @@ export function GithubSignInSection({
       }
       clearPoll();
       setBusy(false);
-      setError(result.message ?? "GitHub login failed.");
+      setError(desktopAgentText(result.message ?? "GitHub login failed."));
       setStatus(await fetchGithubAuthStatus(baseUrl, token));
     } catch (pollError) {
       clearPoll();

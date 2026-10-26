@@ -92,7 +92,7 @@ ht harness project status .
 ht harness project set --harnesses claude-code,cursor
 ```
 
-These require a git-backed project and influence which harnesses `apply` and `mirror` target by default.
+These work in any folder (git remote or not) and influence which harnesses `apply` and `mirror` target by default.
 
 ## Snapshots in practice
 

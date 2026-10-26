@@ -147,8 +147,8 @@ Apply plugins with top-level `apply` (not under this group). Onboard from repo-r
 
 ### Preconditions and side effects
 
-- `history`, `status --check`, `harness project set`, and `harness project status` require a git repository with a configured `origin` remote.
-- `apply` can write files in non-git directories, but snapshots are only stored when the project has a git `origin`.
+- A project is identified by its git `origin` remote when it has one, otherwise by its folder path. Snapshots, history, drift and revert work either way; nothing is pushed.
+- When a folder without a remote later gets an `origin`, its history moves to the remote-keyed project on the next command, after a copy of the database is saved in `~/.harnesstap/backups/`.
 - `revert` requires a snapshot ID from `history`.
 - `apply` resolves environment values through the cascade: home environment ◂ configured-plugin default (last wins).
 

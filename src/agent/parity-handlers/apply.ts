@@ -6,12 +6,8 @@ import {
   mergePluginsById,
   resolvePluginSelector,
 } from "../../models/plugin-model.js";
-import {
-  applyConfiguredPluginToProject,
-  upsertProject,
-} from "../../models/project.js";
+import { applyConfiguredPluginToProject } from "../../models/project.js";
 import { createSnapshot } from "../../models/snapshot.js";
-import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "../../services/git.js";
 import {
   generateFiles,
   materializeFiles,
@@ -58,6 +54,7 @@ import {
   UnsatisfiableConstraintError,
 } from "../../services/resolve/types.js";
 import { trackPluginApplied } from "../../telemetry/index.js";
+import { ensureProjectForRoot } from "../../services/project-identity.js";
 
 let applyInFlight = false;
 
@@ -524,16 +521,11 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     extraPaths: previousDeployedPaths,
   });
 
-  const gitOrigin = getGitOrigin(projectRoot);
   // Ephemeral multi-plugin roots are deleted when resolveComposition returns,
   // so skip project-config binding (CLI uses a still-live bundle id).
   let trackedProjectId: string | undefined;
-  if (gitOrigin && !resolution.root.ephemeral) {
-    const project = upsertProject({
-      git_origin: normalizeGitUrl(gitOrigin),
-      name: projectNameFromUrl(gitOrigin),
-      local_path: projectRoot,
-    });
+  if (!resolution.root.ephemeral) {
+    const project = ensureProjectForRoot(projectRoot);
     trackedProjectId = project.id;
     applyConfiguredPluginToProject({
       project_id: project.id,

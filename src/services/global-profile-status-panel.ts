@@ -11,9 +11,8 @@ import {
 import type { PluginInstall } from "../plugins/types.js";
 import { getPlatform } from "../platforms/registry.js";
 import { listGlobalApplySnapshotInstalls } from "../models/global-apply-snapshot.js";
-import { getProjectByLocalPath, getProjectByOrigin } from "../models/project.js";
+import { getProjectByLocalPath } from "../models/project.js";
 import { getLatestSnapshot } from "../models/snapshot.js";
-import { getGitOrigin, normalizeGitUrl } from "./git.js";
 import { listHostNativeMcpNames } from "./host-native-mcp.js";
 import {
   mcpServerMetadataEquivalent,
@@ -29,6 +28,7 @@ import { getPluginById } from "../models/plugin-model.js";
 import type { McpServerMetadata } from "../types.js";
 import type { ResolutionResult } from "./resolve/types.js";
 import { hostPluginPinRef, isHostPluginPinResource } from "./host-plugin-serialize.js";
+import { findProjectForRoot } from "./project-identity.js";
 
 export type GlobalProfileStatusDepth = "fast" | "full";
 export type PanelTrafficStatus = "green" | "yellow" | "red";
@@ -343,11 +343,9 @@ export function buildHarnessMcpRows(
 
 function projectForDriftPath(projectPath: string): { root: string; id: string } | null {
   const resolvedRoot = resolve(projectPath);
-  const gitOriginRaw = getGitOrigin(resolvedRoot);
-  const gitOrigin = gitOriginRaw ? normalizeGitUrl(gitOriginRaw) : null;
   const project =
-    getProjectByLocalPath(resolvedRoot)
-    ?? (gitOrigin ? getProjectByOrigin(gitOrigin) : undefined)
+    findProjectForRoot(resolvedRoot)
+    ?? getProjectByLocalPath(resolvedRoot)
     ?? null;
   if (!project) return null;
   return { root: resolvedRoot, id: project.id };

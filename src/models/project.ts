@@ -5,22 +5,56 @@ import type { Project, ProjectPlugin } from "../types.js";
 
 export function createProject(input: {
   git_origin: string;
+  local_id?: string;
   name: string;
   local_path: string;
 }): Project {
   const db = getDb();
   const now = new Date().toISOString();
   const id = ulid();
+  const localId = input.local_id ?? "";
 
   db.prepare(
-    `INSERT INTO projects (id, git_origin, name, local_path, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, input.git_origin, input.name, input.local_path, now);
+    `INSERT INTO projects (id, git_origin, local_id, name, local_path, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(id, input.git_origin, localId, input.name, input.local_path, now);
 
-  return { id, ...input, created_at: now };
+  return { id, ...input, local_id: localId, created_at: now };
+}
+
+/** Project identified by its folder (no git origin). */
+export function getProjectByLocalId(localId: string): Project | undefined {
+  if (!localId) {
+    return undefined;
+  }
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM projects WHERE local_id = ? AND git_origin = ''")
+    .get(localId) as Project | undefined;
+}
+
+export function upsertProjectByLocalId(input: {
+  local_id: string;
+  name: string;
+  local_path: string;
+}): Project {
+  const existing = getProjectByLocalId(input.local_id);
+  if (existing) {
+    const db = getDb();
+    db.prepare("UPDATE projects SET local_path = ?, name = ? WHERE id = ?").run(
+      input.local_path,
+      input.name,
+      existing.id,
+    );
+    return { ...existing, local_path: input.local_path, name: input.name };
+  }
+  return createProject({ git_origin: "", ...input });
 }
 
 export function getProjectByOrigin(gitOrigin: string): Project | undefined {
+  if (!gitOrigin) {
+    return undefined;
+  }
   const db = getDb();
   return db
     .prepare("SELECT * FROM projects WHERE git_origin = ?")

@@ -6,11 +6,6 @@ import { isCommanderError, mapUserFacingError } from "./user-errors.js";
 export const GUIDE_SCENARIOS_URL =
   "https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/scenarios.md";
 
-export const GIT_ORIGIN_HINTS = [
-  "Add a remote: git remote add origin <url>",
-  "Snapshots, drift, history, and revert require a git repository with origin configured.",
-];
-
 export function resolveInvocationName(): "harnesstap" | "ht" {
   return basename(process.argv[1] ?? "") === "ht" ? "ht" : "harnesstap";
 }
@@ -98,12 +93,6 @@ export function formatScenarioCommand(path: string): string {
 
 export function collectRepeatedOption(value: string, previous: string[]): string[] {
   return [...previous, value];
-}
-
-export function reportNoGitOrigin(_retryCommand?: string): void {
-  fail("No git remote origin configured.", {
-    hint: GIT_ORIGIN_HINTS[0],
-  });
 }
 
 export function isVerboseMode(argv: string[] = process.argv): boolean {

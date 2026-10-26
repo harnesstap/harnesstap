@@ -58,11 +58,7 @@ import {
   catalogPluginVersionLabel,
 } from "../../services/marketplace-catalog-parse.js";
 import { ui } from "../../ui/index.js";
-import {
-  getGitOrigin,
-  normalizeGitUrl,
-  projectNameFromUrl,
-} from "../../services/git.js";
+import { getGitOrigin } from "../../services/git.js";
 import { TargetFlagError } from "../../services/apm-targets.js";
 import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import {
@@ -88,11 +84,7 @@ import {
   setPluginTags,
 } from "../../models/plugin-model.js";
 import { PROFILE_PLUGIN_TAG } from "../../constants/profile.js";
-import {
-  upsertProject,
-  getProjectByOrigin,
-  applyConfiguredPluginToProject,
-} from "../../models/project.js";
+import { applyConfiguredPluginToProject } from "../../models/project.js";
 import { createSnapshot } from "../../models/snapshot.js";
 import { captureManagedSnapshotState } from "../../services/snapshot-capture.js";
 import { resolveHomeRoot } from "../../utils/home-root.js";
@@ -260,6 +252,7 @@ import {
   resolveSkillPackageCheckout,
   type PluginSourceConflictPolicy,
 } from "../../services/skill-package-resolve.js";
+import { ensureProjectForRoot, findProjectForRoot } from "../../services/project-identity.js";
 async function deleteLocalPluginByName(nameOrId: string): Promise<void> {
   const plugin = getPlugin(nameOrId);
   if (!plugin) {
@@ -1033,10 +1026,7 @@ export async function handleProjectApplyCommand(
 
   const generateSpin = createProgress("Generating harness files...");
   let generated: Awaited<ReturnType<typeof generateFiles>>;
-  const gitOriginForApply = getGitOrigin(projectRoot);
-  const projectForHarness = gitOriginForApply
-    ? getProjectByOrigin(normalizeGitUrl(gitOriginForApply))
-    : undefined;
+  const projectForHarness = findProjectForRoot(projectRoot);
   const projectHarnessConfig = projectForHarness
     ? getProjectHarnessConfig(projectForHarness.id)
     : undefined;
@@ -1266,34 +1256,23 @@ export async function handleProjectApplyCommand(
   const unchanged = Math.max(0, desiredPaths.length - wroteCount);
   const hasChanges = wroteCount > 0 || staleRemoved.removed.length > 0;
 
-  const gitOrigin = getGitOrigin(projectRoot);
   let snapshotId: string | undefined;
-  if (gitOrigin) {
-    const project = upsertProject({
-      git_origin: normalizeGitUrl(gitOrigin),
-      name: projectNameFromUrl(gitOrigin),
-      local_path: projectRoot,
-    });
-    applyConfiguredPluginToProject({
+  const project = ensureProjectForRoot(projectRoot);
+  applyConfiguredPluginToProject({
+    project_id: project.id,
+    configured_plugin_id: applyBundle.primaryConfiguredPluginId,
+    platforms,
+  });
+  if (hasChanges) {
+    const snapshot = createSnapshot({
       project_id: project.id,
-      configured_plugin_id: applyBundle.primaryConfiguredPluginId,
-      platforms,
+      label:
+        resolvedPluginNames.length > 1
+          ? `Before applying: ${resolvedPluginNames.join(" + ")}`
+          : `Before applying: ${primaryPlugin.name}`,
+      state: capturedState,
     });
-    if (hasChanges) {
-      const snapshot = createSnapshot({
-        project_id: project.id,
-        label:
-          resolvedPluginNames.length > 1
-            ? `Before applying: ${resolvedPluginNames.join(" + ")}`
-            : `Before applying: ${primaryPlugin.name}`,
-        state: capturedState,
-      });
-      snapshotId = snapshot.id;
-    }
-  } else if (outputFormat === "human") {
-    ui.warn("No git remote origin: configuration snapshot will not be stored.");
-    ui.hint("git remote add origin <url>");
-    ui.hint("Snapshots and drift detection require a git repository with origin configured.");
+    snapshotId = snapshot.id;
   }
 
   if (outputFormat === "json") {

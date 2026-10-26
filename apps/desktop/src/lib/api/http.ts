@@ -1,9 +1,12 @@
+import { desktopAgentText } from "../desktop-agent-message";
+
+/** Agent error with its message made safe for Desktop (no command instructions). */
 export class AgentApiError extends Error {
   readonly status: number;
   readonly code?: string;
 
   constructor(message: string, status: number, code?: string) {
-    super(message);
+    super(desktopAgentText(message));
     this.name = "AgentApiError";
     this.status = status;
     this.code = code;

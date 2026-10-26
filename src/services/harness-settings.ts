@@ -6,19 +6,14 @@ import {
   setHarnessPreference,
   setProjectHarnessConfig,
 } from "../models/harness.js";
-import { getProjectByOrigin, upsertProject } from "../models/project.js";
 import { getAllPlatforms } from "../platforms/registry.js";
 import { PLATFORM_FEATURES } from "../types.js";
 import { getDedicatedSerializerPlatformIds } from "./platform-serializers.js";
 import {
-  getGitOrigin,
-  normalizeGitUrl,
-  projectNameFromUrl,
-} from "./git.js";
-import {
   normalizeRegisteredHarnesses,
   registeredHarnessesOf,
 } from "./harness-targets.js";
+import { ensureProjectForRoot, findProjectForRoot } from "./project-identity.js";
 
 export type MaterializationStrategy = "symlink-preferred" | "copy";
 
@@ -84,15 +79,7 @@ function assertKnownHarnesses(harnesses: string[]): void {
 
 function projectBlock(projectPath: string): HarnessSettingsProject {
   const root = resolve(projectPath);
-  const gitOrigin = getGitOrigin(root);
-  if (!gitOrigin) {
-    return {
-      available: false,
-      override: false,
-      reason: "Project has no git origin",
-    };
-  }
-  const project = getProjectByOrigin(normalizeGitUrl(gitOrigin));
+  const project = findProjectForRoot(root);
   const config = project ? getProjectHarnessConfig(project.id) : undefined;
   if (!config) {
     return { available: true, override: false };
@@ -128,12 +115,10 @@ export async function putHarnessSettings(
   type ValidatedProject =
     | {
         root: string;
-        gitOrigin: string;
         override: false;
       }
     | {
         root: string;
-        gitOrigin: string;
         override: true;
         registered: string[];
         strategy: MaterializationStrategy;
@@ -142,12 +127,8 @@ export async function putHarnessSettings(
   let validatedProject: ValidatedProject | undefined;
   if (input.project) {
     const root = resolve(input.project.path);
-    const gitOrigin = getGitOrigin(root);
-    if (!gitOrigin) {
-      throw new Error("Project harness override requires a git origin");
-    }
     if (!input.project.override) {
-      validatedProject = { root, gitOrigin, override: false };
+      validatedProject = { root, override: false };
     } else {
       const registered = normalizeRegisteredHarnesses(
         input.project.registered_harnesses ?? [],
@@ -160,7 +141,6 @@ export async function putHarnessSettings(
       assertKnownHarnesses(registered);
       validatedProject = {
         root,
-        gitOrigin,
         override: true,
         registered,
         strategy:
@@ -185,11 +165,7 @@ export async function putHarnessSettings(
     return result;
   }
 
-  const project = upsertProject({
-    git_origin: normalizeGitUrl(validatedProject.gitOrigin),
-    name: projectNameFromUrl(validatedProject.gitOrigin),
-    local_path: validatedProject.root,
-  });
+  const project = ensureProjectForRoot(validatedProject.root);
 
   if (!validatedProject.override) {
     deleteProjectHarnessConfig(project.id);

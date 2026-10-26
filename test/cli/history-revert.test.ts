@@ -116,18 +116,54 @@ describe("CLI history and revert", () => {
     }
   });
 
-  it("errors when history is requested without a git remote origin", async () => {
+  it("keeps history and revert in a folder without git, and after it gains an origin", async () => {
     const context = await createTestContext("cli-history-non-git");
 
     try {
       await runCli(["init"]);
+      const pluginModel = await import("../../src/models/plugin-model.ts");
+      const projectModel = await import("../../src/models/project.ts");
+      const resourceModel = await import("../../src/models/resource.ts");
+      const snapshotModel = await import("../../src/models/snapshot.ts");
+      const identity = await import("../../src/services/project-identity.ts");
 
-      const result = await runCli(["history", context.projectDir,
+      const plugin = pluginModel.createPlugin({ name: "history-plugin" });
+      const resource = resourceModel.createResource(
+        makeResourceInput({ type: "instruction", name: "history", content: "# Original instructions" }),
+      );
+      pluginModel.addResourceToPlugin(plugin.id, resource.id);
+      const applied = await runCli([
+        "apply",
+        "history-plugin",
+        "--project",
+        context.projectDir,
+        "--harness",
+        "claude-code",
       ]);
+      expect(applied.stderr).not.toContain("git remote");
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("No git remote origin configured.");
-      expect(result.stderr).toContain("git remote add origin");
+      const history = await runCli(["history", context.projectDir]);
+      expect(history.exitCode ?? 0).toBe(0);
+      expect(history.stdout).toContain("Before applying: history-plugin");
+
+      const project = projectModel.getProjectByLocalId(identity.pathProjectId(context.projectDir));
+      const snapshot = project ? snapshotModel.listSnapshots(project.id)[0] : undefined;
+      if (!snapshot) {
+        throw new Error("Expected a snapshot for the folder without git");
+      }
+
+      initGitRepo(context.projectDir, "git@github.com:acme/harnesstap-gained.git");
+      for (let run = 0; run < 2; run += 1) {
+        const after = await runCli(["history", context.projectDir, "--show-id"]);
+        expect(after.exitCode ?? 0).toBe(0);
+        expect(after.stdout).toContain(shortenId(snapshot.id));
+      }
+      expect(projectModel.listProjects()).toHaveLength(1);
+      expect(existsSync(`${context.homeDir}/.harnesstap/backups`)).toBe(true);
+
+      const revertResult = await runCli(["revert", snapshot.id]);
+      expect(revertResult.stdout).toContain("Restored");
+      expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(false);
     } finally {
       await context.cleanup();
     }

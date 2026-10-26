@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   fetchProjectHistory,
-  ProjectHistoryApiError,
   revertProjectSnapshot,
   type ProjectHistorySnapshot,
 } from "../../lib/api/project-history";
@@ -65,7 +64,6 @@ export function ProjectHistoryDrawer({
   const [loading, setLoading] = useState(false);
   const [snapshots, setSnapshots] = useState<ProjectHistorySnapshot[]>([]);
   const [projectLinked, setProjectLinked] = useState(true);
-  const [originHints, setOriginHints] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<ProjectHistorySnapshot | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -80,7 +78,6 @@ export function ProjectHistoryDrawer({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setOriginHints(null);
     setFilter("");
     setPending(null);
     void fetchProjectHistory(baseUrl, projectPath)
@@ -93,11 +90,6 @@ export function ProjectHistoryDrawer({
       })
       .catch((loadError: unknown) => {
         if (cancelled) {
-          return;
-        }
-        if (loadError instanceof ProjectHistoryApiError && loadError.code === "no_git_origin") {
-          setOriginHints(loadError.hints);
-          setSnapshots([]);
           return;
         }
         setError(loadError instanceof Error ? loadError.message : "Could not load history.");
@@ -131,15 +123,9 @@ export function ProjectHistoryDrawer({
       .then((result) => {
         setSnapshots(result.snapshots);
         setProjectLinked(result.project_linked);
-        setOriginHints(null);
         setError(null);
       })
       .catch((loadError: unknown) => {
-        if (loadError instanceof ProjectHistoryApiError && loadError.code === "no_git_origin") {
-          setOriginHints(loadError.hints);
-          setSnapshots([]);
-          return;
-        }
         setError(loadError instanceof Error ? loadError.message : "Could not load history.");
       })
       .finally(() => setLoading(false));
@@ -189,55 +175,43 @@ export function ProjectHistoryDrawer({
         closeDisabled={confirmBusy || pending !== null}
         onClose={onClose}
       >
-            {originHints ? (
-              <div className="banner error" role="alert">
-                <div>No git remote origin configured.</div>
-                {originHints.map((hint) => (
-                  <p className="muted" key={hint}>{hint}</p>
-                ))}
-              </div>
-            ) : null}
             {error ? <div className="banner error" role="alert">{error}</div> : null}
-            {!originHints ? (
-              <>
-                <Input
-                  value={filter}
-                  onChange={(event) => setFilter(event.target.value)}
-                  placeholder="Filter snapshots..."
-                  aria-label="Filter snapshots"
-                  disabled={loading}
-                />
-                {loading ? <p className="muted">Loading snapshots...</p> : null}
-                {!loading && projectLinked && snapshots.length === 0 ? (
-                  <p className="muted">No snapshots found.</p>
-                ) : null}
-                {!loading && !projectLinked && snapshots.length === 0 ? (
-                  <p className="muted">
-                    No project record found. Apply or scan this repository first.
-                  </p>
-                ) : null}
-                {!loading && snapshots.length > 0 && filtered.length === 0 ? (
-                  <p className="muted">{noResultsTitle(filter)}</p>
-                ) : null}
-                <ul className="stash-bundle-list">
-                  {filtered.map((row) => (
-                    <li key={row.id} className="stash-bundle-item">
-                      <div>
-                        <div>{formatRelativeTime(row.created_at)}</div>
-                        <div>{row.label}</div>
-                        <div className="mono muted">{shortenId(row.id)}</div>
-                      </div>
-                      <IconActionButton
-                        label="Revert"
-                        disabled={revertBlocked}
-                        onClick={() => setPending(row)}
-                        icon={<Undo2 size={16} aria-hidden />}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
+              <Input
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                placeholder="Filter snapshots..."
+                aria-label="Filter snapshots"
+                disabled={loading}
+              />
+              {loading ? <p className="muted">Loading snapshots...</p> : null}
+              {!loading && projectLinked && snapshots.length === 0 ? (
+                <p className="muted">No snapshots found.</p>
+              ) : null}
+              {!loading && !projectLinked && snapshots.length === 0 ? (
+                <p className="muted">
+                  No snapshots yet. Applying a profile to this project takes the first one.
+                </p>
+              ) : null}
+              {!loading && snapshots.length > 0 && filtered.length === 0 ? (
+                <p className="muted">{noResultsTitle(filter)}</p>
+              ) : null}
+              <ul className="stash-bundle-list">
+                {filtered.map((row) => (
+                  <li key={row.id} className="stash-bundle-item">
+                    <div>
+                      <div>{formatRelativeTime(row.created_at)}</div>
+                      <div>{row.label}</div>
+                      <div className="mono muted">{shortenId(row.id)}</div>
+                    </div>
+                    <IconActionButton
+                      label="Revert"
+                      disabled={revertBlocked}
+                      onClick={() => setPending(row)}
+                      icon={<Undo2 size={16} aria-hidden />}
+                    />
+                  </li>
+                ))}
+              </ul>
       </FullScreenPanel>
       <ConfirmDialog
         open={pending !== null}

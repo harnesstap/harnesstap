@@ -544,7 +544,7 @@ describe("CLI apply", () => {
     }
   });
 
-  it("applies successfully in a non-git project without tracking snapshot state", async () => {
+  it("applies in a non-git project and tracks snapshots under a path-based project ID", async () => {
     const context = await createTestContext("cli-apply-non-git");
 
     try {
@@ -574,7 +574,12 @@ describe("CLI apply", () => {
 
       expect(applyResult.stdout).toContain("Wrote 1");
       expect(existsSync(`${context.projectDir}/CLAUDE.md`)).toBe(true);
-      expect(projectModel.listProjects()).toEqual([]);
+      const projects = projectModel.listProjects();
+      expect(projects).toHaveLength(1);
+      expect(projects[0]?.git_origin).toBe("");
+      expect(projects[0]?.local_id).toStartWith("path:");
+      const snapshotModel = await import("../../src/models/snapshot.ts");
+      expect(snapshotModel.listSnapshots(projects[0]?.id ?? "")).toHaveLength(1);
     } finally {
       await context.cleanup();
     }

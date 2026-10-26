@@ -6,7 +6,6 @@ import { getDb, getHarnesstapDir } from "../../db/connection.js";
 import { initializeSchema } from "../../db/schema.js";
 import { getPlugin, addResourceToPlugin } from "../../models/plugin-model.js";
 import { findResourceByKey, listResources, type ResourceCreateInput } from "../../models/resource.js";
-import { upsertProject } from "../../models/project.js";
 import { isProfilePlugin } from "../../constants/profile.js";
 import {
   detectPlatforms,
@@ -25,12 +24,8 @@ import {
   previewPluginFromProject,
 } from "../../services/plugin-from-project.js";
 import { addPluginAttachment } from "../../services/plugin-composition.js";
-import {
-  getGitOrigin,
-  normalizeGitUrl,
-  projectNameFromUrl,
-} from "../../services/git.js";
 import type { Plugin } from "../../types.js";
+import { ensureProjectForRoot } from "../../services/project-identity.js";
 
 export type ImportKind = "scan" | "add" | "from_project";
 export type ImportConflictPolicy = "skip" | "overwrite";
@@ -559,13 +554,5 @@ async function commitAdd(source: string): Promise<{
 }
 
 function maybeUpsertProject(projectRoot: string): void {
-  const gitOrigin = getGitOrigin(projectRoot);
-  if (!gitOrigin) {
-    return;
-  }
-  upsertProject({
-    git_origin: normalizeGitUrl(gitOrigin),
-    name: projectNameFromUrl(gitOrigin),
-    local_path: projectRoot,
-  });
+  ensureProjectForRoot(projectRoot);
 }

@@ -6,7 +6,6 @@ import {
   getHarnessPreference,
   getProjectHarnessConfig,
 } from "../models/harness.js";
-import { upsertProject } from "../models/project.js";
 import { createSnapshot } from "../models/snapshot.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
 import type {
@@ -22,7 +21,6 @@ import {
   materializeFiles,
   writeFiles,
 } from "./applier.js";
-import { getGitOrigin, normalizeGitUrl, projectNameFromUrl } from "./git.js";
 import {
   toPortableEmitResources,
   type UnionConflict,
@@ -65,6 +63,7 @@ import {
   pinSkillEmitsToExistingLivePaths,
   preferSharedSkillEmits,
 } from "./shared-emit-paths.js";
+import { ensureProjectForRoot, findProjectForRoot } from "./project-identity.js";
 
 export type HarnessUnionSyncCode =
   | "no_registered_harnesses"
@@ -116,26 +115,19 @@ function resolveConfiguredSelection(projectRoot?: string): {
   cursor_skill_mode?: CursorSkillMode;
 } {
   const global = getHarnessPreference();
-  if (projectRoot) {
-    const gitOrigin = getGitOrigin(projectRoot);
-    if (gitOrigin) {
-      const project = upsertProject({
-        git_origin: normalizeGitUrl(gitOrigin),
-        name: projectNameFromUrl(gitOrigin),
-        local_path: projectRoot,
-      });
-      const projectConfig = getProjectHarnessConfig(project.id);
-      const registered = uniqueHarnessTargets(
-        projectConfig?.registered_harnesses ?? [],
-      );
-      if (registered.length > 0) {
-        return {
-          registered_harnesses: registered,
-          ...(projectConfig?.cursor_skill_mode
-            ? { cursor_skill_mode: projectConfig.cursor_skill_mode }
-            : {}),
-        };
-      }
+  const project = projectRoot ? findProjectForRoot(projectRoot) : undefined;
+  if (project) {
+    const projectConfig = getProjectHarnessConfig(project.id);
+    const registered = uniqueHarnessTargets(
+      projectConfig?.registered_harnesses ?? [],
+    );
+    if (registered.length > 0) {
+      return {
+        registered_harnesses: registered,
+        ...(projectConfig?.cursor_skill_mode
+          ? { cursor_skill_mode: projectConfig.cursor_skill_mode }
+          : {}),
+      };
     }
   }
 
@@ -333,23 +325,16 @@ export async function syncConfiguredHarnesses(
 
   let writtenByApply = new Set<string>();
   if (target === "project") {
-    const gitOrigin = getGitOrigin(rootPath);
-    if (gitOrigin) {
-      const project = upsertProject({
-        git_origin: normalizeGitUrl(gitOrigin),
-        name: projectNameFromUrl(gitOrigin),
-        local_path: rootPath,
-      });
-      createSnapshot({
-        project_id: project.id,
-        label: `Before harness sync (${platforms.join(", ")})`,
-        state: captureManagedSnapshotState({
-          rootPath,
-          resources: emitResources,
-          generated: preferred,
-        }),
-      });
-    }
+    const project = ensureProjectForRoot(rootPath);
+    createSnapshot({
+      project_id: project.id,
+      label: `Before harness sync (${platforms.join(", ")})`,
+      state: captureManagedSnapshotState({
+        rootPath,
+        resources: emitResources,
+        generated: preferred,
+      }),
+    });
     writeFiles(files, rootPath);
   } else {
     const materialized = await materializeFiles(files, rootPath, {
