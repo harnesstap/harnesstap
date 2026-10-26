@@ -8,9 +8,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ScanSearch } from "lucide-react";
+import { ArrowLeftRight, Check, Pencil, Plus, ScanSearch } from "lucide-react";
 import {
   DETECT_HARNESSES_COMMAND,
+  HARNESSES_EMPTY_BODY,
+  HARNESSES_EMPTY_TITLE,
   SYNC_HARNESSES_COMMAND,
 } from "../../lib/ui-copy";
 import { harnessDisplayName } from "../../lib/harness-meta";
@@ -44,11 +46,13 @@ import { toast } from "../../state/toast-store";
 import { useEscapeWhenNoLayer } from "../../state/overlay-stack";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { EmptyState } from "../EmptyState";
+import { IconActionButton } from "../IconActionButton";
 import { LoadErrorState } from "../LoadErrorState";
 import { LibraryDetailChrome } from "../LibraryDetailChrome";
 import { ResourceDetailBody } from "../ResourceDetailBody";
 import { Banner } from "../shell/Banner";
 import { WorkspaceBackButton } from "../WorkspaceBackButton";
+import { WorkspaceRefreshButton } from "../WorkspaceRefreshButton";
 import { AddHarnessModal } from "./AddHarnessModal";
 import { DetectHarnessesDialog } from "./DetectHarnessesDialog";
 import { HarnessDetail } from "./HarnessDetail";
@@ -65,6 +69,7 @@ type HarnessesOverlay =
   | { readonly kind: "sync" };
 
 const NO_OVERLAY: HarnessesOverlay = { kind: "none" };
+const HEADER_ICON_SIZE = 16;
 
 export interface HarnessesWorkspaceProps {
   baseUrl: string | null;
@@ -119,8 +124,6 @@ export function HarnessesWorkspace({
   const [fieldEditing, setFieldEditing] = useState(false);
   const [detailConfirmOpen, setDetailConfirmOpen] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncHelper, setSyncHelper] = useState<string | null>(null);
   const [syncPreview, setSyncPreview] = useState<HarnessSyncPreviewState>({
     kind: "loading",
   });
@@ -134,7 +137,6 @@ export function HarnessesWorkspace({
   const detailTitleId = useId();
   const homeResetNonceSeen = useRef(homeResetNonce);
   const inventoryReloadKeySeen = useRef(inventoryReloadKey);
-  const syncedClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const controlsDisabled = disabled || !connected || !baseUrl;
   const working = ctrl.busy.kind !== "idle";
@@ -179,8 +181,6 @@ export function HarnessesWorkspace({
     homeResetNonceSeen.current = homeResetNonce;
     dispatch({ type: "reset", inventory });
     closeOverlay();
-    setSyncError(null);
-    setSyncHelper(null);
     setPullOpen(false);
     setPullBusy(false);
     setPullTargets([]);
@@ -196,14 +196,6 @@ export function HarnessesWorkspace({
     }
     void ctrl.refresh();
   }, [ctrl.refresh, inventoryReloadKey]);
-
-  useEffect(() => {
-    return () => {
-      if (syncedClearRef.current) {
-        clearTimeout(syncedClearRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     onNestedDepthChange?.(detailOpen ? 1 : 0);
@@ -423,7 +415,6 @@ export function HarnessesWorkspace({
     if (syncHidden || syncDisabled) {
       return;
     }
-    setSyncError(null);
     setSyncPreview({ kind: "loading" });
     openOverlay({ kind: "sync" });
   }, [openOverlay, syncDisabled, syncHidden]);
@@ -445,21 +436,12 @@ export function HarnessesWorkspace({
 
   const onConfirmSync = async () => {
     setOverlay(NO_OVERLAY);
-    setSyncError(null);
-    setSyncHelper(null);
     const result = await ctrl.sync();
     if (result.ok) {
-      if (syncedClearRef.current) {
-        clearTimeout(syncedClearRef.current);
-      }
-      setSyncHelper("Synced");
-      syncedClearRef.current = setTimeout(() => {
-        setSyncHelper(null);
-        syncedClearRef.current = null;
-      }, 2000);
+      toast({ tone: "success", title: "Harnesses synced" });
       return;
     }
-    setSyncError(result.message ?? "Could not sync harnesses");
+    toast({ tone: "error", title: result.message ?? "Could not sync harnesses" });
   };
 
   const renderMain = (): ReactNode => {
@@ -500,8 +482,8 @@ export function HarnessesWorkspace({
         if (!selectedEntry) {
           return rows.length === 0 ? (
             <EmptyState
-              title="No harnesses set up."
-              body="Detect the harnesses on this machine or add one."
+              title={HARNESSES_EMPTY_TITLE}
+              body={HARNESSES_EMPTY_BODY}
               testId="harnesses-empty"
               action={{
                 label: DETECT_HARNESSES_COMMAND,
@@ -510,7 +492,17 @@ export function HarnessesWorkspace({
                 onClick: startDetect,
                 icon: <ScanSearch size={16} aria-hidden />,
               }}
-            />
+            >
+              <button
+                type="button"
+                className="link-btn"
+                data-testid="harnesses-empty-add"
+                disabled={controlsDisabled}
+                onClick={openAdd}
+              >
+                Add harness
+              </button>
+            </EmptyState>
           ) : (
             <p className="muted">Select a harness to inspect it.</p>
           );
@@ -563,6 +555,61 @@ export function HarnessesWorkspace({
               </span>
             </div>
           </div>
+          <div className="resources-panel-header-actions">
+            <WorkspaceRefreshButton
+              testId="harnesses-refresh"
+              label="Refresh harnesses"
+              disabled={controlsDisabled || working}
+              onRefresh={ctrl.refresh}
+            />
+            {inventoryLoadFailed ? null : (
+              <>
+                {rows.length > 0 ? (
+                  <IconActionButton
+                    label={view.editing ? "Done" : "Edit harnesses"}
+                    data-testid="edit-harnesses"
+                    aria-pressed={view.editing}
+                    disabled={controlsDisabled}
+                    onClick={() => dispatch({ type: "toggle-edit" })}
+                    icon={
+                      view.editing
+                        ? <Check size={HEADER_ICON_SIZE} aria-hidden />
+                        : <Pencil size={HEADER_ICON_SIZE} aria-hidden />
+                    }
+                  />
+                ) : null}
+                {rows.length > 0 ? (
+                  <IconActionButton
+                    label={DETECT_HARNESSES_COMMAND}
+                    data-testid="detect-harnesses"
+                    disabled={controlsDisabled || working}
+                    busy={ctrl.busy.kind === "detecting"}
+                    onClick={startDetect}
+                    icon={<ScanSearch size={HEADER_ICON_SIZE} aria-hidden />}
+                  />
+                ) : null}
+                {syncHidden ? null : (
+                  <IconActionButton
+                    label={syncing ? "Syncing..." : SYNC_HARNESSES_COMMAND}
+                    title={syncDisabledReason ?? syncHarnessesTooltip()}
+                    data-testid="sync-harnesses"
+                    disabled={syncDisabled || syncing}
+                    busy={syncing}
+                    onClick={openSyncConfirm}
+                    icon={<ArrowLeftRight size={HEADER_ICON_SIZE} aria-hidden />}
+                  />
+                )}
+                <IconActionButton
+                  label="Add harness"
+                  primary
+                  data-testid="add-harness"
+                  disabled={controlsDisabled || working}
+                  onClick={openAdd}
+                  icon={<Plus size={HEADER_ICON_SIZE} aria-hidden />}
+                />
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -570,8 +617,6 @@ export function HarnessesWorkspace({
         <Banner
           tone="error"
           message={ctrl.error}
-          onRetry={() => void ctrl.refresh()}
-          retryBusy={ctrl.busy.kind === "loading"}
           testId="harnesses-error"
         />
       ) : null}
@@ -596,19 +641,7 @@ export function HarnessesWorkspace({
           disabled={controlsDisabled}
           busy={ctrl.busy}
           onSelect={(id) => dispatch({ type: "select", id })}
-          onAdd={openAdd}
-          onDetect={startDetect}
-          onRefresh={ctrl.refresh}
-          onToggleEdit={() => dispatch({ type: "toggle-edit" })}
           onRemove={(id) => openOverlay({ kind: "remove", id })}
-          syncLabel={syncing ? "Syncing..." : SYNC_HARNESSES_COMMAND}
-          syncTitle={syncDisabledReason ?? syncHarnessesTooltip()}
-          syncDisabled={syncDisabled}
-          syncHidden={syncHidden}
-          syncBusy={syncing}
-          syncHelper={syncHelper}
-          syncError={syncError}
-          onSync={openSyncConfirm}
         />
         <div className="resources-panel-body">{renderMain()}</div>
       </div>

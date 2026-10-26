@@ -15,6 +15,8 @@ export const MARKETPLACE_URL_INVALID =
 
 export const DETECT_HARNESSES_COMMAND = "Detect harnesses";
 export const SYNC_HARNESSES_COMMAND = "Sync harnesses";
+export const HARNESSES_EMPTY_TITLE = "No harnesses yet";
+export const HARNESSES_EMPTY_BODY = "Detect the agents on this machine, or add one by hand.";
 
 export const HARNESS_NOT_SET_UP_COPY = {
   title: "Not set up for any harness yet.",
