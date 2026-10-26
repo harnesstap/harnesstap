@@ -626,10 +626,6 @@
   min-width: 0;
 }
 
-.resource-filter-clear {
-  flex-shrink: 0;
-}
-
 @media (max-width: 720px) {
   .resource-filter-sidebar {
     border-right: 0;

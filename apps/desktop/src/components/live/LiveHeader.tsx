@@ -44,6 +44,8 @@ export interface LiveHeaderProps {
   onTypeTab: (next: string | null) => void;
   emptySurface?: TypeTabZeroSurface;
   searchTrailing?: ReactNode;
+  /** Says what the filter matches; the profile list matches name, type, and source. */
+  searchPlaceholder?: string;
 }
 
 export function LiveHeader({
@@ -55,12 +57,13 @@ export function LiveHeader({
   onTypeTab,
   emptySurface = "profile",
   searchTrailing,
+  searchPlaceholder = "Filter by name, type, or source",
 }: LiveHeaderProps) {
   const searchField = (
     <ListSearchField
       value={search}
       onChange={onSearch}
-      placeholder="Filter resources"
+      placeholder={searchPlaceholder}
       label="Filter resources"
     />
   );

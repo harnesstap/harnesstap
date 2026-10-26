@@ -58,9 +58,9 @@ describe("desktop field spelling correction", () => {
     const profiles = readApp(
       "apps/desktop/src/components/shell/ProfilesRail.tsx",
     );
-    expect(library).toContain('placeholder="Filter by name"');
+    expect(library).toContain('placeholder="Filter by name or description"');
     expect(library).toContain("{...noSpellcheckProps}");
-    expect(harnesses).toContain('placeholder="Filter resources"');
+    expect(harnesses).toContain("placeholder={searchPlaceholder}");
     expect(harnesses).toContain("{...noSpellcheckProps}");
     expect(profiles).toContain('placeholder="Filter profiles..."');
     expect(profiles).toContain("{...noSpellcheckProps}");

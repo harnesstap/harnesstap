@@ -6,10 +6,8 @@ import {
   Check,
   FilterX,
   GripVertical,
-  Pencil,
   Plus,
   RotateCw,
-  X,
 } from "lucide-react";
 import {
   insertBeforeIndexForDrop,
@@ -18,7 +16,7 @@ import {
 } from "../../lib/profile-rail-order";
 import type { ProfileCreateSource } from "../../lib/types";
 import type { ScopeController } from "../../state/scope-controller";
-import { noResultsTitle } from "../../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, noResultsTitle } from "../../lib/empty-copy";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import { profileHeaderStatus } from "../../lib/reapply";
 import { ButtonSpinner } from "../ButtonSpinner";
@@ -331,15 +329,6 @@ export function ProfilesRail({
           aria-label="Filter profiles by name, description, or tags"
           {...noSpellcheckProps}
         />
-        {profileFilter.trim() ? (
-          <IconActionButton
-            label="Clear"
-            title="Clear"
-            disabled={switching}
-            onClick={ctrl.clearProfileFilter}
-            icon={<X size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-          />
-        ) : null}
       </div>
       <div
         className={["profiles-list", dropTarget === "end" ? "drop-target-end" : ""]
@@ -394,10 +383,11 @@ export function ProfilesRail({
         )}
         {!profilesError && visibleProfiles.length > 0 && filteredProfiles.length === 0 && (
           <EmptyState
+            variant="no-match"
             title={noResultsTitle(profileFilter)}
             body="Try a different name, description, or tag."
             action={{
-              label: "Clear filter",
+              label: CLEAR_FILTER_LABEL,
               onClick: () => setProfileFilter(""),
               icon: <FilterX size={16} strokeWidth={2} aria-hidden="true" />,
             }}
@@ -495,20 +485,6 @@ export function ProfilesRail({
                   </ChromeTooltip>
                 ) : null}
               </button>
-              <IconActionButton
-                className="profile-item-action profile-item-edit"
-                data-testid={`edit-profile-${profile.name}`}
-                label={`Edit ${profile.name}`}
-                title={`Edit ${profile.name}`}
-                draggable={false}
-                onDragStart={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                disabled={!connected || switching || stashBusy}
-                onClick={() => ctrl.openEditProfile(profile.name)}
-                icon={<Pencil size={RAIL_ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-              />
             </div>
           );
         })}
@@ -517,7 +493,7 @@ export function ProfilesRail({
         {ctrl.applyHelperState.kind === "changes" ? (
           <p className="muted apply-helper">
             {ctrl.applyHelperState.changeCount}{" "}
-            {ctrl.applyHelperState.changeCount === 1 ? "change" : "changes"}
+            {ctrl.applyHelperState.changeCount === 1 ? "file change" : "file changes"}
             {" · "}
             <button
               type="button"

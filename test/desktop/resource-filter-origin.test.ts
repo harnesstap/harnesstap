@@ -48,7 +48,7 @@ function cssBlock(source: string, selector: string): string {
 
 describe("library origin filter chrome", () => {
   test("keeps name search without sidebar Type chips", () => {
-    expect(sidebarSource).toContain('placeholder="Filter by name"');
+    expect(sidebarSource).toContain('placeholder="Filter by name or description"');
     expect(sidebarSource).toContain("Updated");
     expect(sidebarSource).toContain("Namespace");
     expect(sidebarSource).toContain("Origin");
@@ -164,7 +164,7 @@ describe("library origin filter chrome", () => {
     );
     expect(typeBadges).toContain('data-density="pills"');
     expect(typeBadges).toContain("apply-diff-type-badge-label");
-    expect(typeBadges).toContain("resourceTypeTabLabel(type)");
+    expect(typeBadges).toContain("resourceTypeTabUnit(type, count)");
     expect(typeBadges).toContain("resourceTypeTabTooltip");
     expect(typeBadges).not.toContain("ChromeTooltip");
     expect(designSource).toContain("pills everywhere");

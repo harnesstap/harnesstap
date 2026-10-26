@@ -169,12 +169,12 @@ describe("profile edit autosave", () => {
     expect(editSource).toContain("affectsApply: false");
   });
 
-  test("drops marketplace pin dropdowns in favor of the composition FAB", () => {
+  test("drops marketplace pin dropdowns in favor of the Composition add button", () => {
     expect(compositionFieldsSource).not.toContain("Marketplace plugins");
     expect(compositionFieldsSource).not.toContain(
       "No marketplaces registered. Add one in Discover.",
     );
-    expect(editSource).toContain('data-testid="edit-profile-composition-fab"');
+    expect(editSource).toContain('data-testid="edit-profile-composition-add"');
     expect(designSource).toContain("edit-profile Composition lists that profile’s members");
   });
 });

@@ -29,12 +29,12 @@ describe("desktop pending approvals chrome", () => {
     expect(stripSource).toContain("pendingApprovalCliHint");
   });
 
-  test("Project workspace has an icon-only Install control that posts empty plugins", () => {
-    expect(appSource).toContain('data-testid="project-install"');
+  test("Project workspace has an Install menu item that posts empty plugins", () => {
+    expect(appSource).toContain('id: "project-install"');
     expect(appSource).toContain("Installed project from apm.yml");
     expect(appSource).toContain("plugins: []");
     expect(appSource).toContain('scope: "project"');
-    expect(appSource).not.toMatch(/data-testid="project-install"[\s\S]{0,400}Sync/);
+    expect(appSource).not.toMatch(/id: "project-install"[\s\S]{0,400}Sync/);
     expect(designSource).toContain("Project **Install**");
     expect(designSource).toContain("pending-approvals strip");
   });

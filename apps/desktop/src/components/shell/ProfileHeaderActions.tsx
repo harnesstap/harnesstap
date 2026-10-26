@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, FileDiff, HardDriveUpload, History, Pencil, Tag, Trash2, Unlink, Upload } from "lucide-react";
+import { Copy, HardDriveUpload, History, Pencil, Tag, Trash2, Unlink, Upload } from "lucide-react";
 import {
   detachLibraryPlugin,
   duplicateLibraryPlugin,
@@ -30,9 +30,10 @@ function errorText(error: unknown, fallback: string): string {
 }
 
 /**
- * Profile page header, same rule as the Library detail: Edit, Duplicate,
- * Tags, History as icons; less frequent actions in the 3-dot menu with
- * Delete last.
+ * Profile page header: Edit and History as icons (Refresh sits before them in
+ * the toolbar). Everything else lives in the 3-dot menu, Delete last.
+ * Preview changes is the rail link only; project Install and Project history
+ * arrive as `projectItems` and join the menu.
  */
 export function ProfileHeaderActions({
   ctrl,
@@ -45,6 +46,7 @@ export function ProfileHeaderActions({
   onOverwrite,
   onOpenPlugin,
   onRequestSignIn,
+  projectItems = [],
 }: {
   ctrl: ScopeController;
   profileName: string;
@@ -56,6 +58,7 @@ export function ProfileHeaderActions({
   onOverwrite: () => void;
   onOpenPlugin: (name: string, version?: string) => void;
   onRequestSignIn: () => void;
+  projectItems?: OverflowMenuItem[];
 }) {
   const summary = ctrl.selectedProfileSummary;
   const [upstream, setUpstream] = useState<LibraryPluginUpstream | null>(null);
@@ -148,7 +151,23 @@ export function ProfileHeaderActions({
 
   const overflow: OverflowMenuItem[] = [
     {
+      id: "duplicate",
+      label: "Duplicate",
+      icon: <Copy size={16} aria-hidden />,
+      disabled: locked || !baseUrl,
+      onSelect: () => setDuplicateOpen(true),
+    },
+    {
+      id: "tag",
+      label: "Tag a new version",
+      icon: <Tag size={16} aria-hidden />,
+      disabled: locked || !token || !summary?.version,
+      onSelect: () => ctrl.openCutForProfile(profileName, summary?.version ?? ""),
+    },
+    ...projectItems,
+    {
       id: "overwrite",
+      separatorBefore: true,
       label: "Overwrite with current setup",
       icon: <HardDriveUpload size={16} aria-hidden />,
       disabled: locked || ctrl.overwritingWithSetup,
@@ -187,8 +206,8 @@ export function ProfileHeaderActions({
     <>
       <IconActionButton
         className="status-edit-action"
+        data-testid="profile-edit"
         onClick={() => {
-          ctrl.setInventoryEditMode(false);
           ctrl.setPreviewChanges(false);
           ctrl.openEditProfile(profileName);
         }}
@@ -199,41 +218,12 @@ export function ProfileHeaderActions({
       />
       <IconActionButton
         className="status-edit-action"
-        data-testid="profile-duplicate"
-        onClick={() => setDuplicateOpen(true)}
-        disabled={locked || !baseUrl}
-        label="Duplicate"
-        title="Duplicate"
-        icon={<Copy size={ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-      />
-      <IconActionButton
-        className="status-edit-action"
-        onClick={() => ctrl.openCutForProfile(profileName, summary?.version ?? "")}
-        disabled={locked || !token || !summary?.version}
-        label={`Tag version for ${profileName}`}
-        title="Tag a new version"
-        icon={<Tag size={ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-      />
-      <IconActionButton
-        className="status-edit-action"
         data-testid="profile-history"
         onClick={() => setHistoryOpen(true)}
         disabled={!connected || !baseUrl}
         label="History"
         title="Browse versions"
         icon={<History size={ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
-      />
-      <IconActionButton
-        className="status-edit-action"
-        onClick={() => {
-          ctrl.setPreviewChanges((value) => !value);
-          ctrl.setInventoryEditMode(false);
-        }}
-        disabled={!connected || switching}
-        label="Preview changes"
-        title="Preview changes"
-        aria-pressed={ctrl.previewChanges}
-        icon={<FileDiff size={ICON_SIZE} strokeWidth={2} aria-hidden="true" />}
       />
       <OverflowMenu testId="profile-overflow" items={overflow} disabled={!connected} />
       <ProfileDeleteControls

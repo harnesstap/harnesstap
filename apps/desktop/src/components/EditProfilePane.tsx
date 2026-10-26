@@ -57,6 +57,7 @@ import {
   ScopeAddToProfileModal,
   type ScopeLibraryPick,
 } from "./ScopeAddToProfileModal";
+import { appendProfileTags } from "../lib/profile-tags";
 import { toast } from "../state/toast-store";
 import { useEscapeWhenNoLayer } from "../state/overlay-stack";
 
@@ -108,7 +109,8 @@ export function EditProfilePane({
   const [error, setError] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState(profileName);
   const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [tagsDraft, setTagsDraft] = useState("");
+  const [tagsDraft, setTagsDraft] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [plugins, setPlugins] = useState<LibraryPlugin[]>([]);
   const [resources, setResources] = useState<LibraryResource[]>([]);
@@ -134,7 +136,7 @@ export function EditProfilePane({
       setDescriptionDraft(next.profile.description);
     }
     if (pendingMeta.current.tags === undefined) {
-      setTagsDraft(next.profile.tags.filter((tag) => tag !== "profile").join(", "));
+      setTagsDraft(next.profile.tags.filter((tag) => tag !== "profile"));
     }
   };
 
@@ -299,11 +301,6 @@ export function EditProfilePane({
     return true;
   };
 
-  const parseTags = (value: string) =>
-    value
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
   const savedTags = detail?.profile.tags.filter((tag) => tag !== "profile") ?? [];
 
   // Autosave: description and tags save a moment after typing stops, the name
@@ -344,11 +341,19 @@ export function EditProfilePane({
     queueMeta({ description: value });
   };
 
-  const onTagsChange = (value: string) => {
-    setTagsDraft(value);
-    const nextTags = parseTags(value);
+  const onTagsChange = (nextTags: string[]) => {
+    setTagsDraft(nextTags);
     if (nextTags.join("\0") !== savedTags.join("\0") || pendingMeta.current.tags) {
       queueMeta({ tags: nextTags });
+    }
+  };
+
+  // Typing a comma or pressing Enter turns the text into a pill.
+  const commitTagInput = (value: string) => {
+    const next = appendProfileTags(tagsDraft, value);
+    setTagInput("");
+    if (next.length > tagsDraft.length) {
+      onTagsChange(next);
     }
   };
 
@@ -566,6 +571,17 @@ export function EditProfilePane({
   const controlsDisabled = disabled || busy || loading;
 
   const editOverflowItems: OverflowMenuItem[] = [
+    ...(detail && onRequestCut
+      ? [
+          {
+            id: "tag",
+            label: "Tag a new version",
+            icon: <Tag size={16} aria-hidden />,
+            disabled: controlsDisabled,
+            onSelect: () => onRequestCut(detail.profile.name, detail.profile.version),
+          },
+        ]
+      : []),
     ...(detail?.upstream?.kind === "extends"
       ? [
           {
@@ -582,7 +598,7 @@ export function EditProfilePane({
       label: "Delete",
       icon: <Trash2 size={16} aria-hidden />,
       danger: true,
-      separatorBefore: detail?.upstream?.kind === "extends",
+      separatorBefore: Boolean(detail && onRequestCut) || detail?.upstream?.kind === "extends",
       disabled: disabled || busy,
       onSelect: () => setDeleteOpen(true),
     },
@@ -618,21 +634,6 @@ export function EditProfilePane({
           ) : null}
         </div>
         <div className="edit-profile-header-actions">
-          {detail && onRequestCut ? (
-            <IconActionButton
-              label="Tag version"
-              title={
-                detail.profile.dirty
-                  ? "Tag unpublished edits to a new version"
-                  : "Tag a new version (fork current state)"
-              }
-              disabled={controlsDisabled}
-              onClick={() =>
-                onRequestCut(detail.profile.name, detail.profile.version)
-              }
-              icon={<Tag size={18} strokeWidth={2} aria-hidden />}
-            />
-          ) : null}
           <OverflowMenu
             testId="edit-profile-overflow"
             disabled={busy}
@@ -700,14 +701,51 @@ export function EditProfilePane({
             </div>
             <div className="form-field gap-1.5">
               <Label htmlFor="edit-profile-tags">Tags</Label>
-              <Input
-                id="edit-profile-tags"
-                value={tagsDraft}
-                onChange={(event) => onTagsChange(event.target.value)}
-                onBlur={() => void saveMetaNow()}
-                disabled={disabled || loading}
-                placeholder="Add tags"
-              />
+              <div className="library-tag-editor">
+                {tagsDraft.length > 0 ? (
+                  <div className="library-tag-chips" data-testid="edit-profile-tag-pills">
+                    {tagsDraft.map((tag) => (
+                      <ChromeTooltip key={tag} content={`Remove ${tag}`}>
+                        <button
+                          type="button"
+                          className="badge"
+                          aria-label={`Remove tag ${tag}`}
+                          disabled={disabled || loading}
+                          onClick={() =>
+                            onTagsChange(tagsDraft.filter((entry) => entry !== tag))
+                          }
+                        >
+                          {tag}
+                        </button>
+                      </ChromeTooltip>
+                    ))}
+                  </div>
+                ) : null}
+                <Input
+                  id="edit-profile-tags"
+                  value={tagInput}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value.includes(",")) {
+                      commitTagInput(value);
+                      return;
+                    }
+                    setTagInput(value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      commitTagInput(tagInput);
+                    }
+                  }}
+                  onBlur={() => {
+                    commitTagInput(tagInput);
+                    void saveMetaNow();
+                  }}
+                  disabled={disabled || loading}
+                  placeholder="Add a tag"
+                />
+              </div>
             </div>
           </section>
 
@@ -738,20 +776,15 @@ export function EditProfilePane({
                 <div className="banner">{detail.parent_missing}</div>
               ) : null
             }
-            footer={
-              <ChromeTooltip content="Add to profile">
-                <button
-                  type="button"
-                  className="scope-inventory-fab icon-action primary"
-                  data-testid="edit-profile-composition-fab"
-                  aria-label="Add to profile"
-                  title="Add to profile"
-                  disabled={controlsDisabled}
-                  onClick={() => setAddModalOpen(true)}
-                >
-                  <Plus size={20} strokeWidth={2} aria-hidden />
-                </button>
-              </ChromeTooltip>
+            headerAction={
+              <IconActionButton
+                data-testid="edit-profile-composition-add"
+                label="Add to profile"
+                title="Add to profile"
+                disabled={controlsDisabled}
+                onClick={() => setAddModalOpen(true)}
+                icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+              />
             }
           />
           <EditProfileParitySlots

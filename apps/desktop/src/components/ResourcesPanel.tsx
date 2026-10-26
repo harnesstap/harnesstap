@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, FolderDown, FolderInput, FilterX, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Check, CircleArrowUp, FolderDown, FolderInput, FilterX, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { IconActionButton } from "./IconActionButton";
 import { ChromeTooltip } from "./ChromeTooltip";
@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useRegisterCommands } from "../state/command-registry";
 import { ImportLibraryDrawer } from "./parity/ImportLibraryDrawer";
 import { loadRecentProjects } from "../lib/recent-projects";
-import { noResultsTitle } from "../lib/empty-copy";
+import { CLEAR_FILTER_LABEL, noResultsTitle } from "../lib/empty-copy";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { LibraryDetailChrome } from "./LibraryDetailChrome";
 import { LibraryResourceList } from "./library/LibraryResourceList";
@@ -1105,10 +1105,11 @@ export function ResourcesPanel({
           <>
             {typeTabs}
             <EmptyState
+              variant="no-match"
               title={noResultsTitle(filterState.search)}
-              body="Clear filters to see everything."
+              body="Clear the filter to see every resource."
               action={{
-                label: "Clear filters",
+                label: CLEAR_FILTER_LABEL,
                 onClick: () => applyFilterChange(resetResourceFilterState()),
                 icon: <FilterX size={16} aria-hidden />,
               }}
@@ -1242,13 +1243,6 @@ export function ResourcesPanel({
               />
             ) : null}
             <IconActionButton
-              label="Import"
-              title="Import"
-              disabled={disabled || !baseUrl}
-              onClick={() => setImportOpen(true)}
-              icon={<FolderDown size={16} aria-hidden />}
-            />
-            <IconActionButton
               label="Tracked directories"
               title="Tracked directories"
               disabled={disabled || !baseUrl}
@@ -1266,7 +1260,7 @@ export function ResourcesPanel({
                 || outdatedCount === 0
               }
               onClick={() => setOriginUpdateConfirmOpen(true)}
-              icon={<RefreshCw size={16} aria-hidden />}
+              icon={<CircleArrowUp size={16} aria-hidden />}
             />
           </div>
         </div>
@@ -1278,7 +1272,6 @@ export function ResourcesPanel({
             resources={snapshotEntries}
             state={filterState}
             onChange={applyFilterChange}
-            onClear={() => applyFilterChange(resetResourceFilterState())}
             disabled={disabled || showSkeleton || Boolean(error)}
             searchInputRef={filterRef}
           />
