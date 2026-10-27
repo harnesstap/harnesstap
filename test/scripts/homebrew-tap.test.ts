@@ -73,7 +73,7 @@ describe("homebrew tap render", () => {
     expect(cask).toContain(`sha256 arm:   "${ARM}",\n         intel: "${INTEL}"`);
     expect(cask).toContain("/releases/download/v#{version}/HarnessTap_#{version}_#{arch}.dmg");
     expect(cask).toContain('app "HarnessTap.app"');
-    expect(cask).toContain("depends_on macos: :big_sur");
+    expect(cask).toContain("depends_on :macos");
     expect(cask).not.toContain("xattr");
     expect(cask).not.toContain("quarantine");
   });
