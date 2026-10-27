@@ -118,6 +118,7 @@ jobs:
               - 'test/telemetry/**'
               - 'scripts/check-copy.ts'
               - 'scripts/copy-allowlist.txt'
+              - 'scripts/homebrew-tap.ts'
               - 'test/scripts/**'
             platforms:
               - 'src/platforms/**'

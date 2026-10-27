@@ -119,6 +119,8 @@ The G7 guard (`bun run check:packaged-help`, plus the tests in `test/cli/package
 
 After publish, the `verify-cli-surface` job in `release.yml` re-generates the snapshot from the package on npm (`bun scripts/snapshot-released-cli.ts --version vX.Y.Z --check`) and fails if it differs from the checked-in file. If it does, run `bun run snapshot:released-cli` (it reads the latest published version) and open a PR with the result.
 
+After publish, the `homebrew-tap` job in `release.yml` (`.github/workflows/homebrew-tap.yml`) renders `Formula/harnesstap.rb` and `Casks/harnesstap-desktop.rb` for a stable `vX.Y.Z` release (`scripts/homebrew-tap.ts`) and pushes them to [harnesstap/homebrew-tap](https://github.com/harnesstap/homebrew-tap). It pushes with a short-lived token from the **HarnessTap Release Bot** GitHub App (repository variable `HOMEBREW_TAP_APP_CLIENT_ID`, secret `HOMEBREW_TAP_APP_PRIVATE_KEY`; the app is installed only on `homebrew-tap` with Contents read and write). Without them the job logs a notice and skips. It never downgrades the tap. To backfill or check the setup, run **Homebrew tap** from Actions (`gh workflow run homebrew-tap.yml -f tag=vX.Y.Z`).
+
 npm publish runs only in CI. The npm package's trusted publisher must point at workflow filename `release.yml` in `harnesstap/harnesstap`.
 
 ### Security
