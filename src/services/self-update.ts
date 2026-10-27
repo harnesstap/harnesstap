@@ -123,11 +123,26 @@ export function detectCliInstallChannel(
   return "github";
 }
 
+/** True when the CLI runs from the Homebrew formula (its wrapper sets HARNESSTAP_INSTALL_METHOD=brew). */
+export function isHomebrewCliInstall(
+  scriptPath = process.argv[1] ?? "",
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (env.HARNESSTAP_INSTALL_METHOD?.trim().toLowerCase() === "brew") {
+    return true;
+  }
+  return scriptPath.replaceAll("\\", "/").toLowerCase().includes("/cellar/harnesstap/");
+}
+
 export function cliInstallHint(
   channel: PublishedVersionChannel,
   version: string,
+  homebrew = false,
 ): string {
   const normalized = normalizePublishedVersion(version);
+  if (homebrew) {
+    return "brew upgrade harnesstap";
+  }
   switch (channel) {
     case "npm":
       return `npm install -g ${NPM_PACKAGE_NAME}@${normalized}`;
@@ -419,7 +434,7 @@ export async function maybeNotifyCliUpdate(options: {
       currentVersion: normalizePublishedVersion(currentVersion),
       latestVersion: release.version,
       channel,
-      installHint: cliInstallHint(channel, release.version),
+      installHint: cliInstallHint(channel, release.version, isHomebrewCliInstall(argv[1], env)),
       htmlUrl: release.htmlUrl,
     };
     const writeNotice = options.writeNotice ?? ((message: string) => {

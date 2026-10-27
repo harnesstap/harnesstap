@@ -548,3 +548,20 @@ jobs:
           fi
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest="$LATEST"
           echo "Published $TAG (latest=$LATEST)."
+
+  # Bumps the Homebrew formula and cask. Skips cleanly when the
+  # HOMEBREW_TAP_TOKEN secret is absent; runs after the release is public, so a
+  # tap failure never blocks publishing.
+  homebrew-tap:
+    name: update Homebrew tap
+    needs:
+      - release
+      - publish-release
+    if: needs.publish-release.result == 'success' && needs.release.outputs.skip != 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/homebrew-tap.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

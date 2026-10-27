@@ -1,0 +1,5 @@
+kind: Added
+body: 'Homebrew install: `brew install harnesstap/tap/harnesstap` for the CLI and `brew install --cask harnesstap/tap/harnesstap-desktop` for Desktop on macOS. Each release updates the tap, and the CLI update notice suggests `brew upgrade harnesstap` for Homebrew installs.'
+time: 2026-10-27T01:00:00.000000Z
+custom:
+  Issue: ""

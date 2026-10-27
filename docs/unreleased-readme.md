@@ -19,3 +19,24 @@ New text for the Install section of README.md.
 - `<!-- append -->` adds the body after the target's existing text.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
+
+## Install > Recommended: npx (no global install)
+<!-- insert-after -->
+### Homebrew (macOS and Linux)
+
+```bash
+brew install harnesstap/tap/harnesstap
+ht init
+```
+
+The formula installs the npm package on Homebrew's `node@24`, so you do not need your own Node.js. Upgrade with `brew upgrade harnesstap`; the CLI update notice suggests that command for Homebrew installs.
+
+## Desktop
+<!-- append -->
+On macOS you can also install Desktop with Homebrew:
+
+```bash
+brew install --cask harnesstap/tap/harnesstap-desktop
+```
+
+The cask installs the same unsigned DMG, so the first launch still needs **Open Anyway** under System Settings > Privacy & Security.

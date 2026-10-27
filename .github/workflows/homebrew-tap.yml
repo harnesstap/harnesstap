@@ -1,0 +1,101 @@
+name: Homebrew tap
+
+# Renders Formula/harnesstap.rb (CLI, from the npm tarball) and
+# Casks/harnesstap-desktop.rb (macOS DMGs) for a published release and pushes
+# them to harnesstap/homebrew-tap. Called by release.yml after the GitHub
+# release is published; run it by hand to backfill a tag. Without the
+# HOMEBREW_TAP_TOKEN secret every step after the check is skipped, so a missing
+# tap credential never fails a release.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      HOMEBREW_TAP_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to render into the tap (for example v1.6.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-tap
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: update Homebrew tap
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      TAP_REPO: harnesstap/homebrew-tap
+    steps:
+      - name: Check tap credential and release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "run=false" >> "$GITHUB_OUTPUT"
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::notice::HOMEBREW_TAP_TOKEN is not set; skipping the Homebrew tap update for $TAG."
+            exit 0
+          fi
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::notice::$TAG is not a stable vX.Y.Z tag; the tap only tracks stable releases."
+            exit 0
+          fi
+          INFO="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets)"
+          if [ "$(jq -r '.isDraft or .isPrerelease' <<<"$INFO")" = "true" ]; then
+            echo "::notice::$TAG is a draft or prerelease; skipping the Homebrew tap update."
+            exit 0
+          fi
+          jq '{assets: [.assets[] | {name, digest, url}]}' <<<"$INFO" > "$RUNNER_TEMP/assets.json"
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check out sources
+        if: steps.check.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        if: steps.check.outputs.run == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Check out tap
+        if: steps.check.outputs.run == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TAP_REPO }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      # Writes nothing when the tap already carries this or a newer version,
+      # so a backfill of an older tag never downgrades the tap.
+      - name: Render formula and cask
+        if: steps.check.outputs.run == 'true'
+        run: bun scripts/homebrew-tap.ts --tag "$TAG" --assets-json "$RUNNER_TEMP/assets.json" --out homebrew-tap
+
+      - name: Commit and push
+        if: steps.check.outputs.run == 'true'
+        working-directory: homebrew-tap
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- Formula Casks)" ]; then
+            echo "Tap already up to date for $TAG."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula Casks
+          git commit -m "harnesstap ${TAG#v}"
+          git push origin HEAD

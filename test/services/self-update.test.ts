@@ -6,9 +6,11 @@ import {
   APP_UPDATE_STATUS_CACHE_MS,
   applyDesktopUpdate,
   clearDesktopUpdateStatusCache,
+  cliInstallHint,
   detectCliInstallChannel,
   downloadDesktopInstaller,
   formatCliUpdateNotice,
+  isHomebrewCliInstall,
   isNewerPublishedVersion,
   isUpdateLookupFresh,
   loadUpdateCheckCache,
@@ -71,6 +73,16 @@ describe("CLI install channel", () => {
 
   it("uses GitHub for a standalone binary install", () => {
     expect(detectCliInstallChannel("/Applications/HarnessTap.app/Contents/MacOS/ht", {})).toBe("github");
+  });
+
+  it("tells Homebrew installs to upgrade with brew", () => {
+    const cellar = "/opt/homebrew/Cellar/harnesstap/1.6.1/libexec/lib/node_modules/harnesstap/dist/index.js";
+    expect(detectCliInstallChannel(cellar, {})).toBe("npm");
+    expect(isHomebrewCliInstall(cellar, {})).toBe(true);
+    expect(isHomebrewCliInstall("/usr/lib/node_modules/harnesstap/dist/index.js", { HARNESSTAP_INSTALL_METHOD: "brew" })).toBe(true);
+    expect(isHomebrewCliInstall("/usr/lib/node_modules/harnesstap/dist/index.js", {})).toBe(false);
+    expect(cliInstallHint("npm", "1.6.2", true)).toBe("brew upgrade harnesstap");
+    expect(cliInstallHint("npm", "1.6.2")).toBe("npm install -g harnesstap@1.6.2");
   });
 });
 
