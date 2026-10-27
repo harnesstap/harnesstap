@@ -3,9 +3,12 @@ name: Homebrew tap
 # Renders Formula/harnesstap.rb (CLI, from the npm tarball) and
 # Casks/harnesstap-desktop.rb (macOS DMGs) for a published release and pushes
 # them to harnesstap/homebrew-tap. Called by release.yml after the GitHub
-# release is published; run it by hand to backfill a tag. Without the
-# HOMEBREW_TAP_TOKEN secret every step after the check is skipped, so a missing
-# tap credential never fails a release.
+# release is published; run it by hand to backfill a tag or to verify the
+# setup. The push uses a short-lived installation token minted from a dedicated
+# GitHub App installed only on harnesstap/homebrew-tap (repository variable
+# HOMEBREW_TAP_APP_CLIENT_ID, secret HOMEBREW_TAP_APP_PRIVATE_KEY). Without
+# them every step after the check is skipped, so a missing tap credential never
+# fails a release.
 on:
   workflow_call:
     inputs:
@@ -13,7 +16,7 @@ on:
         required: true
         type: string
     secrets:
-      HOMEBREW_TAP_TOKEN:
+      HOMEBREW_TAP_APP_PRIVATE_KEY:
         required: false
   workflow_dispatch:
     inputs:
@@ -41,12 +44,13 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
-          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          APP_CLIENT_ID: ${{ vars.HOMEBREW_TAP_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           echo "run=false" >> "$GITHUB_OUTPUT"
-          if [ -z "$TAP_TOKEN" ]; then
-            echo "::notice::HOMEBREW_TAP_TOKEN is not set; skipping the Homebrew tap update for $TAG."
+          if [ -z "$APP_CLIENT_ID" ] || [ -z "$APP_PRIVATE_KEY" ]; then
+            echo "::notice::The HOMEBREW_TAP_APP_CLIENT_ID variable or the HOMEBREW_TAP_APP_PRIVATE_KEY secret is not set; skipping the Homebrew tap update for $TAG."
             exit 0
           fi
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -71,12 +75,24 @@ jobs:
         with:
           bun-version: 1.3.14
 
+      # Scoped to the tap repo with contents:write only; revoked when the job ends.
+      - name: Mint tap token
+        id: app-token
+        if: steps.check.outputs.run == 'true'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.HOMEBREW_TAP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
+          owner: harnesstap
+          repositories: homebrew-tap
+          permission-contents: write
+
       - name: Check out tap
         if: steps.check.outputs.run == 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ env.TAP_REPO }}
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: homebrew-tap
 
       # Writes nothing when the tap already carries this or a newer version,
@@ -88,14 +104,18 @@ jobs:
       - name: Commit and push
         if: steps.check.outputs.run == 'true'
         working-directory: homebrew-tap
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           set -euo pipefail
           if [ -z "$(git status --porcelain -- Formula Casks)" ]; then
             echo "Tap already up to date for $TAG."
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BOT_ID="$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${BOT_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
           git add Formula Casks
           git commit -m "harnesstap ${TAG#v}"
           git push origin HEAD
