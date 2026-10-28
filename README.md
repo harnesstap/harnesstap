@@ -328,3 +328,4 @@ GitHub session: `~/.harnesstap/github-session.json`.
 | Add a scanned skill | `ht plugin edit my-setup --add research-helper --type skill` |
 | Check project drift | `ht status . --check` · `ht mirror .` |
 | Contribute | [CONTRIBUTING.md](CONTRIBUTING.md) |
+
