@@ -141,7 +141,7 @@ async function ensureAllDiscoverSources(): Promise<void> {
 async function revealDiscoverPluginHit(pluginName: string): Promise<WebdriverIO.Element> {
   await ensureAllDiscoverSources();
 
-  const search = await $('input[aria-label="Search to add"]');
+  const search = await $('input[aria-label="Search by name, description, or skill"]');
   await search.waitForDisplayed();
   await search.setValue(pluginName);
 
