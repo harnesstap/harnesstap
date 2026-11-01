@@ -4,6 +4,7 @@ import { parse as parseToml } from "smol-toml";
 import {
   applyJsonObjectUpdatePreservingFormat,
   applyTomlObjectUpdatePreservingFormat,
+  parseJsonObject,
 } from "./format-preserving-config.js";
 import { getResource } from "../models/resource.js";
 import { listMaterializationsForRootPath } from "../models/resource-materialization.js";
@@ -44,7 +45,8 @@ function isInstalledPluginsRegistry(obj: Record<string, unknown>): boolean {
   return values.length === 0 || values.every((value) => Array.isArray(value));
 }
 
-const MCP_WRAPPERS = ["mcpServers", "mcp_servers", "mcp"] as const;
+/** `context_servers` is Zed's MCP key in `settings.json`. */
+const MCP_WRAPPERS = ["mcpServers", "mcp_servers", "mcp", "context_servers"] as const;
 
 function stripMcpServer(
   obj: Record<string, unknown>,
@@ -138,9 +140,14 @@ export function tryEditAggregateContent(
   canDropEnabledKey: (key: string) => boolean = () => true,
 ): { ok: true; content: string; emptied: boolean } | { ok: false; reason: string } {
   const trimmed = content.trimStart();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+  // JSONC (Zed, Gemini CLI) may open with a comment before the object.
+  const jsoncObject = trimmed.startsWith("//") || trimmed.startsWith("/*")
+    ? parseJsonObject(content)
+    : null;
+  if (jsoncObject || trimmed.startsWith("{") || trimmed.startsWith("[")) {
     try {
-      const parsed: unknown = JSON.parse(content);
+      // JSONC aware: Zed and Gemini CLI settings allow comments and trailing commas.
+      const parsed: unknown = parseJsonObject(content) ?? JSON.parse(content);
       if (!isRecord(parsed)) {
         return { ok: false, reason: "Shared file section cannot be identified" };
       }

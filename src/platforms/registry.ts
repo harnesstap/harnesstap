@@ -15,6 +15,11 @@ type PlatformDefOptions = {
   detectionPaths?: PlatformDefinition["detectionPaths"];
 };
 
+/** `.agents/` convention harnesses that also read a JSON `mcpServers` file. */
+const AGENTS_CONVENTION_MCP: Record<string, { project: string; global: string }> = {
+  droid: { project: ".factory/mcp.json", global: "~/.factory/mcp.json" },
+};
+
 function def(
   id: string,
   name: string,
@@ -174,8 +179,9 @@ const PLATFORMS: PlatformDefinition[] = [
     ],
   }),
 
-  def("github-copilot", "GitHub Copilot", ["instructions", "skills", "mcp", "agents"], {
+  def("github-copilot", "GitHub Copilot", ["instructions", "skills", "rules", "mcp", "agents"], {
     instructions: ".github/copilot-instructions.md",
+    rules: ".github/instructions/",
     skills: ".agents/skills/",
     agents: ".github/agents/",
   }, {
@@ -197,13 +203,15 @@ const PLATFORMS: PlatformDefinition[] = [
     },
   }),
 
-  def("gemini-cli", "Gemini CLI", ["instructions", "skills", "commands"], {
+  def("gemini-cli", "Gemini CLI", ["instructions", "skills", "commands", "mcp"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
     commands: "commands/",
     settings: "gemini-extension.json",
+    mcp: ".gemini/settings.json",
   }, {
     skills: "~/.gemini/skills/",
+    settings: "~/.gemini/settings.json",
   }, "instruction-only"),
 
   def("windsurf", "Windsurf", ["instructions", "skills", "rules", "mcp"], {
@@ -276,13 +284,20 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.openhands/mcp.json",
   }),
 
-  def("kiro", "Kiro", ["instructions", "skills", "rules"], {
+  def("kiro", "Kiro", ["instructions", "skills", "rules", "mcp", "hooks"], {
     instructions: "AGENTS.md",
     rules: ".kiro/steering/",
-    skills: ".agents/skills/",
+    skills: ".kiro/skills/",
+    mcp: ".kiro/settings/mcp.json",
+    hooks: ".kiro/hooks/",
+    pathAlternates: {
+      skills: [".agents/skills/"],
+    },
   }, {
     skills: "~/.kiro/skills/",
-  }, "instruction-only"),
+    settings: "~/.kiro/settings/mcp.json",
+    hooks: "~/.kiro/hooks/",
+  }),
 
   // Pi extensions install via `pi install git:...`, not plugin apply.
   // HarnessTap can scan `.agents/skills/` but cannot materialize pi-extension/index.js.
@@ -331,15 +346,17 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.aider.conf.yml",
   }),
 
-  def("zed", "Zed", ["instructions", "skills"], {
+  def("zed", "Zed", ["instructions", "skills", "mcp"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
+    mcp: ".zed/settings.json",
     pathAlternates: {
       instructions: [".rules"],
     },
   }, {
     instructions: "~/.config/zed/AGENTS.md",
     skills: "~/.agents/skills/",
+    settings: "~/.config/zed/settings.json",
   }),
 
   def("devin", "Devin", ["instructions", "skills"], {
@@ -499,14 +516,18 @@ const PLATFORMS: PlatformDefinition[] = [
     ["command-code", "Command Code", ".commandcode/skills/", "~/.commandcode/skills/"],
     ["cortex", "Cortex Code", ".cortex/skills/", "~/.snowflake/cortex/skills/"],
     ["neovate", "Neovate", ".neovate/skills/", "~/.neovate/skills/"],
-  ] as const).map(([id, name, projSkills, globalSkills]) =>
-    def(id, name, ["instructions", "skills"], {
+  ] as const).map(([id, name, projSkills, globalSkills]) => {
+    // Droid project and user MCP: https://docs.factory.com/cli/configuration/mcp
+    const mcp = AGENTS_CONVENTION_MCP[id];
+    return def(id, name, mcp ? ["instructions", "skills", "mcp"] : ["instructions", "skills"], {
       instructions: "AGENTS.md",
       skills: projSkills,
+      ...(mcp ? { mcp: mcp.project } : {}),
     }, {
       skills: globalSkills,
-    }),
-  ),
+      ...(mcp ? { settings: mcp.global } : {}),
+    });
+  }),
 ];
 
 // ── Registry API ────────────────────────────────────────────────────────

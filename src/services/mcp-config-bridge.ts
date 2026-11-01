@@ -24,6 +24,32 @@ function parseStringRecord(value: unknown): Record<string, string> | undefined {
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function parseStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const list = value.filter((item): item is string => typeof item === "string");
+  return list.length > 0 ? list : undefined;
+}
+
+/**
+ * Per-server tool filters, read from any harness spelling:
+ * `enabled_tools`/`disabled_tools` (Codex), `includeTools`/`excludeTools` (Gemini CLI),
+ * `disabledTools` (Kiro, Droid).
+ */
+export function parseMcpToolFilters(
+  entry: Record<string, unknown>,
+): Pick<McpServerMetadata, "enabled_tools" | "disabled_tools"> {
+  const enabled = parseStringList(entry.enabled_tools ?? entry.includeTools);
+  const disabled = parseStringList(
+    entry.disabled_tools ?? entry.excludeTools ?? entry.disabledTools,
+  );
+  return {
+    ...(enabled !== undefined ? { enabled_tools: enabled } : {}),
+    ...(disabled !== undefined ? { disabled_tools: disabled } : {}),
+  };
+}
+
 function parseAuthMetadata(value: unknown): McpOAuthAuthMetadata | undefined {
   if (!isRecord(value)) {
     return undefined;
@@ -130,6 +156,7 @@ export function parseMcpServerEntry(entry: unknown): McpServerMetadata | null {
     ...(connection_type !== undefined ? { connection_type } : {}),
     ...(env_file !== undefined ? { env_file } : {}),
     ...(auth !== undefined ? { auth } : {}),
+    ...parseMcpToolFilters(entry),
   };
 }
 
@@ -138,7 +165,8 @@ export function parseMcpServersDocument(document: unknown): Record<string, McpSe
     return {};
   }
 
-  const serversRaw = document.mcpServers ?? document.mcp_servers ?? document.mcp;
+  const serversRaw =
+    document.mcpServers ?? document.mcp_servers ?? document.mcp ?? document.context_servers;
   if (!isRecord(serversRaw)) {
     return {};
   }
@@ -171,6 +199,8 @@ function mcpServerEquivalenceKey(metadata: McpServerMetadata): string {
     headers: metadata.headers ?? null,
     env_file: metadata.env_file ?? null,
     auth: metadata.auth ?? null,
+    enabled_tools: metadata.enabled_tools ?? null,
+    disabled_tools: metadata.disabled_tools ?? null,
   });
 }
 
@@ -344,5 +374,66 @@ export function emitCursorMcpServerEntry(
     entry.envFile = metadata.env_file;
   }
 
+  return entry;
+}
+
+/**
+ * Gemini CLI `settings.json` `mcpServers` entry.
+ * Remote servers use `httpUrl` (streamable HTTP) unless the source is SSE, which uses `url`.
+ * See https://geminicli.com/docs/tools/mcp-server/
+ */
+export function emitGeminiMcpServerEntry(
+  metadata: McpServerMetadata,
+): Record<string, unknown> {
+  const entry: Record<string, unknown> = {};
+  if (metadata.transport === "http" || metadata.url) {
+    const sse = metadata.http_transport === "sse" || metadata.connection_type === "sse";
+    if (metadata.url !== undefined) {
+      entry[sse ? "url" : "httpUrl"] = metadata.url;
+    }
+    if (metadata.headers !== undefined && Object.keys(metadata.headers).length > 0) {
+      entry.headers = metadata.headers;
+    }
+  } else {
+    if (metadata.command !== undefined) entry.command = metadata.command;
+    if (metadata.args !== undefined && metadata.args.length > 0) entry.args = metadata.args;
+    if (metadata.env !== undefined && Object.keys(metadata.env).length > 0) {
+      entry.env = metadata.env;
+    }
+    if (metadata.cwd !== undefined) entry.cwd = metadata.cwd;
+  }
+  if (metadata.enabled_tools !== undefined) entry.includeTools = metadata.enabled_tools;
+  if (metadata.disabled_tools !== undefined) entry.excludeTools = metadata.disabled_tools;
+  return entry;
+}
+
+/**
+ * Plain `{ command, args, env }` or `{ url, headers }` entry shared by
+ * Zed `context_servers`, Kiro `.kiro/settings/mcp.json`, and Droid `.factory/mcp.json`.
+ * `typeField` adds Droid's explicit `type` (`stdio` or `http`).
+ * Kiro and Droid carry the deny list as `disabledTools`; Zed has no list form.
+ */
+export function emitPlainMcpServerEntry(
+  metadata: McpServerMetadata,
+  options: { typeField?: boolean; disabledToolsKey?: "disabledTools" } = {},
+): Record<string, unknown> {
+  const entry: Record<string, unknown> = {};
+  if (metadata.transport === "http" || metadata.url) {
+    if (options.typeField) entry.type = "http";
+    if (metadata.url !== undefined) entry.url = metadata.url;
+    if (metadata.headers !== undefined && Object.keys(metadata.headers).length > 0) {
+      entry.headers = metadata.headers;
+    }
+  } else {
+    if (options.typeField) entry.type = "stdio";
+    if (metadata.command !== undefined) entry.command = metadata.command;
+    if (metadata.args !== undefined && metadata.args.length > 0) entry.args = metadata.args;
+    if (metadata.env !== undefined && Object.keys(metadata.env).length > 0) {
+      entry.env = metadata.env;
+    }
+  }
+  if (options.disabledToolsKey && metadata.disabled_tools !== undefined) {
+    entry[options.disabledToolsKey] = metadata.disabled_tools;
+  }
   return entry;
 }

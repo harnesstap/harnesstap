@@ -3,7 +3,16 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
-import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
+import {
+  emitPlainMcpServerEntry,
+  parseMcpServersDocument,
+} from "../services/mcp-config-bridge.js";
+import { overlayJsonPreservingFormat, parseJsonObject } from "../services/format-preserving-config.js";
+import {
+  emitKiroHookFiles,
+  KIRO_HOOKS_PLATFORM_ID,
+  scanKiroHooksDir,
+} from "../services/kiro-hooks.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -24,6 +33,32 @@ interface GenericSerializedMcpEntry {
   env?: Record<string, string>;
   headers?: Record<string, string>;
 }
+
+/**
+ * Harnesses whose MCP file is a shared config the user also edits. HarnessTap
+ * merges its servers key by key under `wrapper` and keeps every other key.
+ * - Zed `context_servers` in `.zed/settings.json`: https://zed.dev/docs/ai/mcp
+ * - Kiro `.kiro/settings/mcp.json`: https://kiro.dev/docs/mcp/configuration/
+ * - Droid `.factory/mcp.json`: https://docs.factory.com/cli/configuration/mcp
+ */
+const SHARED_MCP_FORMATS: Record<
+  string,
+  { wrapper: string; emit: (metadata: McpServerMetadata) => Record<string, unknown> }
+> = {
+  zed: {
+    wrapper: "context_servers",
+    emit: (metadata) => emitPlainMcpServerEntry(metadata),
+  },
+  kiro: {
+    wrapper: "mcpServers",
+    emit: (metadata) => emitPlainMcpServerEntry(metadata, { disabledToolsKey: "disabledTools" }),
+  },
+  droid: {
+    wrapper: "mcpServers",
+    emit: (metadata) =>
+      emitPlainMcpServerEntry(metadata, { typeField: true, disabledToolsKey: "disabledTools" }),
+  },
+};
 
 function resolveGlobalPath(homeRoot: string, configuredPath: string): string {
   return configuredPath.startsWith("~/")
@@ -101,7 +136,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
     const content = this.readFile(fullPath);
     if (content) {
       try {
-        const document = JSON.parse(content) as unknown;
+        const document: unknown = parseJsonObject(content) ?? JSON.parse(content);
         for (const [name, metadata] of Object.entries(
           parseMcpServersDocument(document),
         )) {
@@ -163,6 +198,13 @@ export class GenericAgentsSerializer extends BaseSerializer {
     if (skillsPath) {
       resources.push(...this.scanSkillsDir(projectRoot, skillsPath));
     }
+    // Earlier skill locations (Kiro used `.agents/skills/` before `.kiro/skills/`).
+    for (const alternate of this.platform.projectPaths.pathAlternates?.skills ?? []) {
+      const known = new Set(resources.filter((r) => r.type === "skill").map((r) => r.name));
+      resources.push(
+        ...this.scanSkillsDir(projectRoot, alternate).filter((r) => !known.has(r.name)),
+      );
+    }
 
     // Rules
     const rulesPath = this.platform.projectPaths.rules;
@@ -197,7 +239,9 @@ export class GenericAgentsSerializer extends BaseSerializer {
 
     // Hooks
     const hooksPath = this.platform.projectPaths.hooks;
-    if (hooksPath) {
+    if (hooksPath && this.platformId === KIRO_HOOKS_PLATFORM_ID) {
+      resources.push(...scanKiroHooksDir(join(projectRoot, hooksPath), hooksPath));
+    } else if (hooksPath) {
       resources.push(
         ...this.scanHooksAt(join(projectRoot, hooksPath), hooksPath),
       );
@@ -284,7 +328,9 @@ export class GenericAgentsSerializer extends BaseSerializer {
     }
 
     const hooksPath = this.platform.globalPaths.hooks;
-    if (hooksPath) {
+    if (hooksPath && this.platformId === KIRO_HOOKS_PLATFORM_ID) {
+      resources.push(...scanKiroHooksDir(resolveGlobalPath(homeRoot, hooksPath), hooksPath));
+    } else if (hooksPath) {
       resources.push(
         ...this.scanHooksAt(
           resolveGlobalPath(homeRoot, hooksPath),
@@ -305,7 +351,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
 
   async serialize(
     resources: Resource[],
-    _projectRoot: string,
+    projectRoot: string,
     options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
@@ -401,7 +447,14 @@ export class GenericAgentsSerializer extends BaseSerializer {
 
     // Hooks
     const hooks = resources.filter((r) => r.type === "hook");
-    if (hooksPath && hooks.length > 0) {
+    if (hooksPath && hooks.length > 0 && this.platformId === KIRO_HOOKS_PLATFORM_ID) {
+      files.push(
+        ...emitKiroHookFiles(
+          hooks.map((r) => ({ ...(r.metadata as HookMetadata), name: r.name })),
+          hooksPath,
+        ),
+      );
+    } else if (hooksPath && hooks.length > 0) {
       files.push({
         path: hooksPath,
         content: JSON.stringify(
@@ -460,7 +513,23 @@ export class GenericAgentsSerializer extends BaseSerializer {
 
     // MCP
     const mcpServers = this.mcpServersForTarget(resources, mcpPath);
-    if (mcpPath && mcpServers.length > 0) {
+    const sharedMcpFormat = SHARED_MCP_FORMATS[this.platformId];
+    if (mcpPath && mcpServers.length > 0 && sharedMcpFormat) {
+      const servers: Record<string, Record<string, unknown>> = {};
+      for (const r of mcpServers) {
+        const meta = r.metadata as McpServerMetadata;
+        if (!meta) continue;
+        servers[r.name] = sharedMcpFormat.emit(meta);
+      }
+      files.push({
+        path: mcpPath,
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, mcpPath)),
+          { [sharedMcpFormat.wrapper]: servers },
+          { mergeObjectKeys: [sharedMcpFormat.wrapper], onUnparseable: "keep" },
+        ),
+      });
+    } else if (mcpPath && mcpServers.length > 0) {
       const servers: Record<string, GenericSerializedMcpEntry> = {};
       for (const r of mcpServers) {
         const meta = r.metadata as McpServerMetadata;

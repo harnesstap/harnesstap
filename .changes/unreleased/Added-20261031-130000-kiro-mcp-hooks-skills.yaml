@@ -1,0 +1,5 @@
+kind: Added
+body: 'Kiro: MCP servers in `.kiro/settings/mcp.json`, hooks as one file each in `.kiro/hooks/`, and skills in `.kiro/skills/` (skills in `.agents/skills/` are still scanned).'
+time: 2026-11-01T03:00:00.000000Z
+custom:
+  Issue: ""

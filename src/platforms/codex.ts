@@ -7,6 +7,7 @@ import {
   overlayTomlPreservingFormat,
 } from "../services/format-preserving-config.js";
 import { buildHooksJson, scanHooksFile } from "../services/hook-serialization.js";
+import { parseMcpToolFilters } from "../services/mcp-config-bridge.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
 import { filterInstructionsForTargetPath } from "../services/instruction-target.js";
 import type {
@@ -202,6 +203,8 @@ function buildMcpServers(
       }
       if (metadata.cwd) entry.cwd = metadata.cwd;
     }
+    if (metadata.enabled_tools) entry.enabled_tools = metadata.enabled_tools;
+    if (metadata.disabled_tools) entry.disabled_tools = metadata.disabled_tools;
     mcpServers[resource.name] = entry;
   }
 
@@ -270,6 +273,7 @@ export class CodexSerializer extends BaseSerializer {
           url: entry.url,
           env: entry.env,
           ...(typeof entry.cwd === "string" ? { cwd: entry.cwd } : {}),
+          ...parseMcpToolFilters(entryValue),
         };
         resources.push(
           this.makeResource("mcp_server", name, "", source, metadata),

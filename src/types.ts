@@ -89,6 +89,16 @@ export interface McpServerMetadata {
   claude_mcp_scope?: "user" | "local";
   /** Absolute project path for `claude_mcp_scope: "local"`. */
   claude_project_path?: string;
+  /**
+   * Per-server tool allow list. Codex `enabled_tools`, Gemini CLI `includeTools`.
+   * When set, only these tools are exposed.
+   */
+  enabled_tools?: string[];
+  /**
+   * Per-server tool deny list, applied after `enabled_tools`. Codex `disabled_tools`,
+   * Gemini CLI `excludeTools`, Kiro and Droid `disabledTools`.
+   */
+  disabled_tools?: string[];
 }
 
 export interface PermissionMetadata {
