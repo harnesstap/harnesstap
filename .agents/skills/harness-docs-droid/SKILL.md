@@ -11,8 +11,8 @@ Compare the official Droid (Factory) documentation with what HarnessTap supports
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.factory.ai
-- Release notes: https://docs.factory.ai/changelog/release-notes
+- Docs: https://docs.factory.com/
+- Release notes: https://docs.factory.com/changelog/release-notes
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

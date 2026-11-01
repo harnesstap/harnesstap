@@ -11,7 +11,7 @@ Compare the official Augment documentation with what HarnessTap supports for the
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.augmentcode.com
+- Docs: https://docs.augmentcode.com/introduction
 - Changelog: https://www.augmentcode.com/changelog
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.

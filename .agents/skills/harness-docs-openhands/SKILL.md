@@ -11,7 +11,7 @@ Compare the official OpenHands documentation with what HarnessTap supports for t
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.openhands.dev
+- Docs: https://docs.openhands.dev/overview/introduction
 - Releases: https://github.com/OpenHands/OpenHands/releases
 - Skills: https://docs.openhands.dev/overview/skills
 - MCP settings: https://docs.openhands.dev/openhands/usage/settings/mcp-settings

@@ -12,7 +12,7 @@ Compare the official OpenCode documentation with what HarnessTap supports for th
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
 - Docs: https://opencode.ai/docs
-- Releases: https://github.com/sst/opencode/releases
+- Releases: https://github.com/anomalyco/opencode/releases
 - Config: https://opencode.ai/docs/config
 - Config JSON schema: https://opencode.ai/config.json
 - Rules: https://opencode.ai/docs/rules

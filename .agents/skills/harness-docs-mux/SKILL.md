@@ -11,8 +11,8 @@ Compare the official Mux documentation with what HarnessTap supports for the `mu
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://mux.coder.com
-- Releases: https://github.com/coder/mux/releases
+- Docs: https://xum.cdr.dev/
+- Releases: https://github.com/coder/xum/releases
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

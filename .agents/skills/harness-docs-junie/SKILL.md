@@ -11,8 +11,8 @@ Compare the official Junie documentation with what HarnessTap supports for the `
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://www.jetbrains.com/help/junie/
-- What's new: https://www.jetbrains.com/junie/whatsnew/
+- Docs: https://junie.jetbrains.com/docs/
+- What's new: https://github.com/JetBrains/junie/releases
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

@@ -11,12 +11,12 @@ Compare the official Roo Code documentation with what HarnessTap supports for th
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.roocode.com
+- Docs: https://roocodeinc.github.io/Roo-Code/
 - Changelog: https://github.com/RooCodeInc/Roo-Code/blob/main/CHANGELOG.md
-- Custom modes: https://docs.roocode.com/features/custom-modes
-- Custom instructions: https://docs.roocode.com/features/custom-instructions
-- MCP: https://docs.roocode.com/features/mcp/using-mcp-in-roo
-- Skills: https://docs.roocode.com/features/skills
+- Custom modes: https://roocodeinc.github.io/Roo-Code/features/custom-modes/
+- Custom instructions: https://roocodeinc.github.io/Roo-Code/features/custom-instructions/
+- MCP: https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo/
+- Skills: https://roocodeinc.github.io/Roo-Code/features/skills/
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 
