@@ -91,3 +91,6 @@ apps/desktop/e2e/artifacts/*
 # scripts/check-release-version.sh scratch
 .release-version-check.*/
 
+
+# harness-docs-sync agent skill reports (never committed)
+.harness-docs-sync/
