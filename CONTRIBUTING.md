@@ -106,6 +106,17 @@ Commit the generated fragment with your PR.
 
 The G7 guard (`bun run check:packaged-help`, plus the tests in `test/cli/packaged-help.test.ts`) fails on version-gated phrases in the README and `docs/`; on `ht` commands or flags in the README and the command reference that are missing from `scripts/released-cli-surface.json`, the checked-in snapshot of the published CLI; and on a malformed pending file (for example a section without a mode marker). Other `docs/` pages that render only on GitHub are not yet held to the command check.
 
+### Harness docs sync (agent skills)
+
+`.agents/skills/` holds agent skills that keep HarnessTap in step with the official docs of each supported harness. `.cursor/skills` and `.claude/skills` are symlinks to it, so Codex, Cursor, Claude Code, and other agents that read `.agents/skills/` all discover the same files. On Windows, clone with `git config core.symlinks true` (or use `.agents/skills/` directly).
+
+- `harness-docs-<id>`: one per harness id in `src/platforms/registry.ts`. Lists the upstream docs, changelog, and schema URLs and the HarnessTap files that implement that harness.
+- `harness-docs-sync`: runs all of them or a subset and merges the results into one gap report.
+
+To run a sweep, ask your agent, for example: "Run the harness-docs-sync skill for all harnesses" or "Run harness-docs-sync for claude-code and cursor". The agent writes the report to `.harness-docs-sync/reports/` (gitignored) and updates `.agents/skills/harness-docs-sync/state.json` with the review date and the newest upstream version per harness, so the next run only looks at what changed. Commit the `state.json` update; do not commit reports. Backfill work goes in separate PRs.
+
+When you add a harness to the registry, add a matching `harness-docs-<id>` skill (copy a sibling and update its sources and files) and a `state.json` entry.
+
 ### Release (maintainers)
 
 1. Merge pending PRs that include `.changes/unreleased/` fragments.

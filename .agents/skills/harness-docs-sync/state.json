@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "lastRun": "2026-10-31",
+  "harnesses": {
+    "claude-code": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "codex": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "cursor": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "warp": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "opencode": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "github-copilot": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "copilot-cli": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "gemini-cli": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "windsurf": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "cline": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "roo": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "continue": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "goose": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "trae": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "openhands": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "kiro": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "pi": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "antigravity": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "amazon-q": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "aider": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "zed": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "devin": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "jules": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "cody": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "grok-build": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "deepseek-harness": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "muse-code": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "minimax-code": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "amp": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "kilo": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "augment": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "firebender": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "junie": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "zencoder": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "deepagents": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "qwen-code": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "crush": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "droid": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "codebuddy": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "mux": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "kode": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "command-code": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "cortex": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    },
+    "neovate": {
+      "lastReviewed": "2026-10-31",
+      "lastSeenVersion": null
+    }
+  }
+}
