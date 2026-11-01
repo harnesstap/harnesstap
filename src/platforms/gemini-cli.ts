@@ -2,7 +2,13 @@ import { join } from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
+import { overlayJsonPreservingFormat, parseJsonObject } from "../services/format-preserving-config.js";
+import {
+  emitGeminiMcpServerEntry,
+  parseMcpServersDocument,
+} from "../services/mcp-config-bridge.js";
 import type {
+  McpServerMetadata,
   PlatformDefinition,
   ResourceCreateInput,
   Resource,
@@ -189,7 +195,27 @@ export class GeminiCliSerializer extends BaseSerializer {
 
     resources.push(...this.scanCommandsAt(projectRoot, "commands"));
 
+    if (this.platform.projectPaths.mcp) {
+      resources.push(
+        ...this.scanGeminiMcp(
+          join(projectRoot, this.platform.projectPaths.mcp),
+          this.platform.projectPaths.mcp,
+        ),
+      );
+    }
+
     return resources;
+  }
+
+  /** `mcpServers` in Gemini CLI `settings.json`: https://geminicli.com/docs/tools/mcp-server/ */
+  private scanGeminiMcp(filePath: string, displayPath: string): ResourceCreateInput[] {
+    const raw = this.readFile(filePath);
+    if (!raw) return [];
+    const document = parseJsonObject(raw);
+    if (!document) return [];
+    return Object.entries(parseMcpServersDocument({ mcpServers: document.mcpServers })).map(
+      ([name, metadata]) => this.makeResource("mcp_server", name, "", displayPath, metadata),
+    );
   }
 
   async scanGlobal(homeRoot: string): Promise<ResourceCreateInput[]> {
@@ -208,12 +234,21 @@ export class GeminiCliSerializer extends BaseSerializer {
       );
     }
 
+    if (this.platform.globalPaths.settings) {
+      resources.push(
+        ...this.scanGeminiMcp(
+          this.resolveHomePath(homeRoot, this.platform.globalPaths.settings),
+          this.platform.globalPaths.settings,
+        ),
+      );
+    }
+
     return resources;
   }
 
   async serialize(
     resources: Resource[],
-    _projectRoot: string,
+    projectRoot: string,
     options: SerializeOptions = {},
   ): Promise<SerializedFile[]> {
     const files: SerializedFile[] = [];
@@ -226,6 +261,10 @@ export class GeminiCliSerializer extends BaseSerializer {
       this.toTargetRelativePath(targetPaths.skills, target) ??
       (target === "project" ? ".agents/skills/" : undefined);
     const commandsPath = this.toTargetRelativePath(targetPaths.commands, target);
+    const mcpPath = this.toTargetRelativePath(
+      target === "global" ? targetPaths.settings : targetPaths.mcp,
+      target,
+    );
 
     const instructions = resources.filter((r) => r.type === "instruction");
     const skills = resources.filter((r) => r.type === "skill");
@@ -300,6 +339,23 @@ export class GeminiCliSerializer extends BaseSerializer {
           content: this.emitCommandContent(r),
         });
       }
+    }
+
+    // MCP lives in the shared settings.json; merge only the owned server keys.
+    const mcps = this.mcpServersForTarget(resources, mcpPath);
+    if (mcpPath && mcps.length > 0) {
+      const mcpServers: Record<string, Record<string, unknown>> = {};
+      for (const r of mcps) {
+        mcpServers[r.name] = emitGeminiMcpServerEntry(r.metadata as McpServerMetadata);
+      }
+      files.push({
+        path: mcpPath,
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(projectRoot, mcpPath)),
+          { mcpServers },
+          { mergeObjectKeys: ["mcpServers"], onUnparseable: "keep" },
+        ),
+      });
     }
 
     return files;

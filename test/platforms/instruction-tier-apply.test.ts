@@ -43,14 +43,15 @@ describe("instruction-tier skill emission", () => {
     }
   });
 
-  it("emits kiro skills as .kiro/steering/{name}.md", async () => {
+  it("emits kiro skills natively under .kiro/skills/{name}/SKILL.md", async () => {
     const context = await createInitializedTestContext("instruction-tier-kiro");
 
     try {
       const files = await generateFiles(skillResources, ["kiro"], context.projectDir);
       const kiro = files.find((r) => r.platformId === "kiro");
 
-      expect(kiro?.files.some((f) => f.path === ".kiro/steering/ponytail.md")).toBe(true);
+      expect(kiro?.files.some((f) => f.path === ".kiro/skills/ponytail/SKILL.md")).toBe(true);
+      expect(kiro?.files.some((f) => f.path === ".kiro/steering/ponytail.md")).toBe(false);
       expect(kiro?.files.some((f) => f.path.includes(".agents/skills"))).toBe(false);
     } finally {
       await context.cleanup();

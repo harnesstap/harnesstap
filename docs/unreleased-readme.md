@@ -40,3 +40,19 @@ brew install --cask harnesstap/tap/harnesstap-desktop
 ```
 
 The cask installs the same unsigned DMG, so the first launch still needs **Open Anyway** under System Settings > Privacy & Security.
+
+## docs/supported-harnesses.md > On-disk paths (selected harnesses) > MiniMax Code notes
+<!-- insert-after -->
+### MCP, rules, and hooks for Gemini CLI, Kiro, Zed, Droid, and GitHub Copilot
+
+| Harness | MCP file (project / global) | Key | Other |
+|---|---|---|---|
+| **gemini-cli** | `.gemini/settings.json` / `~/.gemini/settings.json` | `mcpServers` | Tool filters become `includeTools` and `excludeTools` |
+| **kiro** | `.kiro/settings/mcp.json` / `~/.kiro/settings/mcp.json` | `mcpServers` | Skills in `.kiro/skills/` (`.agents/skills/` is still scanned); hooks as one file each in `.kiro/hooks/` |
+| **zed** | `.zed/settings.json` / `~/.config/zed/settings.json` | `context_servers` | Zed runs project servers only in a trusted worktree |
+| **droid** | `.factory/mcp.json` / `~/.factory/mcp.json` | `mcpServers` | Entries carry `type` (`stdio` or `http`) |
+| **github-copilot** | (unchanged) | | Rules become `.github/instructions/<name>.instructions.md` with `applyTo` globs |
+
+These files are shared with the harness. HarnessTap merges only the servers it manages, keeps every other key, and on removal takes out only its own entries. MCP servers can set `enabled_tools` (allow list) and `disabled_tools` (deny list); Codex writes both, Gemini CLI writes `includeTools` and `excludeTools`, Kiro and Droid write `disabledTools`, and Copilot uses `enabled_tools` as its `tools` list.
+
+Kiro hooks: `Stop`, `SessionStart`, `SessionEnd`, and `PreToolUse` or `PostToolUse` hooks that match every tool are written. Hooks for other events, or tool hooks with a specific matcher, are not written for Kiro, because Kiro tool IDs differ from other harnesses' tool names.

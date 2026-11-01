@@ -83,9 +83,12 @@ describe("platform registry", () => {
     const kiro = registry.getPlatform("kiro");
     expect(kiro).toBeDefined();
     expect(kiro?.projectPaths.rules).toBe(".kiro/steering/");
-    expect(kiro?.projectPaths.skills).toBe(".agents/skills/");
+    expect(kiro?.projectPaths.skills).toBe(".kiro/skills/");
+    expect(kiro?.projectPaths.pathAlternates?.skills).toEqual([".agents/skills/"]);
     expect(kiro?.globalPaths.skills).toBe("~/.kiro/skills/");
     expect(kiro?.supports.has("rules")).toBe(true);
+    expect(kiro?.projectPaths.mcp).toBe(".kiro/settings/mcp.json");
+    expect(kiro?.projectPaths.hooks).toBe(".kiro/hooks/");
 
     const pi = registry.getPlatform("pi");
     expect(pi).toBeDefined();

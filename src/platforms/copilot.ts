@@ -11,8 +11,24 @@ import type {
   Resource,
   SerializedFile,
   McpServerMetadata,
+  RuleMetadata,
   SerializeOptions,
 } from "../types.js";
+
+const INSTRUCTIONS_FILE_SUFFIX = ".instructions.md";
+
+/**
+ * `applyTo` is a comma separated glob list; `"**"` applies to every file.
+ * https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions
+ */
+function parseApplyTo(value: unknown): string[] {
+  const raw = Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  return raw.map((glob) => glob.trim()).filter((glob) => glob.length > 0);
+}
 
 interface CopilotSerializedMcpEntry {
   type: "http" | "local";
@@ -76,7 +92,36 @@ export class CopilotSerializer extends BaseSerializer {
       );
     }
 
-    // 4. MCP servers
+    // 4. Path-scoped instructions (`.github/instructions/*.instructions.md`)
+    const rulesPath = this.platform.projectPaths.rules;
+    if (rulesPath) {
+      const prefix = rulesPath.endsWith("/") ? rulesPath : `${rulesPath}/`;
+      for (const file of this.listDir(join(projectRoot, rulesPath))) {
+        if (!file.endsWith(INSTRUCTIONS_FILE_SUFFIX)) continue;
+        const raw = this.readFile(join(projectRoot, rulesPath, file));
+        if (!raw) continue;
+        const parsed = this.tryParseFrontmatter(raw);
+        if (!parsed) continue;
+        const applyTo = parseApplyTo(parsed.data["applyTo"]);
+        const everyFile = applyTo.length === 0 || applyTo.every((glob) => glob === "**");
+        const metadata: RuleMetadata = {
+          globs: everyFile ? [] : applyTo,
+          always_apply: everyFile,
+        };
+        resources.push(
+          this.makeResource(
+            "rule",
+            file.slice(0, -INSTRUCTIONS_FILE_SUFFIX.length),
+            parsed.content.trim(),
+            `${prefix}${file}`,
+            metadata,
+            typeof parsed.data["description"] === "string" ? parsed.data["description"] : "",
+          ),
+        );
+      }
+    }
+
+    // 5. MCP servers
     if (this.platform.projectPaths.mcp) {
       const configPathValue = this.platform.projectPaths.mcp;
       const configPath = join(projectRoot, configPathValue);
@@ -165,6 +210,7 @@ export class CopilotSerializer extends BaseSerializer {
     const instructionsPath = this.toTargetRelativePath(targetPaths.instructions, target);
     const skillsPath = this.toTargetRelativePath(targetPaths.skills, target);
     const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
+    const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
     const mcpPath = this.toTargetRelativePath(
       target === "global" ? targetPaths.settings : targetPaths.mcp,
       target,
@@ -243,7 +289,7 @@ export class CopilotSerializer extends BaseSerializer {
           mcpServers[r.name] = {
             type: "http",
             url: meta.url,
-            tools: ["*"],
+            tools: meta.enabled_tools ?? ["*"],
             ...(meta.headers && Object.keys(meta.headers).length > 0
               ? { headers: meta.headers }
               : {}),
@@ -254,7 +300,7 @@ export class CopilotSerializer extends BaseSerializer {
             command: meta.command,
             args: meta.args,
             env: meta.env,
-            tools: ["*"],
+            tools: meta.enabled_tools ?? ["*"],
             ...(meta.cwd ? { cwd: meta.cwd } : {}),
           };
         }
@@ -263,6 +309,24 @@ export class CopilotSerializer extends BaseSerializer {
         path: mcpPath,
         content: JSON.stringify({ mcpServers }, null, 2),
       });
+    }
+
+    // Path-scoped rules become `<name>.instructions.md` with `applyTo` globs.
+    const rules = resources.filter((r) => r.type === "rule");
+    if (rulesPath && rules.length > 0) {
+      const prefix = rulesPath.endsWith("/") ? rulesPath : `${rulesPath}/`;
+      for (const r of rules) {
+        const meta = (r.metadata ?? {}) as Partial<RuleMetadata>;
+        const globs = Array.isArray(meta.globs) ? meta.globs.filter((glob) => glob.length > 0) : [];
+        const frontmatter: Record<string, unknown> = {
+          applyTo: globs.length > 0 ? globs.join(",") : "**",
+          ...(r.description ? { description: r.description } : {}),
+        };
+        files.push({
+          path: `${prefix}${r.name}${INSTRUCTIONS_FILE_SUFFIX}`,
+          content: this.emitFrontmatter(frontmatter, r.content),
+        });
+      }
     }
 
     return files;
