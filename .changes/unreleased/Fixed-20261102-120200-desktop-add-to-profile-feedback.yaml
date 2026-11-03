@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Desktop: adding an item to a profile now confirms it with a toast that names the item and profile, and a failed add shows one error with the reason and Retry instead of a second banner.'
+time: 2026-11-02T22:02:00.000000Z
+custom:
+  Issue: ""

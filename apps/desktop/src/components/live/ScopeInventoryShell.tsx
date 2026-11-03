@@ -13,6 +13,7 @@ import type { ProfileContentsResource } from "../../lib/types";
 import { toast } from "../../state/toast-store";
 import { CLEAR_FILTER_LABEL, catalogListEmptyKind, noResultsTitle } from "../../lib/empty-copy";
 import { EMPTY_PROFILE_COPY } from "../../lib/ui-copy";
+import { desktopAgentText } from "../../lib/desktop-agent-message";
 import {
   collectDiscardPathRows,
   discardAllDescription,
@@ -262,11 +263,12 @@ export function ScopeInventoryShell({
     try {
       await onAddResource(item.resource);
       clearPending(key);
-    } catch {
+    } catch (error) {
       clearPending(key, from);
       toast({
         tone: "error",
         title: `Could not add ${item.label}`,
+        detail: desktopAgentText(error instanceof Error ? error.message : ""),
         action: {
           label: "Retry",
           onClick: () => {

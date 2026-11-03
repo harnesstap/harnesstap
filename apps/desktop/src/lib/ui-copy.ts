@@ -255,3 +255,16 @@ export const ENVIRONMENTS_EMPTY_COPY = {
   body: "Use one to share env vars, secrets, models, and permissions across profiles.",
   action: "Create environment",
 } as const;
+
+/** Success feedback when an add lands in a profile without an automatic apply. */
+export function addedToProfileToast(name: string, profile: string): {
+  tone: "success";
+  title: string;
+  detail: string;
+} {
+  return {
+    tone: "success",
+    title: `Added ${name} to ${profile}`,
+    detail: "Apply the profile to write it to your harnesses.",
+  };
+}
