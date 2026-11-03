@@ -12,9 +12,9 @@ Compare the official Warp documentation with what HarnessTap supports for the `w
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
 - Docs: https://docs.warp.dev
-- Changelog: https://docs.warp.dev/getting-started/changelog
-- Rules: https://docs.warp.dev/knowledge-and-collaboration/rules
-- Skills: https://docs.warp.dev/agent-platform/capabilities/skills/
+- Changelog: https://docs.warp.dev/changelog/
+- Rules: https://docs.warp.dev/agents/capabilities/rules/
+- Skills: https://docs.warp.dev/agents/capabilities/skills/
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

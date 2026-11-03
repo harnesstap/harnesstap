@@ -11,8 +11,8 @@ Compare the official Pi documentation with what HarnessTap supports for the `pi`
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs (README): https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent
-- Changelog: https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/CHANGELOG.md
+- Docs (README): https://github.com/earendil-works/pi/tree/main/packages/coding-agent
+- Changelog: https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md
 - Site: https://pi.dev
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.

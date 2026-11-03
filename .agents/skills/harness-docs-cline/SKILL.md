@@ -11,11 +11,11 @@ Compare the official Cline documentation with what HarnessTap supports for the `
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.cline.bot
+- Docs: https://docs.cline.bot/cline-overview
 - Changelog: https://github.com/cline/cline/blob/main/CHANGELOG.md
-- Rules: https://docs.cline.bot/features/cline-rules
-- MCP: https://docs.cline.bot/mcp/configuring-mcp-servers
-- Skills: https://docs.cline.bot/features/skills
+- Rules: https://docs.cline.bot/customization/cline-rules
+- MCP: https://docs.cline.bot/mcp/mcp-overview
+- Skills: https://docs.cline.bot/customization/skills
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 
