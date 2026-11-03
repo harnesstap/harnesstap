@@ -1136,3 +1136,47 @@ describe("planProfileDiskSnapshot", () => {
     ).toBe(false);
   });
 });
+
+describe("duplicate plugin chips", () => {
+  const plugin = (id: string, name: string) => ({ id, name, version: "1", resources: [] });
+
+  it("lists a plugin named twice in contents once", () => {
+    const rows = flattenProfileResourceList(
+      contents({ plugins: [plugin("p1", "pstack"), plugin("p1", "pstack")] }),
+    );
+    expect(rows.map((row) => row.key)).toEqual(["plugin:p1"]);
+  });
+
+  it("does not list a plugin row again as a loose plugin resource", () => {
+    const rows = flattenProfileResourceList(
+      contents({
+        plugins: [plugin("p1", "pstack")],
+        resources: [{ type: "plugin", name: "pstack" }],
+      }),
+    );
+    expect(rows.map((row) => row.key)).toEqual(["plugin:p1"]);
+  });
+
+  it("lists a repeated pin once", () => {
+    const pin = { ref: "pstack@mkt", version_constraint: "*" };
+    const rows = flattenProfileResourceList(contents({ plugin_pins: [pin, pin] }));
+    expect(rows.map((row) => row.key)).toEqual(["pin:pstack@mkt"]);
+  });
+
+  it("keeps a pinned plugin out of Not in profile and de-dupes that section", () => {
+    const rows = flattenProfileResourceList(
+      contents({ plugin_pins: [{ ref: "pstack@mkt", version_constraint: "*" }] }),
+    );
+    const parts = partitionProfileInventory({
+      profileRows: rows,
+      liveRows: rows,
+      notStaged: [
+        { type: "plugin", name: "pstack" },
+        { type: "skill", name: "ship" },
+        { type: "skill", name: "ship" },
+      ],
+    });
+    expect(parts.notInProfile.map((item) => item.label)).toEqual(["ship"]);
+    expect(parts.active).toHaveLength(1);
+  });
+});

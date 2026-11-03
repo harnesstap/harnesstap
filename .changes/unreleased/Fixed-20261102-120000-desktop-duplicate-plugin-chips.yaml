@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Desktop: a plugin that the profile names more than once (repeated plugin, repeated pin, or a pin plus the installed plugin) now shows as one chip, and the plugin counts follow.'
+time: 2026-11-02T22:00:00.000000Z
+custom:
+  Issue: ""

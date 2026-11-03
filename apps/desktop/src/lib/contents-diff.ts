@@ -763,6 +763,10 @@ export function flattenProfileResourceList(
     if (nestedInAttached.has(key) || emittedResources.has(key)) {
       return;
     }
+    // A plugin listed as a plugin row must not come back as a loose resource.
+    if (resource.type === "plugin" && listedPluginRefs.has(resource.name)) {
+      return;
+    }
     emittedResources.add(key);
     rows.push({
       kind: "resource",
@@ -772,10 +776,13 @@ export function flattenProfileResourceList(
     });
   };
 
+  // Contents can name the same plugin twice (stacked scopes). One chip per id.
+  const listedPluginIds = new Set<string>();
   for (const plugin of contents.plugins ?? []) {
-    if (isSelectedProfileSelfRef(selected, plugin)) {
+    if (isSelectedProfileSelfRef(selected, plugin) || listedPluginIds.has(plugin.id)) {
       continue;
     }
+    listedPluginIds.add(plugin.id);
     rows.push({
       kind: "plugin",
       key: `plugin:${plugin.id}`,
@@ -806,6 +813,7 @@ export function flattenProfileResourceList(
     ) {
       continue;
     }
+    listedPluginRefs.add(pin.ref);
     rows.push({
       kind: "pin",
       key: `pin:${pin.ref}`,

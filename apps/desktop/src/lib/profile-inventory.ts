@@ -176,6 +176,8 @@ function rowAliases(row: ProfileResourceListRow): string[] {
       return [
         membershipKey({ type: "plugin_pin", name: row.pin.ref }),
         membershipKey({ type: "plugin", name: row.pin.ref }),
+        // `name@marketplace` pins cover the installed plugin `name`.
+        membershipKey({ type: "plugin", name: row.pin.ref.split("@")[0] ?? row.pin.ref }),
       ];
     case "resource":
       return [membershipKey(row.resource)];
@@ -241,6 +243,7 @@ export function partitionProfileInventory(
   const driftedKeys = new Set<string>();
   const notStagedUpdates = new Map<string, ProfileContentsResource>();
   const notInProfile: ProfileInventoryItem[] = [];
+  const listedNotInProfile = new Set<string>();
 
   for (const resource of input.notStaged) {
     const key = membershipKey(resource);
@@ -249,9 +252,10 @@ export function partitionProfileInventory(
       notStagedUpdates.set(key, resource);
       continue;
     }
-    if (coveredKeys.has(key)) {
+    if (coveredKeys.has(key) || listedNotInProfile.has(key)) {
       continue;
     }
+    listedNotInProfile.add(key);
     const driftChange = fileChangeForResource(resource, fileChanges);
     notInProfile.push({
       section: "not_in_profile",
