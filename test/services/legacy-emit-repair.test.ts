@@ -113,6 +113,59 @@ describe("legacy emit repair", () => {
     }
   });
 
+  it("keeps a section the user added a paragraph under and warns", async () => {
+    const context = await createInitializedTestContext("legacy-roomodes-appended");
+    try {
+      const root = context.projectDir;
+      const userModes = "customModes:\n  - slug: docs\n    name: Docs";
+      const appended = `${API_BLOCK}\n\nAlso prefer Valibot for new code.`;
+      const testsBlock = "## tests\n\nUse bun test";
+      const original = `${userModes}\n\n${appended}\n\n${testsBlock}\n`;
+      const full = write(root, ".roomodes", original);
+      own(root, "roo", ".roomodes", `${API_BLOCK}\n\n${testsBlock}`, {
+        name: "api",
+        content: "Use Zod",
+      });
+      own(root, "roo", ".roomodes", `${API_BLOCK}\n\n${testsBlock}`, {
+        name: "tests",
+        content: "Use bun test",
+      });
+
+      const result = repairLegacyHarnessEmits(root, [], { applyId: "roo-appended" });
+
+      const after = readFileSync(full, "utf-8");
+      expect(after).toContain("Also prefer Valibot for new code.");
+      expect(after).toContain(appended);
+      expect(after).toContain(userModes);
+      expect(after).not.toContain(testsBlock);
+      expect(readFileSync(join(applyTrashRoot(), "roo-appended", ".roomodes"), "utf-8")).toBe(
+        original,
+      );
+      expect(result.warnings.join("\n")).toContain("kept rule section api in .roomodes");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
+  it("keeps the whole file when its only section has a user paragraph", async () => {
+    const context = await createInitializedTestContext("legacy-roomodes-appended-only");
+    try {
+      const root = context.projectDir;
+      const appended = `${API_BLOCK}\n\nMy own note.\n`;
+      const full = write(root, ".roomodes", appended);
+      own(root, "roo", ".roomodes", API_BLOCK, { name: "api", content: "Use Zod" });
+
+      const result = repairLegacyHarnessEmits(root, []);
+
+      expect(result.removed).toEqual([]);
+      expect(result.rewritten).toEqual([]);
+      expect(readFileSync(full, "utf-8")).toBe(appended);
+      expect(result.warnings.join("\n")).toContain("kept rule section api");
+    } finally {
+      await context.cleanup();
+    }
+  });
+
   it("never touches a .roomodes that existed before HarnessTap wrote it", async () => {
     const context = await createInitializedTestContext("legacy-roomodes-preexisting");
     try {

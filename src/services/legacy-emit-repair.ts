@@ -71,36 +71,66 @@ function listMarkdownFiles(dir: string): string[] {
   }
 }
 
-/** Where `block` sits as a whole `## name` section, or -1. */
-function blockIndex(content: string, block: string): number {
-  for (let at = content.indexOf(block); at >= 0; at = content.indexOf(block, at + 1)) {
-    const after = content.slice(at + block.length);
-    const startsLine = at === 0 || content[at - 1] === "\n";
-    const endsSection = after.trim() === "" || after.startsWith("\n\n");
-    if (startsLine && endsSection) return at;
+/** Line starts of `#` and `##` headings, the levels that end a `##` section. */
+function topHeadingStarts(content: string): number[] {
+  const starts: number[] = [];
+  const pattern = /^#{1,2}(?:[ \t]|$)/gm;
+  for (let match = pattern.exec(content); match; match = pattern.exec(content)) {
+    starts.push(match.index);
+    pattern.lastIndex = match.index + 1;
+  }
+  return starts;
+}
+
+/**
+ * Where `block` sits as a whole section: from its heading through the line
+ * before the next heading of the same or higher level (or EOF), matching
+ * byte for byte except for trailing whitespace. -1 when no section matches,
+ * so a paragraph the user added under it keeps the section out of reach.
+ */
+function sectionIndex(content: string, block: string): number {
+  const span = Math.max(1, topHeadingStarts(block).length);
+  const starts = topHeadingStarts(content);
+  for (let i = 0; i < starts.length; i++) {
+    const at = starts[i] as number;
+    const end = starts[i + span] ?? content.length;
+    if (content.slice(at, end).trimEnd() === block.trimEnd()) return at;
   }
   return -1;
 }
 
+interface RuleSectionStrip {
+  kept: string;
+  stripped: string[];
+  skipped: string[];
+}
+
 /**
- * Takes HarnessTap's own rule blocks out of a `.roomodes` the user also
- * edited. Returns the content left, or undefined when a recorded block is not
- * found verbatim (then nothing is touched).
+ * Takes HarnessTap's own rule sections out of a `.roomodes` the user also
+ * edited. A section that no longer matches what HarnessTap wrote stays in
+ * the file and is reported as skipped.
  */
 function stripConcatenatedRuleBlocks(
   content: string,
   resourceIds: readonly string[],
-): string | undefined {
+): RuleSectionStrip {
   let remaining = content.replace(/\r\n/g, "\n");
   const resources = getResourcesByIds([...resourceIds]);
-  if (resources.length !== resourceIds.length) return undefined;
+  const stripped: string[] = [];
+  const skipped: string[] = [];
   for (const resource of resources) {
     const block = `## ${resource.name}\n\n${resource.content}`;
-    const at = blockIndex(remaining, block);
-    if (at < 0) return undefined;
-    remaining = remaining.slice(0, at) + remaining.slice(at + block.length);
+    const at = sectionIndex(remaining, block);
+    if (at < 0) {
+      skipped.push(resource.name);
+      continue;
+    }
+    const end = at + block.trimEnd().length;
+    remaining = remaining.slice(0, at) + remaining.slice(end);
+    stripped.push(resource.name);
   }
-  return remaining.replace(/\n{3,}/g, "\n\n").trim();
+  if (resources.length < resourceIds.length) skipped.push("(unknown rule)");
+  return { kept: remaining.replace(/\n{3,}/g, "\n\n").trim(), stripped, skipped };
 }
 
 /**
@@ -139,12 +169,17 @@ export function repairLegacyHarnessEmits(
       !isPreexistingPath(rootPath, path) &&
       classifyManagedPathOwnership(rootPath, path) === "modified"
     ) {
-      const kept = stripConcatenatedRuleBlocks(readFileSync(fullPath, "utf-8"), resourceIds);
-      if (kept) {
+      const strip = stripConcatenatedRuleBlocks(readFileSync(fullPath, "utf-8"), resourceIds);
+      if (strip.skipped.length > 0) {
+        result.warnings.push(
+          `kept rule section${strip.skipped.length === 1 ? "" : "s"} ${strip.skipped.join(", ")} in ${path}: changed since HarnessTap wrote ${strip.skipped.length === 1 ? "it" : "them"} (${emit.hint})`,
+        );
+      }
+      if (strip.stripped.length > 0 && strip.kept) {
         backupAndRewriteFile({
           rootPath,
           relativePath: path,
-          nextContent: `${kept}\n`,
+          nextContent: `${strip.kept}\n`,
           applyId,
           snapshotId: options.snapshotId,
         });
@@ -153,8 +188,12 @@ export function repairLegacyHarnessEmits(
         result.warnings.push(
           `removed HarnessTap rules from ${path} and kept your content (${emit.hint})`,
         );
-        continue;
       }
+      if (strip.stripped.length > 0 && !strip.kept) {
+        result.warnings.push(`kept ${path}: only whitespace changed since HarnessTap wrote it (${emit.hint})`);
+      }
+      // An edited file is never removed whole here; keep it and move on.
+      continue;
     }
     removable.push(path);
   }
