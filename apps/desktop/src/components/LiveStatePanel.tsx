@@ -1447,7 +1447,7 @@ export interface LiveStatePanelProps {
   onAddResource?: (
     resource: ProfileContentsResource,
     profileOverride?: string,
-    options?: { skipAutoReapply?: boolean },
+    options?: { skipAutoReapply?: boolean; created?: boolean },
   ) => Promise<void>;
   onAddAllResources?: (resources: ProfileContentsResource[]) => Promise<void>;
   onDiscardResource?: (resource: ProfileContentsResource) => Promise<void>;
@@ -2282,7 +2282,7 @@ export function LiveStatePanel({
           }}
           onAddToProfile={
             onAddResource
-              ? (resource) => onAddResource(resource)
+              ? (resource, options) => onAddResource(resource, undefined, options)
               : async () => {}
           }
           onSuccess={onSuccess}

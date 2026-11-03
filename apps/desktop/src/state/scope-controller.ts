@@ -74,6 +74,7 @@ import {
   useStatusStore,
   type PreviewKey,
 } from "./status-store";
+import { addedAndAppliedTitle, addedToProfileToast } from "../lib/ui-copy";
 import { toast } from "./toast-store";
 import { applySuccessToast, type ApplySnapshotView } from "../lib/apply-result";
 import { recoveryActionLabel } from "../lib/desktop-agent-message";
@@ -611,6 +612,8 @@ export function useScopeController(input: ScopeControllerInput) {
             ? `Added ${mutation.addedName} and applied`
             : undefined,
         });
+      } else if (mutation.addedName) {
+        toast(addedToProfileToast(mutation.addedName, mutation.profileName));
       }
     },
     [autoReapplyInput, refreshProfiles, refreshStatus, runSwitch, selectedProfile],
@@ -1064,7 +1067,7 @@ export function useScopeController(input: ScopeControllerInput) {
           addedName: item.name,
         });
       } catch (error) {
-        setAddResourceError(messageOf(error, "Could not add library item to profile"));
+        // The picker that started the add shows the error next to its own action.
         throw error;
       }
     },
@@ -1209,7 +1212,7 @@ export function useScopeController(input: ScopeControllerInput) {
     async (
       resource: ProfileContentsResource,
       profileOverride?: string,
-      options?: { skipAutoReapply?: boolean },
+      options?: { skipAutoReapply?: boolean; created?: boolean },
     ) => {
       const profileName = profileOverride ?? selectedProfile;
       if (!client || !profileName) {
@@ -1233,14 +1236,18 @@ export function useScopeController(input: ScopeControllerInput) {
         if (shouldAutoReapply(reapplyInput)) {
           await runSwitch(true, profileName, {
             progressLabel: "Applying to match profile",
-            successToast: `Added ${resource.name} and applied`,
+            successToast: addedAndAppliedTitle(resource.name, profileName, {
+              created: options?.created,
+            }),
           });
-        } else if (profileName === reapplyInput.activeProfile) {
-          await refreshStatus("full");
+        } else {
+          if (profileName === reapplyInput.activeProfile) {
+            await refreshStatus("full");
+          }
+          toast(
+            addedToProfileToast(resource.name, profileName, { created: options?.created }),
+          );
         }
-      } catch (error) {
-        setAddResourceError(messageOf(error, "Could not add resource to profile"));
-        throw error;
       } finally {
         setAddingResourceKey(null);
       }

@@ -260,8 +260,8 @@ export function App() {
     setDiscoverKept(true);
   }
   const onAddToProfile = useCallback(
-    (resource: ProfileContentsResource) =>
-      ctrl.handleAddResource(resource, attachProfileName ?? undefined),
+    (resource: ProfileContentsResource, options?: { created?: boolean }) =>
+      ctrl.handleAddResource(resource, attachProfileName ?? undefined, options),
     [attachProfileName, ctrl.handleAddResource],
   );
   const onDiscoverAddToProfile = useCallback(

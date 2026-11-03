@@ -49,7 +49,11 @@ export interface ResourceCreatePanelProps {
   pickerResources: LibraryResource[];
   onClose: () => void;
   onCreated: (target: ResourceCreateTarget) => void;
-  onAddToProfile: (resource: { type: string; name: string }) => Promise<void>;
+  /** Adds the just-created resource; the add confirms both steps in one toast. */
+  onAddToProfile: (
+    resource: { type: string; name: string },
+    options: { created: true },
+  ) => Promise<void>;
   onSuccess?: (message: string) => void;
 }
 
@@ -267,16 +271,20 @@ export function ResourceCreatePanel({
           label: created.name,
         };
       }
+      let addedToProfile = false;
       if (showAttachCheckbox && attachChecked && attachProfileName) {
         try {
-          await onAddToProfile({ type, name });
+          await onAddToProfile({ type, name }, { created: true });
+          addedToProfile = true;
         } catch (attachError: unknown) {
           onSuccess?.(
             `Created ${name}, but could not add it to ${attachProfileName}: ${errorMessage(attachError, "unknown error")}`,
           );
         }
       }
-      toast({ tone: "success", title: `Created ${name}` });
+      if (!addedToProfile) {
+        toast({ tone: "success", title: `Created ${name}` });
+      }
       onCreated(target);
     } catch (error: unknown) {
       if (error instanceof AgentApiError && error.code === "resource_conflict") {
