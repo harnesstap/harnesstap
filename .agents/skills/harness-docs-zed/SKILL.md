@@ -12,7 +12,7 @@ Compare the official Zed documentation with what HarnessTap supports for the `ze
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
 - AI docs: https://zed.dev/docs/ai/overview
-- Releases: https://zed.dev/releases
+- Releases: https://zed.dev/releases/stable
 - Agent settings: https://zed.dev/docs/ai/agent-settings
 - MCP: https://zed.dev/docs/ai/mcp
 - Skills: https://zed.dev/docs/ai/skills

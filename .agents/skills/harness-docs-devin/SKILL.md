@@ -11,9 +11,9 @@ Compare the official Devin documentation with what HarnessTap supports for the `
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.devin.ai
+- Docs: https://docs.devin.ai/get-started/devin-intro
 - Release notes: https://docs.devin.ai/release-notes/overview
-- Devin CLI docs: https://cli.devin.ai/docs
+- Devin CLI docs: https://docs.devin.ai/cli
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

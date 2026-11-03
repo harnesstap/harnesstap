@@ -11,15 +11,15 @@ Compare the official Codex documentation with what HarnessTap supports for the `
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://developers.openai.com/codex
-- Changelog: https://developers.openai.com/codex/changelog
+- Docs: https://learn.chatgpt.com/docs
+- Changelog: https://learn.chatgpt.com/docs/changelog
 - Releases: https://github.com/openai/codex/releases
-- Config reference: https://developers.openai.com/codex/config-reference
+- Config reference: https://learn.chatgpt.com/docs/config-file/config-reference
 - Config JSON schema (source): https://raw.githubusercontent.com/openai/codex/main/codex-rs/core/config.schema.json
-- MCP: https://developers.openai.com/codex/mcp
-- Hooks: https://developers.openai.com/codex/hooks
-- Skills: https://developers.openai.com/codex/skills
-- AGENTS.md: https://developers.openai.com/codex/guides/agents-md
+- MCP: https://learn.chatgpt.com/docs/extend/mcp?surface=cli
+- Hooks: https://learn.chatgpt.com/docs/hooks
+- Skills: https://learn.chatgpt.com/docs/build-skills
+- AGENTS.md: https://learn.chatgpt.com/docs/agent-configuration/agents-md
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

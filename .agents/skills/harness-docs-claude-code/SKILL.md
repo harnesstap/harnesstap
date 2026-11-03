@@ -14,7 +14,7 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 - Docs: https://code.claude.com/docs/en/overview
 - Changelog: https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
 - Settings reference: https://code.claude.com/docs/en/settings
-- Settings JSON schema: https://json.schemastore.org/claude-code-settings.json
+- Settings JSON schema: https://www.schemastore.org/claude-code-settings.json
 - MCP: https://code.claude.com/docs/en/mcp
 - Hooks: https://code.claude.com/docs/en/hooks
 - Memory / CLAUDE.md / rules: https://code.claude.com/docs/en/memory

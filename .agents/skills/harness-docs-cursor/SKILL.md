@@ -13,12 +13,12 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 
 - Docs: https://cursor.com/docs
 - Changelog: https://cursor.com/changelog
-- Rules: https://cursor.com/docs/context/rules
-- MCP: https://cursor.com/docs/context/mcp
-- Skills: https://cursor.com/docs/context/skills
-- Subagents: https://cursor.com/docs/context/subagents
-- Commands: https://cursor.com/docs/context/commands
-- Hooks: https://cursor.com/docs/agent/hooks
+- Rules: https://cursor.com/docs/rules
+- MCP: https://cursor.com/docs/mcp
+- Skills: https://cursor.com/docs/skills
+- Subagents: https://cursor.com/docs/subagents
+- Commands: https://cursor.com/help/customization/skills
+- Hooks: https://cursor.com/docs/hooks
 - Plugins: https://cursor.com/docs/plugins
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.

@@ -12,8 +12,8 @@ Compare the official Antigravity documentation with what HarnessTap supports for
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
 - Docs: https://antigravity.google/docs
-- Changelog: https://antigravity.google/changelog
-- Rules and workflows: https://antigravity.google/docs/rules-workflows
+- Changelog: https://antigravity.google/docs/changelog
+- Rules and workflows: https://antigravity.google/docs/rules
 - MCP: https://antigravity.google/docs/mcp
 - Skills: https://antigravity.google/docs/skills
 

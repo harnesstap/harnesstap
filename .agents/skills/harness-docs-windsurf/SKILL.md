@@ -11,12 +11,12 @@ Compare the official Windsurf documentation with what HarnessTap supports for th
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.windsurf.com/windsurf/getting-started
-- Changelog: https://windsurf.com/changelog
-- Rules / memories: https://docs.windsurf.com/windsurf/cascade/memories
-- MCP: https://docs.windsurf.com/windsurf/cascade/mcp
-- Skills: https://docs.windsurf.com/windsurf/cascade/skills
-- Hooks: https://docs.windsurf.com/windsurf/cascade/hooks
+- Docs: https://docs.devin.ai/desktop/getting-started
+- Changelog: https://docs.devin.ai/desktop/changelog
+- Rules / memories: https://docs.devin.ai/desktop/devin-local/customizations
+- MCP: https://docs.devin.ai/desktop/devin-local/customizations
+- Skills: https://docs.devin.ai/desktop/devin-local/customizations
+- Hooks: https://docs.devin.ai/desktop/devin-local/customizations
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

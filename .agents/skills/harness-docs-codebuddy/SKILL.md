@@ -11,6 +11,7 @@ Compare the official CodeBuddy documentation with what HarnessTap supports for t
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
+- Docs: https://www.codebuddy.cn/docs/cli/overview
 - Repo: https://cnb.cool/codebuddy/codebuddy-code
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
