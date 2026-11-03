@@ -9,10 +9,18 @@ import type { RecoveryAction } from "./types";
  */
 export const AGENT_MESSAGE_FALLBACK = "Something went wrong in the HarnessTap agent. Try again.";
 
+/** Apply failed because no harness is set up; the banner offers Set up harness. */
+export const NO_HARNESS_APPLY_MESSAGE =
+  "No harness is set up for this project. Select Set up harness to detect your agents.";
+
+export function isNoHarnessApplyMessage(message: string | null | undefined): boolean {
+  return message === NO_HARNESS_APPLY_MESSAGE;
+}
+
 const DESKTOP_REWRITES: readonly { match: RegExp; text: string }[] = [
   {
     match: /^No harness targets configured\b/,
-    text: "No harness is set up for this project. Open Harnesses and select Detect.",
+    text: NO_HARNESS_APPLY_MESSAGE,
   },
 ];
 
