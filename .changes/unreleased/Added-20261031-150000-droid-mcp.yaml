@@ -1,5 +1,0 @@
-kind: Added
-body: 'Droid MCP servers in `.factory/mcp.json` (or `~/.factory/mcp.json`), merged with the servers you already have.'
-time: 2026-11-01T05:00:00.000000Z
-custom:
-  Issue: ""
