@@ -12,7 +12,7 @@ Compare the official Goose documentation with what HarnessTap supports for the `
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
 - Docs: https://goose-docs.ai/docs/quickstart
-- Releases: https://github.com/block/goose/releases
+- Releases: https://github.com/aaif-goose/goose/releases
 - Config files: https://goose-docs.ai/docs/guides/config-files
 - Recipes reference: https://goose-docs.ai/docs/guides/recipes/recipe-reference
 - .goosehints: https://goose-docs.ai/docs/guides/context-engineering/using-goosehints

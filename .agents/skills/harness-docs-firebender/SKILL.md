@@ -11,7 +11,7 @@ Compare the official Firebender documentation with what HarnessTap supports for 
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.firebender.com
+- Docs: https://docs.firebender.com/get-started/welcome
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

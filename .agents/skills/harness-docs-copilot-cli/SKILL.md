@@ -11,10 +11,10 @@ Compare the official Copilot CLI documentation with what HarnessTap supports for
 
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
-- Docs: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli
+- Docs: https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/overview
 - Changelog: https://github.com/github/copilot-cli/blob/main/changelog.md
 - Releases: https://github.com/github/copilot-cli/releases
-- Agent skills: https://docs.github.com/en/copilot/concepts/agents/about-agent-skills
+- Agent skills: https://docs.github.com/en/copilot/concepts/customizations/agent-skills
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

@@ -13,10 +13,10 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 
 - Docs: https://docs.github.com/en/copilot
 - Changelog: https://github.blog/changelog/label/copilot/
-- Repository instructions: https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions
-- MCP: https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/extend-copilot-chat-with-mcp
-- Custom agents: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/create-custom-agents
-- Agent skills: https://docs.github.com/en/copilot/concepts/agents/about-agent-skills
+- Repository instructions: https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions
+- MCP: https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/extend-copilot-with-tools-and-context/extend-copilot-chat-with-mcp
+- Custom agents: https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents
+- Agent skills: https://docs.github.com/en/copilot/concepts/customizations/agent-skills
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 
