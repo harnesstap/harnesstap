@@ -202,10 +202,10 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` |: | (global `~/.copilot/mcp-config.json`) | `.github/agents/` |: |: |
 | **copilot-cli** | `AGENTS.md` | `.agents/skills/` |: | `.copilot/mcp-config.json` | `.github/agents/` |: |: |
 | **gemini-cli** | `AGENTS.md` | `.agents/skills/` |: |: |: | `commands/` | `gemini-extension.json` |
-| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` | `.agents/mcp_config.json` |: | `.agents/workflows/` |: |
+| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` | `.agents/mcp_config.json` |: | `.agents/skills/` (as skills) |: |
 | **amazon-q** | `AmazonQ.md` (+ `AGENTS.md`) |: | `.amazonq/rules/` | `.amazonq/mcp.json` |: |: |: |
 | **windsurf** | `.windsurfrules` | `.agents/skills/` | `.windsurf/rules/` | (global MCP config) |: |: |: |
-| **roo** | `AGENTS.md` | `.roo/skills/` | `.roomodes` | `.roo/mcp.json` |: |: |: |
+| **roo** | `AGENTS.md` | `.roo/skills/` | `.roo/rules/` | `.roo/mcp.json` |: |: |: |
 | **goose** | `AGENTS.md`, `.goosehints` | `.agents/skills/` (+ `.goose/skills/`) |: | `.config/goose/config.yaml` (project), `~/.config/goose/config.yaml` (global) |: | `recipes/*.yaml` | `~/.config/goose/config.yaml` |
 | **aider** | `CONVENTIONS.md` (+ `AGENTS.md`) |: |: |: |: |: | `.aider.conf.yml` |
 | **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` |: |: |: |: |: |
@@ -242,7 +242,7 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 
 ### Antigravity notes
 
-Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Workflows (`.agents/workflows/*.md`) map to HarnessTap **commands**. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`, `config/global_workflows/`). This is distinct from the thinner `gemini-cli` entry.
+Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Antigravity stopped reading workflows on 2026-10-19, so HarnessTap **commands** are written as skills (`.agents/skills/<name>/SKILL.md`); existing `.agents/workflows/*.md` files are still scanned for import. Rules get the `trigger` frontmatter Antigravity requires. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`). This is distinct from the thinner `gemini-cli` entry.
 
 ### OpenCode notes
 

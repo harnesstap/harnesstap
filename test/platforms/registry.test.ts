@@ -103,7 +103,10 @@ describe("platform registry", () => {
     const antigravity = registry.getPlatform("antigravity");
     expect(antigravity).toBeDefined();
     expect(antigravity?.projectPaths.rules).toBe(".agents/rules/");
-    expect(antigravity?.projectPaths.commands).toBe(".agents/workflows/");
+    expect(antigravity?.projectPaths.commands).toBe(".agents/skills/");
+    expect(antigravity?.projectPaths.pathAlternates?.commands).toEqual([".agents/workflows/"]);
+    expect(antigravity?.globalPaths.commands).toBe("~/.gemini/skills/");
+    expect(registry.getPlatform("roo")?.projectPaths.rules).toBe(".roo/rules/");
     expect(antigravity?.projectPaths.mcp).toBe(".agents/mcp_config.json");
     expect(antigravity?.globalPaths.instructions).toBe("~/.gemini/GEMINI.md");
     expect(antigravity?.supports.has("commands")).toBe(true);

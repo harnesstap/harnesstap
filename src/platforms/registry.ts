@@ -233,9 +233,12 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.cline/data/settings/cline_mcp_settings.json",
   }, "instruction-only"),
 
+  // Roo reads every file under `.roo/rules/` as plain text; `.roomodes` holds
+  // custom modes, not rules.
+  // https://roocodeinc.github.io/Roo-Code/features/custom-instructions/
   def("roo", "Roo Code", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
-    rules: ".roomodes",
+    rules: ".roo/rules/",
     skills: ".roo/skills/",
     mcp: ".roo/mcp.json",
   }, {
@@ -307,21 +310,28 @@ const PLATFORMS: PlatformDefinition[] = [
   }, {}),
 
   // Google Antigravity (IDE / CLI / AGY) share the same workspace layout.
+  // Workflows stopped working on 2026-10-19; commands are emitted as skills
+  // and the old workflow folders are only scanned for import.
+  // https://antigravity.google/docs/migration/workflows-to-skills
   def("antigravity", "Antigravity", [
     "instructions", "skills", "rules", "mcp", "commands",
   ], {
     instructions: "AGENTS.md",
     rules: ".agents/rules/",
     skills: ".agents/skills/",
-    commands: ".agents/workflows/",
+    commands: ".agents/skills/",
     mcp: ".agents/mcp_config.json",
     pathAlternates: {
       instructions: ["GEMINI.md"],
+      commands: [".agents/workflows/"],
     },
   }, {
     instructions: "~/.gemini/GEMINI.md",
     skills: "~/.gemini/skills/",
-    commands: "~/.gemini/config/global_workflows/",
+    commands: "~/.gemini/skills/",
+    pathAlternates: {
+      commands: ["~/.gemini/config/global_workflows/", "~/.gemini/config/workflows/"],
+    },
     settings: "~/.gemini/config/mcp_config.json",
   }),
 

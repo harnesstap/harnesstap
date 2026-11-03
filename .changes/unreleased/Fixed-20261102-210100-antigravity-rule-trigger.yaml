@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Antigravity rules in `.agents/rules/` now carry the `trigger` frontmatter Antigravity requires (`always_on`, `glob` with `globs`, `model_decision` with `description`, or `manual`), so Antigravity no longer discards them.'
+time: 2026-11-03T07:01:00.000000Z
+custom:
+  Issue: ""

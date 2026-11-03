@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Antigravity commands are written as skills (`.agents/skills/<name>/SKILL.md`) because Antigravity stopped reading workflows. Workflow files an earlier apply wrote are backed up and removed; edited or unmanaged workflow files are kept with a warning.'
+time: 2026-11-03T07:02:00.000000Z
+custom:
+  Issue: ""

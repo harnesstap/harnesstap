@@ -60,6 +60,62 @@ const SHARED_MCP_FORMATS: Record<
   },
 };
 
+/**
+ * Harnesses that load commands as skills: each command becomes
+ * `<skills>/<name>/SKILL.md` with `name` and `description` frontmatter.
+ * - Antigravity: https://antigravity.google/docs/migration/workflows-to-skills
+ */
+const COMMANDS_AS_SKILLS = new Set(["antigravity"]);
+
+/**
+ * Per-harness rule file shape for directory rule paths.
+ * - Roo loads `.roo/rules/` files as plain text, so frontmatter would leak
+ *   into the prompt: https://roocodeinc.github.io/Roo-Code/features/custom-instructions/
+ * - Antigravity discards `.agents/rules/*.md` without a valid `trigger`:
+ *   https://antigravity.google/docs/rules
+ */
+type RuleFileFormat = "paths" | "plain" | "antigravity";
+const RULE_FILE_FORMATS: Record<string, RuleFileFormat> = {
+  roo: "plain",
+  antigravity: "antigravity",
+};
+
+/** Antigravity `trigger` for a HarnessTap rule. */
+export function antigravityRuleFrontmatter(
+  description: string,
+  metadata: RuleMetadata | undefined,
+): Record<string, unknown> {
+  const globs = metadata?.globs ?? [];
+  if (globs.length > 0) {
+    return {
+      trigger: "glob",
+      ...(description ? { description } : {}),
+      globs: globs.join(", "),
+    };
+  }
+  if (metadata?.always_apply === false) {
+    return description
+      ? { trigger: "model_decision", description }
+      : { trigger: "manual" };
+  }
+  return { trigger: "always_on", ...(description ? { description } : {}) };
+}
+
+function ruleMetadataFromFrontmatter(data: Record<string, unknown>): RuleMetadata {
+  const trigger = typeof data["trigger"] === "string" ? data["trigger"] : undefined;
+  if (trigger) {
+    const raw = data["globs"] ?? data["glob"];
+    const globs = Array.isArray(raw)
+      ? raw.map(String)
+      : typeof raw === "string"
+        ? raw.split(",").map((g) => g.trim()).filter(Boolean)
+        : [];
+    return { globs, always_apply: trigger === "always_on" };
+  }
+  const paths = Array.isArray(data["paths"]) ? (data["paths"] as string[]) : [];
+  return { globs: paths, always_apply: paths.length === 0 };
+}
+
 function resolveGlobalPath(homeRoot: string, configuredPath: string): string {
   return configuredPath.startsWith("~/")
     ? join(homeRoot, configuredPath.slice(2))
@@ -92,13 +148,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
         const parsed = this.tryParseFrontmatter(raw);
         if (!parsed) continue;
         const { data, content } = parsed;
-        const metadata: RuleMetadata = {
-          globs: Array.isArray(data["paths"])
-            ? (data["paths"] as string[])
-            : [],
-          always_apply:
-            !data["paths"] || (data["paths"] as string[]).length === 0,
-        };
+        const metadata = ruleMetadataFromFrontmatter(data);
         resources.push(
           this.makeResource(
             "rule",
@@ -233,8 +283,11 @@ export class GenericAgentsSerializer extends BaseSerializer {
 
     // Commands (markdown workflows / slash prompts)
     const commandsPath = this.platform.projectPaths.commands;
-    if (commandsPath) {
+    if (commandsPath && !COMMANDS_AS_SKILLS.has(this.platformId)) {
       resources.push(...this.scanCommandsAt(projectRoot, commandsPath));
+    }
+    for (const alternate of this.platform.projectPaths.pathAlternates?.commands ?? []) {
+      resources.push(...this.scanCommandsAt(projectRoot, alternate));
     }
 
     // Hooks
@@ -306,8 +359,12 @@ export class GenericAgentsSerializer extends BaseSerializer {
       );
     }
 
-    const commandsPath = this.platform.globalPaths.commands;
-    if (commandsPath) {
+    const globalCommandDirs = [
+      ...(COMMANDS_AS_SKILLS.has(this.platformId) ? [] : [this.platform.globalPaths.commands]),
+      ...(this.platform.globalPaths.pathAlternates?.commands ?? []),
+    ];
+    for (const commandsPath of globalCommandDirs) {
+      if (!commandsPath) continue;
       const resolved = resolveGlobalPath(homeRoot, commandsPath);
       const displayPath = commandsPath.endsWith("/")
         ? commandsPath
@@ -347,6 +404,42 @@ export class GenericAgentsSerializer extends BaseSerializer {
     }
 
     return resources;
+  }
+
+  private ruleFileContent(
+    format: RuleFileFormat,
+    r: Resource,
+    md: RuleMetadata | undefined,
+  ): string {
+    if (format === "plain") {
+      const globs = md?.globs ?? [];
+      const scope = globs.length > 0 ? `Applies to files matching: ${globs.join(", ")}\n\n` : "";
+      return `${scope}${r.content}`;
+    }
+    if (format === "antigravity") {
+      return this.emitFrontmatter(
+        antigravityRuleFrontmatter(r.description || `Rule ${r.name}`, md),
+        r.content,
+      );
+    }
+    const fm: Record<string, unknown> = {
+      description: r.description || `Rule ${r.name}`,
+    };
+    if (md?.globs && md.globs.length > 0) {
+      fm["paths"] = md.globs;
+    }
+    return this.emitFrontmatter(fm, r.content);
+  }
+
+  private commandSkillContent(r: Resource): string {
+    const parsed = this.tryParseFrontmatter(r.content);
+    const body = parsed ? parsed.content : r.content;
+    const fromFrontmatter =
+      parsed && typeof parsed.data["description"] === "string"
+        ? (parsed.data["description"] as string)
+        : "";
+    const description = r.description || fromFrontmatter || `Command ${r.name}`;
+    return this.emitFrontmatter({ name: r.name, description }, body.replace(/^\n+/, ""));
   }
 
   async serialize(
@@ -392,17 +485,12 @@ export class GenericAgentsSerializer extends BaseSerializer {
     // Rules native files
     if (rulesPath && rules.length > 0) {
       if (rulesPath.endsWith("/")) {
+        const format = RULE_FILE_FORMATS[this.platformId] ?? "paths";
         for (const r of rules) {
-          const md = r.metadata as RuleMetadata;
-          const fm: Record<string, unknown> = {
-            description: r.description || `Rule ${r.name}`,
-          };
-          if (md?.globs && md.globs.length > 0) {
-            fm["paths"] = md.globs;
-          }
+          const md = r.metadata as RuleMetadata | undefined;
           files.push({
             path: `${rulesPath}${r.name}.md`,
-            content: this.emitFrontmatter(fm, r.content),
+            content: this.ruleFileContent(format, r, md),
           });
         }
       } else {
@@ -437,7 +525,19 @@ export class GenericAgentsSerializer extends BaseSerializer {
       const commandPrefix = commandsPath.endsWith("/")
         ? commandsPath
         : `${commandsPath}/`;
+      const skillNames = new Set(
+        resources.filter((r) => r.type === "skill").map((r) => r.name),
+      );
       for (const r of commands) {
+        if (COMMANDS_AS_SKILLS.has(this.platformId)) {
+          // A real skill of the same name owns the folder.
+          if (skillNames.has(r.name)) continue;
+          files.push({
+            path: `${commandPrefix}${r.name}/SKILL.md`,
+            content: this.commandSkillContent(r),
+          });
+          continue;
+        }
         files.push({
           path: `${commandPrefix}${r.name}.md`,
           content: r.content,
