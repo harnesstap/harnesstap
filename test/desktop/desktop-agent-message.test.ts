@@ -9,6 +9,8 @@ import {
 import {
   AGENT_MESSAGE_FALLBACK,
   desktopAgentText,
+  isNoHarnessApplyMessage,
+  NO_HARNESS_APPLY_MESSAGE,
   recoveryActionLabel,
 } from "../../apps/desktop/src/lib/desktop-agent-message.ts";
 import type { RecoveryAction } from "../../apps/desktop/src/lib/types.ts";
@@ -105,7 +107,7 @@ describe("agent messages shown in Desktop", () => {
       desktopAgentText(
         "No harness targets configured. Declare targets: in apm.yml or pass --target / --harness.",
       ),
-    ).toBe("No harness is set up for this project. Open Harnesses and select Detect.");
+    ).toBe(NO_HARNESS_APPLY_MESSAGE);
   });
 
   it("leaves plain messages alone and falls back when only a command is left", () => {
@@ -165,5 +167,23 @@ describe("project history without a git remote", () => {
   it("lists history with no remote prompt: a remote is not needed", () => {
     expect(drawer).not.toMatch(/no_git_origin|originHints|hints\.map|Remote URL|Add remote|git remote/i);
     expect(drawer).toMatch(/label="Revert"/);
+  });
+});
+
+describe("no-harness apply error", () => {
+  it("is recognized so the banner offers Set up harness instead of Retry", () => {
+    expect(isNoHarnessApplyMessage(desktopAgentText("No harness targets configured for this project."))).toBe(true);
+    expect(isNoHarnessApplyMessage("Apply failed. Try again.")).toBe(false);
+    expect(commandInstructionIn(NO_HARNESS_APPLY_MESSAGE)).toBeNull();
+  });
+
+  it("wires the scope apply banner to the Set up harness action", () => {
+    const src = readFileSync(
+      join(import.meta.dir, "../../apps/desktop/src/components/shell/ScopeWorkspace.tsx"),
+      "utf-8",
+    );
+    expect(src).toContain("isNoHarnessApplyMessage(ctrl.switchError)");
+    expect(src).toContain("onRetry: onSetUpHarness");
+    expect(src).toContain("retryLabel: HARNESS_NOT_SET_UP_COPY.action");
   });
 });

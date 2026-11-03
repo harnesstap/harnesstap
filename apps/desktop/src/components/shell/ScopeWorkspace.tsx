@@ -5,7 +5,9 @@ import {
   pendingApprovalsFromTrust,
   shouldShowPendingApprovalsStrip,
 } from "../../lib/pending-approvals";
+import { isNoHarnessApplyMessage } from "../../lib/desktop-agent-message";
 import { profileHeaderStatus } from "../../lib/reapply";
+import { HARNESS_NOT_SET_UP_COPY } from "../../lib/ui-copy";
 import { type ProfileCreateSource } from "../../lib/types";
 import { noSpellcheckProps } from "../../lib/no-spellcheck";
 import type { ScopeController } from "../../state/scope-controller";
@@ -600,7 +602,13 @@ export function ScopeWorkspace({
             <Banner
               tone="error"
               message={ctrl.switchError}
-              onRetry={ctrl.onApplyClick}
+              {...(isNoHarnessApplyMessage(ctrl.switchError)
+                ? {
+                    onRetry: onSetUpHarness,
+                    retryLabel: HARNESS_NOT_SET_UP_COPY.action,
+                    retryShowLabel: true,
+                  }
+                : { onRetry: ctrl.onApplyClick })}
               onDismiss={() => ctrl.setSwitchError(null)}
             />
           )}
