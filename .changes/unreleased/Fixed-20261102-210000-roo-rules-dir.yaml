@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Roo Code rules are written as plain files under `.roo/rules/` instead of into `.roomodes`, which is the custom modes file. A `.roomodes` an earlier apply wrote is backed up and removed; when you also edited it, only the rule sections that still match what HarnessTap wrote are taken out, and every other section, including one you added text under, is kept with a warning.'
+time: 2026-11-03T07:00:00.000000Z
+custom:
+  Issue: ""

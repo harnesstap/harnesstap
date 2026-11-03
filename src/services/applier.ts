@@ -1,4 +1,5 @@
 import { forgetMissingSettingsMarketplaces, recordAddedSettingsMarketplaces } from "./claude-settings-marketplaces.js";
+import { repairLegacyHarnessEmitsWithWarnings } from "./legacy-emit-repair.js";
 import { forgetMissingEnabledKeys, isClaudeSettingsPath, recordAddedEnabledKeys } from "./claude-enabled-plugin-keys.js";
 import { declaredClaudeMarketplaces, pruneLeavingClaudeRegistrations } from "./claude-plugin-registration-prune.js";
 import { computationSlot, inStatusComputation } from "./status-computation.js";
@@ -602,6 +603,7 @@ export function writeFiles(
   projectRoot: string,
 ): void {
   pruneCursorLocalPlugins(projectRoot, files);
+  repairLegacyHarnessEmitsWithWarnings(projectRoot, files);
   for (const file of files) {
     const fullPath = assertMaterializedPathIsSafe(projectRoot, file.path);
     if (leafLinkLeavesRoot(projectRoot, fullPath)) {
@@ -803,6 +805,7 @@ export async function materializeFiles(
   }
 
   pruneCursorLocalPlugins(rootPath, files);
+  repairLegacyHarnessEmitsWithWarnings(rootPath, files);
   for (const file of files) {
     const decision = decisions.get(file.path);
     if (decision === "skip") {
