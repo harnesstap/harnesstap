@@ -257,14 +257,31 @@ export const ENVIRONMENTS_EMPTY_COPY = {
 } as const;
 
 /** Success feedback when an add lands in a profile without an automatic apply. */
-export function addedToProfileToast(name: string, profile: string): {
+export function addedToProfileToast(
+  name: string,
+  profile: string,
+  options: { created?: boolean } = {},
+): {
   tone: "success";
   title: string;
   detail: string;
 } {
   return {
     tone: "success",
-    title: `Added ${name} to ${profile}`,
+    title: options.created
+      ? `Created ${name} and added it to ${profile}`
+      : `Added ${name} to ${profile}`,
     detail: "Apply the profile to write it to your harnesses.",
   };
+}
+
+/** Success title when an add to a profile also applied it. */
+export function addedAndAppliedTitle(
+  name: string,
+  profile: string,
+  options: { created?: boolean } = {},
+): string {
+  return options.created
+    ? `Created ${name}, added it to ${profile}, and applied`
+    : `Added ${name} and applied`;
 }

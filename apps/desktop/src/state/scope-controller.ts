@@ -74,7 +74,7 @@ import {
   useStatusStore,
   type PreviewKey,
 } from "./status-store";
-import { addedToProfileToast } from "../lib/ui-copy";
+import { addedAndAppliedTitle, addedToProfileToast } from "../lib/ui-copy";
 import { toast } from "./toast-store";
 import { applySuccessToast, type ApplySnapshotView } from "../lib/apply-result";
 import { recoveryActionLabel } from "../lib/desktop-agent-message";
@@ -1212,7 +1212,7 @@ export function useScopeController(input: ScopeControllerInput) {
     async (
       resource: ProfileContentsResource,
       profileOverride?: string,
-      options?: { skipAutoReapply?: boolean },
+      options?: { skipAutoReapply?: boolean; created?: boolean },
     ) => {
       const profileName = profileOverride ?? selectedProfile;
       if (!client || !profileName) {
@@ -1236,13 +1236,17 @@ export function useScopeController(input: ScopeControllerInput) {
         if (shouldAutoReapply(reapplyInput)) {
           await runSwitch(true, profileName, {
             progressLabel: "Applying to match profile",
-            successToast: `Added ${resource.name} and applied`,
+            successToast: addedAndAppliedTitle(resource.name, profileName, {
+              created: options?.created,
+            }),
           });
         } else {
           if (profileName === reapplyInput.activeProfile) {
             await refreshStatus("full");
           }
-          toast(addedToProfileToast(resource.name, profileName));
+          toast(
+            addedToProfileToast(resource.name, profileName, { created: options?.created }),
+          );
         }
       } finally {
         setAddingResourceKey(null);

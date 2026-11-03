@@ -147,7 +147,10 @@ export interface ResourcesPanelProps {
   selectedProfile?: string | null;
   /** Profile targeted by the create-form "add and apply" checkbox; hides it when null. */
   attachProfileName?: string | null;
-  onAddToProfile?: (resource: { type: string; name: string }) => Promise<void>;
+  onAddToProfile?: (
+    resource: { type: string; name: string },
+    options?: { created?: boolean },
+  ) => Promise<void>;
   onImported?: (message: string) => void;
   onSuccess?: (message: string) => void;
   onApplyResult?: (result: ApplyPluginResult) => void;
@@ -1491,7 +1494,7 @@ export function ResourcesPanel({
           }}
           onAddToProfile={
             onAddToProfile
-              ? (resource) => onAddToProfile(resource)
+              ? (resource, options) => onAddToProfile(resource, options)
               : async () => {}
           }
           onSuccess={onSuccess}
