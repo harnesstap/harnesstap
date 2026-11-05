@@ -1,5 +1,0 @@
-kind: Added
-body: 'Zed MCP servers: HarnessTap merges them into `context_servers` in `.zed/settings.json` (or `~/.config/zed/settings.json`) and keeps your other settings and comments.'
-time: 2026-11-01T04:00:00.000000Z
-custom:
-  Issue: ""

@@ -202,10 +202,10 @@ These are the primary **project** paths HarnessTap scans and writes. Global path
 | **github-copilot** | `.github/copilot-instructions.md` | `.agents/skills/` |: | (global `~/.copilot/mcp-config.json`) | `.github/agents/` |: |: |
 | **copilot-cli** | `AGENTS.md` | `.agents/skills/` |: | `.copilot/mcp-config.json` | `.github/agents/` |: |: |
 | **gemini-cli** | `AGENTS.md` | `.agents/skills/` |: |: |: | `commands/` | `gemini-extension.json` |
-| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` | `.agents/mcp_config.json` |: | `.agents/workflows/` |: |
+| **antigravity** | `AGENTS.md` (+ `GEMINI.md`) | `.agents/skills/` | `.agents/rules/` (with `trigger` frontmatter) | `.agents/mcp_config.json` |: | `.agents/skills/` (written as skills) |: |
 | **amazon-q** | `AmazonQ.md` (+ `AGENTS.md`) |: | `.amazonq/rules/` | `.amazonq/mcp.json` |: |: |: |
 | **windsurf** | `.windsurfrules` | `.agents/skills/` | `.windsurf/rules/` | (global MCP config) |: |: |: |
-| **roo** | `AGENTS.md` | `.roo/skills/` | `.roomodes` | `.roo/mcp.json` |: |: |: |
+| **roo** | `AGENTS.md` | `.roo/skills/` | `.roo/rules/` | `.roo/mcp.json` |: |: |: |
 | **goose** | `AGENTS.md`, `.goosehints` | `.agents/skills/` (+ `.goose/skills/`) |: | `.config/goose/config.yaml` (project), `~/.config/goose/config.yaml` (global) |: | `recipes/*.yaml` | `~/.config/goose/config.yaml` |
 | **aider** | `CONVENTIONS.md` (+ `AGENTS.md`) |: |: |: |: |: | `.aider.conf.yml` |
 | **zed** | `AGENTS.md` (+ `.rules`) | `.agents/skills/` |: |: |: |: |: |
@@ -242,7 +242,9 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 
 ### Antigravity notes
 
-Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Workflows (`.agents/workflows/*.md`) map to HarnessTap **commands**. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`, `config/global_workflows/`). This is distinct from the thinner `gemini-cli` entry.
+Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Antigravity no longer reads workflows, so HarnessTap writes **commands** as skills (`.agents/skills/<name>/SKILL.md`, global `~/.gemini/skills/`); a skill with the same name wins. Existing `.agents/workflows/` and `~/.gemini/config/global_workflows/` files are still scanned as commands. On apply, workflow files HarnessTap wrote are backed up and removed, and files it did not write are kept with a warning (Antigravity's `/migrate-workflows` converts them). Rules in `.agents/rules/` carry the required `trigger` frontmatter: `glob` with `globs` when the rule has globs, `always_on` for always-apply rules, `model_decision` for rules with a description, and `manual` otherwise. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`). This is distinct from the thinner `gemini-cli` entry.
+
+Roo rules are plain files in `.roo/rules/`, one per rule. HarnessTap no longer writes rules into `.roomodes`. On apply, a `.roomodes` HarnessTap wrote is backed up and removed. In a `.roomodes` you also edited, only the `## <rule>` sections that still match what HarnessTap wrote are removed; everything else, including text you added under one of those sections, is kept with a warning.
 
 ### OpenCode notes
 
@@ -319,6 +321,20 @@ Detection uses distinctive `.minimax/skills/`, `.minimax-plugin/`, and/or `~/.mi
 | **Plugins** (`mcode plugin` / `/plugins`; local dir `~/.minimax/plugins/`) | Detection via `.minimax-plugin/` and the home plugins path; no install provider yet |
 | **config.yaml** (model, providers, credentials) | Left alone |
 | **Install dir** (`~/.minimax-code`) | Ignored |
+
+### MCP, rules, and hooks for Gemini CLI, Kiro, Zed, Droid, and GitHub Copilot
+
+| Harness | MCP file (project / global) | Key | Other |
+|---|---|---|---|
+| **gemini-cli** | `.gemini/settings.json` / `~/.gemini/settings.json` | `mcpServers` | Tool filters become `includeTools` and `excludeTools` |
+| **kiro** | `.kiro/settings/mcp.json` / `~/.kiro/settings/mcp.json` | `mcpServers` | Skills in `.kiro/skills/` (`.agents/skills/` is still scanned); hooks as one file each in `.kiro/hooks/` |
+| **zed** | `.zed/settings.json` / `~/.config/zed/settings.json` | `context_servers` | Zed runs project servers only in a trusted worktree |
+| **droid** | `.factory/mcp.json` / `~/.factory/mcp.json` | `mcpServers` | Entries carry `type` (`stdio` or `http`) |
+| **github-copilot** | (unchanged) | | Rules become `.github/instructions/<name>.instructions.md` with `applyTo` globs |
+
+These files are shared with the harness. HarnessTap merges only the servers it manages, keeps every other key, and on removal takes out only its own entries. MCP servers can set `enabled_tools` (allow list) and `disabled_tools` (deny list); Codex writes both, Gemini CLI writes `includeTools` and `excludeTools`, Kiro and Droid write `disabledTools`, and Copilot uses `enabled_tools` as its `tools` list.
+
+Kiro hooks: `Stop`, `SessionStart`, `SessionEnd`, and `PreToolUse` or `PostToolUse` hooks that match every tool are written. Hooks for other events, or tool hooks with a specific matcher, are not written for Kiro, because Kiro tool IDs differ from other harnesses' tool names.
 
 ## Related commands
 

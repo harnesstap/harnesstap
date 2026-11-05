@@ -75,6 +75,15 @@ Use the **CLI** (`ht`) or **Desktop**. Both talk to the same local library at `~
 npx harnesstap@latest init
 ```
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew install harnesstap/tap/harnesstap
+ht init
+```
+
+The formula installs the npm package on Homebrew's `node@24`, so you do not need your own Node.js. Upgrade with `brew upgrade harnesstap`; the CLI update notice suggests that command for Homebrew installs.
+
 ### npm global
 
 ```bash
@@ -183,6 +192,14 @@ bun run desktop:install  # build + install HarnessTap.app into /Applications
 Details, sidecar notes, and e2e: [apps/desktop/README.md](apps/desktop/README.md).
 
 The apply footer counts files that will be written or removed. Kept rows are not included.
+
+On macOS you can also install Desktop with Homebrew:
+
+```bash
+brew install --cask harnesstap/tap/harnesstap-desktop
+```
+
+The cask installs the same unsigned DMG, so the first launch still needs **Open Anyway** under System Settings > Privacy & Security.
 
 ---
 

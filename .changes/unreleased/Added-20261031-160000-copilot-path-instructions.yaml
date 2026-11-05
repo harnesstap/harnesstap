@@ -1,5 +1,0 @@
-kind: Added
-body: 'GitHub Copilot path-scoped rules: rules with globs become `.github/instructions/<name>.instructions.md` files with `applyTo` frontmatter, and those files scan back into rules.'
-time: 2026-11-01T06:00:00.000000Z
-custom:
-  Issue: ""
