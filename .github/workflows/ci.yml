@@ -125,6 +125,13 @@ jobs:
               - 'test/telemetry/**'
               - 'scripts/check-copy.ts'
               - 'scripts/copy-allowlist.txt'
+              - 'scripts/check-raw-hex.mjs'
+              - 'scripts/check-token-drift.mjs'
+              - 'scripts/check-contrast.mjs'
+              - 'scripts/check-copy-chars.mjs'
+              - 'scripts/lex.mjs'
+              - 'scripts/files.mjs'
+              - 'design-tokens.json'
               - 'scripts/homebrew-tap.ts'
               - 'test/scripts/**'
             platforms:
@@ -148,6 +155,7 @@ jobs:
             docs:
               - 'docs/**'
               - 'test/docs/**'
+              - 'DESIGN.md'
             desktop:
               - 'apps/desktop/src/**'
               - 'apps/desktop/scripts/**'
@@ -602,6 +610,9 @@ jobs:
 
       - name: G3 copy lint
         run: bun run check:copy
+
+      - name: Design system checks
+        run: bun run check:design
 
       - name: Run type-check
         run: bun run typecheck

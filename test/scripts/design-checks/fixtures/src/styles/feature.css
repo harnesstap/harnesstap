@@ -1,0 +1,5 @@
+/* brand hint #3b82f6 in a comment is fine */
+.card { color: var(--fg); background: #161b22; }
+.ok { border-color: #2a3340; } /* token-lint: allow */
+.shadow { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.hsl { color: hsl(var(--brand-blue-hsl)); }

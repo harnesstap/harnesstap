@@ -1,0 +1,122 @@
+{
+  "$comment": "HarnessTap design tokens. Duplicated in each repo on purpose (no shared package). Keep shared, themes and registers identical across copies; ci/check-token-drift.mjs enforces it. Only cssVars and cssRootTheme are repo-specific.",
+  "version": 1,
+  "updated": "2026-11-09",
+  "repo": "harnesstap/harnesstap",
+  "shared": {
+    "brand-violet": "#8B5CF6",
+    "brand-blue": "#3B82F6",
+    "brand-teal": "#14B8A6",
+    "brand-ink": "#0F172A",
+    "brand-paper": "#F8FAFC",
+    "brand-warn": "#E6B84D",
+    "brand-danger": "#EF4444",
+    "action-primary": "#2563EB",
+    "action-primary-hover": "#1D4ED8",
+    "action-primary-fg": "#FFFFFF",
+    "action-primary-ring": "#3B82F6",
+    "violet-fill": "#7C3AED",
+    "success-fill": "#0F766E",
+    "success-fill-fg": "#FFFFFF",
+    "danger-fill": "#DC2626",
+    "danger-fill-hover": "#B91C1C",
+    "danger-fill-fg": "#FFFFFF"
+  },
+  "themes": {
+    "dark": {
+      "bg": "#0F1419",
+      "surface": "#161B22",
+      "raised": "#1C2330",
+      "overlay": "#222A38",
+      "hover": "#212937",
+      "selected": "#182742",
+      "border": "#2A3340",
+      "border-strong": "#3A4555",
+      "border-control": "#5B6878",
+      "fg": "#E8EEF5",
+      "muted": "#94A3B8",
+      "link": "#60A5FA",
+      "link-hover": "#93C5FD",
+      "success-fg": "#2DD4BF",
+      "success-bg": "#163134",
+      "warning-fg": "#E6B84D",
+      "warning-bg": "#2F2E27",
+      "danger-fg": "#F87171",
+      "danger-bg": "#342127",
+      "info-fg": "#60A5FA",
+      "info-bg": "#1B2940",
+      "inuse": "#22C55E"
+    },
+    "light": {
+      "bg": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "raised": "#F1F5F9",
+      "overlay": "#FFFFFF",
+      "hover": "#EEF2F7",
+      "selected": "#EBF1FD",
+      "border": "#E2E8F0",
+      "border-strong": "#CBD5E1",
+      "border-control": "#8492A6",
+      "fg": "#0F172A",
+      "muted": "#475569",
+      "link": "#2563EB",
+      "link-hover": "#1D4ED8",
+      "success-fg": "#0F766E",
+      "success-bg": "#F0FDFA",
+      "warning-fg": "#92400E",
+      "warning-bg": "#FFFBEB",
+      "danger-fg": "#B91C1C",
+      "danger-bg": "#FEF2F2",
+      "info-fg": "#1D4ED8",
+      "info-bg": "#EFF6FF",
+      "inuse": "#16A34A"
+    }
+  },
+  "registers": {
+    "ops": {
+      "font-body": "\"IBM Plex Sans\", \"Segoe UI\", sans-serif",
+      "font-mono": "\"IBM Plex Mono\", ui-monospace, monospace",
+      "radius": "0.25rem",
+      "radius-pill": "9999px",
+      "text-micro": "12px",
+      "text-meta": "13px",
+      "text-body": "14px",
+      "text-value": "16px",
+      "text-title": "18px",
+      "text-display": "22px",
+      "space-unit": "4px",
+      "hit-min": "32px",
+      "button-min-height": "44px"
+    },
+    "brand": {
+      "font-body": "\"Onest\", system-ui, sans-serif",
+      "font-display": "\"Bricolage Grotesque\", \"Onest\", sans-serif",
+      "font-mono": "ui-monospace, SFMono-Regular, Menlo, monospace",
+      "radius-cta": "9999px",
+      "radius-card": "2rem",
+      "radius-control": "0.75rem",
+      "radius-input": "1rem",
+      "text-body": "1rem",
+      "button-min-height": "44px",
+      "input-height": "48px"
+    }
+  },
+  "status": {
+    "$comment": "All values Locked 2026-11-09. 'pending' lists Locked values not yet in this repo's CSS. Desktop Light and System ship last.",
+    "locked": "2026-11-09",
+    "pending": [
+      "themes.light: Desktop Light and System ship last (step 4)",
+      "success-fg dark: Desktop --green moves #14B8A6 to #2DD4BF"
+    ]
+  },
+  "cssRootTheme": "dark",
+  "cssVars": {
+    "brand-blue": "--accent",
+    "raised": "--surface-2",
+    "success-fg": "--green",
+    "warning-fg": "--yellow",
+    "hover": "--surface-hover",
+    "selected": "--selected"
+  },
+  "$note": "Desktop maps tokens in apps/desktop/src/styles/tokens.css. :root is dark today; a light block is proposed. CLI hexes live in src/ui/theme.ts."
+}

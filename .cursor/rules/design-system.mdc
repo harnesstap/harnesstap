@@ -1,0 +1,16 @@
+---
+description: HarnessTap design system. Apply when editing Desktop UI, CLI output, styles, or any user-facing copy and docs.
+globs: apps/desktop/src/**,src/ui/**,src/cli/**,docs/**,README.md,DESIGN.md,design-tokens.json
+alwaysApply: false
+---
+
+# Design system rules
+
+1. Read `DESIGN.md` (system) and the matching section of `apps/desktop/DESIGN.md` (per-screen reference) before the change. The top-level `DESIGN.md` wins on tokens, voice and UX rules; fix the Desktop file in the same PR when they disagree.
+2. Use tokens only. No raw hex, `rgb()`/`rgba()`, `font-size` or `z-index` literals outside `apps/desktop/src/styles/tokens.css`, `src/ui/theme.ts` and `design-tokens.json`.
+3. Filled primary is `--action-primary` (`#2563EB`) with white text. Never white text on brand blue, teal, violet or `#EF4444`. Blue text on dark is `--link`. Danger fill is for the destructive dialog's confirm only.
+4. Voice: no U+2014, U+2013 or U+2026 in user-facing text. Short, human tooltips. Sentence case. No "Simply" or "Just".
+5. UX: one path per action; quiet icon then confirm modal for destructive actions; never hide zero-count types in Library; icon-only controls need a tooltip and `aria-label` and keep their one meaning (Sparkles is skill only).
+6. Motion: only transform, opacity, stroke-dashoffset, clip-path; honor reduced motion.
+7. Anything new (token, pattern, icon meaning, second path, change to a Locked rule) goes to Design first: open a draft PR or issue with the `design-proposal` label (`design-proposal: <short name>`, problem, options, recommendation, screenshots). Do not invent it in the feature PR.
+8. Before the PR: run `.agents/skills/design-review/SKILL.md` and `bun run preflight`.

@@ -124,7 +124,7 @@ describe("desktop header chrome", () => {
 
   test("DESIGN.md lists five destination tabs and puts Global/Project on the Profile page", () => {
     expect(designSource).toContain(
-      "Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness | Profile**",
+      "Header destinations (equal-weight primary nav): **Library | Discover | Environments | Harnesses | Profile**",
     );
     expect(designSource).toContain("The header has no scope control.");
     expect(designSource).toContain("**Global | Project: <name>** text segmented switch");
@@ -145,7 +145,7 @@ describe("desktop header chrome", () => {
     expect(paritySource).toContain('aria-label="Environments"');
   });
 
-  test("labels header destinations Library, Discover, Env, Harness, and Profile", () => {
+  test("labels header destinations Library, Discover, Environments, Harnesses, and Profile", () => {
     expect(appSource).toMatch(/<Library[\s\S]*\/>\s*<span className="header-focus-label">Library<\/span>/);
     expect(appSource).toMatch(/<PackageSearch[\s\S]*\/>\s*<span className="header-focus-label">Discover<\/span>/);
     expect(paritySource).toMatch(/<Puzzle[\s\S]*\/>\s*<span className="header-focus-label">Environments<\/span>/);
@@ -154,7 +154,7 @@ describe("desktop header chrome", () => {
     expect(appSource).toContain("header-focus-btn labeled");
     expect(paritySource).toContain("header-focus-btn labeled");
     expect(cssSource).toContain(".header-focus-btn.labeled");
-    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Env | Harness | Profile**");
+    expect(designSource).toContain("Header destinations (equal-weight primary nav): **Library | Discover | Environments | Harnesses | Profile**");
     expect(designSource).toContain("Header destinations show icon plus name");
     expect(appSource).not.toContain("header-scope");
     expect(appSource).toContain('label="Settings"');

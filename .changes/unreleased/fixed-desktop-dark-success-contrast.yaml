@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop dark success text uses a lighter teal so status and success UI meet the shared contrast target. CLI success color is unchanged.
+time: 2026-11-10T05:17:23Z
+custom:
+  Issue: ""

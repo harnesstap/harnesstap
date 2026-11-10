@@ -5,7 +5,7 @@
   --border: #2a3340;
   --fg: #e8eef5;
   --muted: #94a3b8;
-  /* Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6). Keep CLI and Desktop in sync. */
+  /* Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6). Desktop dark success text (--green) is the lighter #2dd4bf; CLI success stays brand teal. */
   --accent: #3b82f6;
   /* Action fill is one step deeper than brand blue so white text meets 4.5:1.
      Cloud owns these hexes; Desktop copies them (no shared package). */
@@ -25,7 +25,7 @@
   --danger-bg: #342127;
   --info-fg: #60a5fa;
   --info-bg: #1b2940;
-  --green: #14b8a6;
+  --green: #2dd4bf;
   --yellow: #e6b84d;
   --red: var(--danger-fg);
   --font: "IBM Plex Sans", "Segoe UI", sans-serif;

@@ -73,7 +73,7 @@ describe("Global/Project scope inventory chrome", () => {
     expect(liveStateSource).not.toContain("emptyTypesPillLabel");
     expect(designSource).not.toContain("`+N empty`");
     expect(designSource).not.toContain("`0 Permissions`");
-    expect(designSource).toContain("Hide zero-count types everywhere");
+    expect(designSource).toContain("Other surfaces (Global/Project, Harnesses, compose, Target preview type badges, Add to profile) hide zero-count types");
     expect(designSource).not.toContain("`No Permissions found`");
     expect(designSource).toContain("No resources yet");
     expect(tabsSource).toContain("resourceTypeTabUnit");
