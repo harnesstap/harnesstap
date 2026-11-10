@@ -1,0 +1,2 @@
+:root { --bg: #0f1419; --surface: #161b22; --accent: #3b82f6; --surface-2: #1c2331; --link: var(--link-raw); --link-raw: #60a5fa; }
+[data-theme="light"] { --bg: #f8fafc; --muted: #64748b; }

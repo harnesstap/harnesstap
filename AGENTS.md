@@ -21,7 +21,18 @@ Agent harness configuration toolkit. Follow these conventions when working in th
 
 - **Resources** are imported into a local library, composed into **plugins**, then **applied** to harness-specific on-disk files.
 - Platform serializers live under `src/platforms/`; shared orchestration under `src/services/`.
-- Contributor product spec: `SPEC.md`. Contributing workflow: `CONTRIBUTING.md`. Desktop UI language: `apps/desktop/DESIGN.md`.
+- Contributor product spec: `SPEC.md`. Contributing workflow: `CONTRIBUTING.md`.
+
+## Design system
+
+Read `DESIGN.md` before changing any UI, CLI output or user-facing copy. The top-level `DESIGN.md` wins on tokens, voice and UX rules; `apps/desktop/DESIGN.md` is the per-screen reference (layouts, recipes, exact labels). If they disagree, follow the top-level file and fix the Desktop file in the same PR.
+
+- **Tokens only.** No raw hex, `rgb()`, `font-size` or `z-index` literals outside `apps/desktop/src/styles/tokens.css`, `src/ui/theme.ts` and `design-tokens.json`. If the color you need has no token, stop and propose one.
+- **New patterns go to Design first.** A new token, component, icon meaning, a second path for an existing action, or a change to a Locked rule needs a proposal first: a draft PR or an issue with the `design-proposal` label, titled `design-proposal: <short name>`, with the problem, options, a recommendation and screenshots. Do not ship it in the same PR.
+- **Voice.** No em dashes, en dashes or the single-character ellipsis in user-facing text. Tooltips are short and human: not prose, not robot, not condescending. Sentence case.
+- **UX.** One path per action. Destructive actions are a quiet icon that opens a confirm (reason, then confirm). Never hide zero-count types in Library. Every icon-only control has a tooltip and an `aria-label`, and each icon keeps its one meaning.
+- **Decisions.** Check `docs/design-decisions.md` before reopening a choice. Proposed items are not approved yet; do not build them unless the task says so.
+- **Before opening a UI PR**, run the design review skill (`.agents/skills/design-review/SKILL.md`) and `bun run preflight`, and attach before and after screenshots.
 
 ## Scope discipline
 
