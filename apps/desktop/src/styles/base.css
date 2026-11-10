@@ -59,7 +59,7 @@ summary {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Focus: one ring recipe; filled accent controls flip it so it stays visible. */
+/* Focus: one ring recipe; filled action and destructive controls flip it so it stays visible. */
 button:focus-visible,
 [tabindex="0"]:focus-visible,
 input:focus-visible,

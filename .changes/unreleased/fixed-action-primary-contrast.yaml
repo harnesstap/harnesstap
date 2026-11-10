@@ -1,0 +1,5 @@
+kind: Fixed
+body: Desktop meets 4.5:1 contrast with the shared palette. Primary actions use a darker blue fill with white text, destructive-dialog confirms use a darker red fill with white text, and other danger UI uses a tinted red pair. Blue text on dark uses a lighter link blue. Brand blue stays on the mark, focus rings, and non-text accents. CLI badges use the same action fill.
+time: 2026-11-10T03:30:00Z
+custom:
+  Issue: ""

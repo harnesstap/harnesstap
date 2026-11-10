@@ -18,25 +18,25 @@
 }
 
 .icon-action.primary {
-  background: var(--accent);
+  background: var(--action-primary);
   border-color: transparent;
-  color: var(--primary-foreground);
+  color: var(--action-primary-fg);
 }
 
 .icon-action.primary:hover:not(:disabled) {
-  color: var(--primary-foreground);
-  background: color-mix(in srgb, var(--accent) 88%, var(--primary-foreground));
+  color: var(--action-primary-fg);
+  background: var(--action-primary-hover);
 }
 
 .icon-action.destructive {
-  background: var(--red);
-  border-color: transparent;
-  color: var(--destructive-foreground);
+  background: var(--danger-bg);
+  border-color: color-mix(in srgb, var(--danger-fg) 45%, var(--border));
+  color: var(--danger-fg);
 }
 
 .icon-action.destructive:hover:not(:disabled) {
-  color: var(--destructive-foreground);
-  background: color-mix(in srgb, var(--red) 88%, var(--fg));
+  color: var(--danger-fg);
+  background: color-mix(in srgb, var(--danger-fg) 20%, var(--danger-bg));
 }
 
 .icon-action.has-label {
@@ -132,14 +132,14 @@
 }
 
 .btn.primary {
-  background: var(--accent);
+  background: var(--action-primary);
   border-color: transparent;
-  color: var(--primary-foreground);
+  color: var(--action-primary-fg);
   font-weight: 600;
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 88%, var(--primary-foreground));
+  background: var(--action-primary-hover);
 }
 
 .btn:disabled {
@@ -165,7 +165,7 @@
 }
 
 .btn.destructive-secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+  background: var(--danger-bg);
 }
 
 /* Hover target for a disabled control's reason tooltip (disabled buttons get no pointer events). */
@@ -243,14 +243,14 @@
   padding: 0;
   margin: 0;
   font: inherit;
-  color: var(--accent);
+  color: var(--link);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.12em;
 }
 
 .link-btn:hover {
-  color: var(--fg);
+  color: var(--link-hover);
 }
 
 .link-btn:focus-visible {
@@ -413,13 +413,13 @@
 }
 
 .banner-message-with-icon > svg {
-  color: var(--accent);
+  color: var(--link);
   flex-shrink: 0;
 }
 
 .banner.error {
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
-  background: color-mix(in srgb, var(--red) 10%, var(--bg));
+  background: var(--danger-bg);
 }
 
 .section-label {
@@ -573,7 +573,7 @@
 }
 
 .eyebrow {
-  color: var(--accent);
+  color: var(--link);
   font-family: var(--mono);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-eyebrow);

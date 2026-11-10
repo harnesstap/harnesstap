@@ -435,12 +435,12 @@
 
 .toast.error {
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
-  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+  background: var(--danger-bg);
 }
 
 .toast.info {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--info-fg) 45%, var(--border));
+  background: var(--info-bg);
 }
 
 .toast-icon {
@@ -458,7 +458,7 @@
 }
 
 .toast.info .toast-icon {
-  color: var(--accent);
+  color: var(--info-fg);
 }
 
 .toast-body {
@@ -507,8 +507,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: var(--action-primary);
+  color: var(--action-primary-fg);
   font-size: var(--text-scope-plus);
   font-weight: 600;
   line-height: 16px;
