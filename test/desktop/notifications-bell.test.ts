@@ -82,7 +82,7 @@ describe("notifications bell", () => {
     expect(headerSource).toContain("onOpen={onOpenNotification}");
     const css = readFileSync(join(import.meta.dir, "../../apps/desktop/src/styles/features/shell.css"), "utf8");
     const badge = css.slice(css.indexOf(".notifications-badge {"), css.indexOf("}", css.indexOf(".notifications-badge {")));
-    expect(badge).toContain("var(--accent)");
+    expect(badge).toContain("var(--action-primary)");
     expect(badge).not.toContain("var(--red)");
   });
 
