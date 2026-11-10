@@ -97,7 +97,7 @@ describe("library origin filter chrome", () => {
     expect(cssBlock(stylesSource, ".resource-type-tab")).toContain("min-height: 32px");
     expect(cssBlock(stylesSource, ".resource-type-tab")).toContain("min-width: 32px");
     expect(cssBlock(stylesSource, '.resource-type-tab[data-state="on"]')).toContain(
-      "background: var(--accent)",
+      "background: var(--action-primary)",
     );
     expect(tabsSource).toContain("visibleResourceTypeTabs");
     expect(tabsSource).toContain("resourceTypeTabTooltip");

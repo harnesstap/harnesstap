@@ -176,12 +176,19 @@
   appearance: none;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link);
   font: inherit;
   padding: 0;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.15em;
+}
+
+.apply-helper-preview:hover,
+.apply-helper-preview:focus-visible,
+.status-view-changes:hover,
+.status-view-changes:focus-visible {
+  color: var(--link-hover);
 }
 
 .live-pane {
@@ -576,7 +583,7 @@
 .list-truncation-controls .icon-action {
   width: 24px;
   height: 24px;
-  color: var(--accent);
+  color: var(--link);
 }
 
 .list-truncation-controls .icon-action:hover:not(:disabled) {
@@ -1021,11 +1028,16 @@
   appearance: none;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link);
   font: inherit;
   font-size: var(--text-meta);
   cursor: pointer;
   padding: 0;
+}
+
+.harness-scope-popover-actions .linkish:hover,
+.harness-scope-popover-actions .linkish:focus-visible {
+  color: var(--link-hover);
 }
 
 .harness-scope-list {
@@ -1156,7 +1168,7 @@
 }
 
 .profile-remove-action {
-  color: color-mix(in srgb, var(--red) 70%, var(--muted));
+  color: var(--danger-fg);
 }
 
 .inventory-row-remove-slot .profile-remove-action {
@@ -1165,7 +1177,7 @@
 
 .profile-remove-action:hover:not(:disabled) {
   color: var(--red);
-  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+  background: var(--danger-bg);
 }
 
 .status-line {
@@ -1671,7 +1683,7 @@
 }
 
 .diff-row.owned_unmodified {
-  background: color-mix(in srgb, var(--red) 8%, transparent);
+  background: var(--danger-bg);
 }
 
 .diff-body {
@@ -2291,15 +2303,16 @@
   width: auto;
 }
 
+/* Filled danger: only the confirm button of a destructive ConfirmDialog. */
 .btn.destructive {
-  background: var(--red);
+  background: var(--danger-fill);
   border-color: transparent;
-  color: var(--primary-foreground);
+  color: var(--danger-fill-fg);
   font-weight: 600;
 }
 
 .btn.destructive:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--red) 88%, var(--fg));
+  background: var(--danger-fill-hover);
 }
 
 .scope-first-run {
@@ -2337,8 +2350,8 @@
   width: 1rem;
   height: 1rem;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: var(--action-primary);
+  color: var(--action-primary-fg);
 }
 
 .profile-item:hover .profile-update-badge,

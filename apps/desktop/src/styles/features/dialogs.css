@@ -152,10 +152,15 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--accent);
+  color: var(--link);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
+}
+
+.resource-detail-plugin-link:hover,
+.resource-detail-plugin-link:focus-visible {
+  color: var(--link-hover);
   text-underline-offset: 0.12em;
 }
 
@@ -260,7 +265,7 @@
 
 .file-diff-line-remove {
   color: var(--red);
-  background: color-mix(in srgb, var(--red) 8%, transparent);
+  background: var(--danger-bg);
 }
 
 .dialog-backdrop.resource-detail-backdrop {

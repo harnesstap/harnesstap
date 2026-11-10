@@ -751,9 +751,7 @@ async function countAnimations(page) {
 }
 
 async function runAxe(page, tag, screenName, report) {
-  const results = await new AxeBuilder({ page })
-    .disableRules(["color-contrast"])
-    .analyze();
+  const results = await new AxeBuilder({ page }).analyze();
   const blocking = results.violations.filter(
     (item) => item.impact === "serious" || item.impact === "critical",
   );

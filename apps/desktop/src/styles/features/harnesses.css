@@ -104,12 +104,12 @@
 }
 
 .harness-remove-action {
-  color: color-mix(in srgb, var(--red) 70%, var(--muted));
+  color: var(--danger-fg);
 }
 
 .harness-remove-action:hover:not(:disabled) {
   color: var(--red);
-  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+  background: var(--danger-bg);
 }
 
 .harness-skeleton-row {

@@ -1,7 +1,8 @@
 import chalk from "chalk";
 
 // Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6).
-// Keep CLI and Desktop in sync.
+// Keep CLI and Desktop in sync. Filled badges use action-primary #2563eb so
+// white text meets 4.5:1. Text colors are unchanged: the terminal background is unknown.
 
 export type ThemeFn = (value: string) => string;
 
@@ -53,7 +54,7 @@ export const theme = {
   success: maybe((value) => chalk.hex("#14b8a6")(value)),
   warn: maybe((value) => chalk.hex("#e6b84d")(value)),
   danger: maybe((value) => chalk.hex("#ef4444")(value)),
-  badge: maybe((value) => chalk.bgHex("#3b82f6").white.bold(` ${value} `)),
+  badge: maybe((value) => chalk.bgHex("#2563eb").white.bold(` ${value} `)),
 
   // Role-based tokens
   heading: maybe((value) => chalk.bold.hex("#3b82f6")(value)),

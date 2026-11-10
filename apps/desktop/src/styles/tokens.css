@@ -4,34 +4,53 @@
   --surface-2: #1c2330;
   --border: #2a3340;
   --fg: #e8eef5;
-  --muted: #8b9aab;
+  --muted: #94a3b8;
   /* Hexes match the Flow Split brand mark (violet #8b5cf6, blue #3b82f6, teal #14b8a6). Keep CLI and Desktop in sync. */
   --accent: #3b82f6;
+  /* Action fill is one step deeper than brand blue so white text meets 4.5:1.
+     Cloud owns these hexes; Desktop copies them (no shared package). */
+  --action-primary: #2563eb;
+  --action-primary-hover: #1d4ed8;
+  --action-primary-fg: #ffffff;
+  --action-primary-ring: #3b82f6;
+  /* Blue text on dark surfaces. --accent is not a text color on raised surfaces (4.29:1). */
+  --link: #60a5fa;
+  --link-hover: #93c5fd;
+  /* Danger: the fill is only for the confirm button in a destructive dialog.
+     Everywhere else danger is the tinted pair (--danger-fg on --danger-bg). */
+  --danger-fill: #dc2626;
+  --danger-fill-hover: #b91c1c;
+  --danger-fill-fg: #ffffff;
+  --danger-fg: #f87171;
+  --danger-bg: #342127;
+  --info-fg: #60a5fa;
+  --info-bg: #1b2940;
   --green: #14b8a6;
   --yellow: #e6b84d;
-  --red: #e85d5d;
+  --red: var(--danger-fg);
   --font: "IBM Plex Sans", "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 
   /* shadcn / Tailwind theme bridge (dark-only).
      App --accent/--muted are brand blue and muted text; do not repurpose them
-     as shadcn surface tokens — bg-muted/bg-accent map via @theme inline below. */
+     as shadcn surface tokens — bg-muted/bg-accent map via @theme inline below.
+     --primary is the action fill, not the brand accent. */
   --background: var(--bg);
   --foreground: var(--fg);
   --card: var(--surface);
   --card-foreground: var(--fg);
   --popover: var(--surface-2);
   --popover-foreground: var(--fg);
-  --primary: var(--accent);
-  --primary-foreground: #f5f8ff;
+  --primary: var(--action-primary);
+  --primary-foreground: var(--action-primary-fg);
   --secondary: var(--surface-2);
   --secondary-foreground: var(--fg);
   --muted-foreground: var(--muted);
   --accent-foreground: var(--fg);
-  --destructive: var(--red);
-  --destructive-foreground: #fff5f5;
+  --destructive: var(--danger-fg);
+  --destructive-foreground: var(--danger-fg);
   --input: var(--border);
-  --ring: var(--accent);
+  --ring: var(--action-primary-ring);
   --radius: 0.25rem;
   /* Fully rounded pill: resource type tabs and resource badges share it. */
   --radius-pill: 9999px;
@@ -62,7 +81,8 @@
 
   /* surfaces and borders */
   --surface-hover: color-mix(in srgb, var(--surface-2) 70%, var(--fg) 4%);
-  --surface-selected: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --selected: #182742;
+  --surface-selected: var(--selected);
   --surface-accent-tint: color-mix(in srgb, var(--accent) 8%, transparent);
   --border-subtle: color-mix(in srgb, var(--border) 60%, transparent);
   --border-strong: color-mix(in srgb, var(--border) 100%, var(--fg) 10%);
@@ -70,7 +90,7 @@
   /* status tints (bg for banners/rows) */
   --tint-green: color-mix(in srgb, var(--green) 12%, transparent);
   --tint-yellow: color-mix(in srgb, var(--yellow) 12%, transparent);
-  --tint-red: color-mix(in srgb, var(--red) 12%, transparent);
+  --tint-red: var(--danger-bg);
 
   /* focus */
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);

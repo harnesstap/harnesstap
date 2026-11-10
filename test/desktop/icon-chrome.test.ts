@@ -357,7 +357,7 @@ describe("desktop icon chrome", () => {
 
   test("styles primary icon-action for remaining accent icon CTAs", () => {
     expect(stylesSource).toContain(".icon-action.primary");
-    expect(stylesSource).toContain("background: var(--accent)");
+    expect(stylesSource).toContain("background: var(--action-primary)");
     expect(stylesSource).toContain(".icon-action.has-label");
     expect(stylesSource).toContain(".library-detail-actions .icon-action.has-label");
   });
