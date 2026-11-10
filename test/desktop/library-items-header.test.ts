@@ -184,7 +184,7 @@ describe("library items header design lock", () => {
       "Type tabs stay visible when the filtered list is empty",
     );
     expect(designSource).toContain(
-      "Zero-count types are hidden on Library too",
+      "Zero-count types are never hidden on Library: they show as a muted pill with `0` and a tooltip (`No plugins in your library yet`)",
     );
     expect(designSource).toContain(
       "Type tab counts follow sidebar filters",
