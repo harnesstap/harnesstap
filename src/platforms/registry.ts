@@ -16,6 +16,11 @@ type PlatformDefOptions = {
 };
 
 /** `.agents/` convention harnesses that also read a JSON `mcpServers` file. */
+/** Skill folders a harness used before its current ones; still scanned. */
+const AGENTS_CONVENTION_PREVIOUS_SKILLS: Partial<Record<string, { project: string; global: string }>> = {
+  kilo: { project: ".kilocode/skills/", global: "~/.kilocode/skills/" },
+};
+
 const AGENTS_CONVENTION_MCP: Record<string, { project: string; global: string }> = {
   droid: { project: ".factory/mcp.json", global: "~/.factory/mcp.json" },
 };
@@ -511,7 +516,9 @@ const PLATFORMS: PlatformDefinition[] = [
   // ── .agents/ convention platforms (skills + instructions) ───────────
   ...([
     ["amp", "Amp", ".agents/skills/", "~/.config/agents/skills/"],
-    ["kilo", "Kilo Code", ".kilocode/skills/", "~/.kilocode/skills/"],
+    // Kilo moved its skills from `.kilocode/` to `.kilo/`:
+    // https://kilo.ai/docs/customize/skills
+    ["kilo", "Kilo Code", ".kilo/skills/", "~/.kilo/skills/"],
     ["augment", "Augment", ".augment/skills/", "~/.augment/skills/"],
     ["firebender", "Firebender", ".agents/skills/", "~/.firebender/skills/"],
     ["junie", "Junie", ".junie/skills/", "~/.junie/skills/"],
@@ -529,13 +536,16 @@ const PLATFORMS: PlatformDefinition[] = [
   ] as const).map(([id, name, projSkills, globalSkills]) => {
     // Droid project and user MCP: https://docs.factory.com/cli/configuration/mcp
     const mcp = AGENTS_CONVENTION_MCP[id];
+    const previous = AGENTS_CONVENTION_PREVIOUS_SKILLS[id];
     return def(id, name, mcp ? ["instructions", "skills", "mcp"] : ["instructions", "skills"], {
       instructions: "AGENTS.md",
       skills: projSkills,
       ...(mcp ? { mcp: mcp.project } : {}),
+      ...(previous ? { pathAlternates: { skills: [previous.project] } } : {}),
     }, {
       skills: globalSkills,
       ...(mcp ? { settings: mcp.global } : {}),
+      ...(previous ? { pathAlternates: { skills: [previous.global] } } : {}),
     });
   }),
 ];

@@ -1,0 +1,5 @@
+kind: Fixed
+body: 'Kilo Code skills are written to .kilo/skills/ and ~/.kilo/skills/, the folders current Kilo reads. Skills in the earlier .kilocode/skills/ folders are still scanned and stay in place.'
+time: 2026-11-14T19:00:00.000000-10:00
+custom:
+  Issue: ""
