@@ -13,6 +13,8 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 
 - Docs: https://kilo.ai/docs
 - Releases: https://github.com/Kilo-Org/kilocode/releases
+- Skills: https://kilo.ai/docs/customize/skills
+- Config paths (source): https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/paths.ts
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 

@@ -81,7 +81,8 @@ export function inferMcpTransport(entry: Record<string, unknown>): "stdio" | "ht
       normalized === "remote" ||
       normalized === "sse" ||
       normalized === "streamable_http" ||
-      normalized === "streamable-http"
+      normalized === "streamable-http" ||
+      normalized === "streamablehttp"
     ) {
       return "http";
     }
@@ -94,11 +95,33 @@ export function inferMcpTransport(entry: Record<string, unknown>): "stdio" | "ht
     return "http";
   }
 
-  if (typeof entry.url === "string" || typeof entry.uri === "string") {
+  if (
+    typeof entry.url === "string" ||
+    typeof entry.uri === "string" ||
+    typeof entry.serverUrl === "string" ||
+    typeof entry.httpUrl === "string"
+  ) {
     return "http";
   }
 
   return "stdio";
+}
+
+/**
+ * Spec remote transport named by an entry. Cline writes `streamableHttp`
+ * (https://docs.cline.bot/mcp/configuring-mcp-servers) and Gemini CLI marks
+ * streamable HTTP with `httpUrl`.
+ */
+function remoteTransportFromEntry(
+  entry: Record<string, unknown>,
+  rawType: string | undefined,
+): McpServerMetadata["http_transport"] {
+  if (rawType === "sse") return "sse";
+  if (rawType === "streamable-http" || rawType === "streamableHttp") return "streamable-http";
+  if (typeof entry.httpUrl === "string" && typeof entry.url !== "string") {
+    return "streamable-http";
+  }
+  return undefined;
 }
 
 export function parseMcpServerEntry(entry: unknown): McpServerMetadata | null {
@@ -122,19 +145,17 @@ export function parseMcpServerEntry(entry: unknown): McpServerMetadata | null {
     args = entry.args.filter((arg): arg is string => typeof arg === "string");
   }
 
-  const url =
-    typeof entry.url === "string"
-      ? entry.url
-      : typeof entry.uri === "string"
-        ? entry.uri
-        : undefined;
+  // `serverUrl`: Antigravity and Windsurf (https://antigravity.google/docs/mcp).
+  // `httpUrl`: Gemini CLI streamable HTTP (https://geminicli.com/docs/tools/mcp-server/).
+  const url = [entry.url, entry.uri, entry.serverUrl, entry.httpUrl].find(
+    (value): value is string => typeof value === "string",
+  );
 
   const env = parseStringRecord(entry.env ?? entry.envs ?? entry.environment);
   const headers = parseStringRecord(entry.headers);
   const auth = parseAuthMetadata(entry.auth);
   const rawType = typeof entry.type === "string" ? entry.type : undefined;
-  const http_transport =
-    rawType === "streamable-http" || rawType === "sse" ? rawType : undefined;
+  const http_transport = remoteTransportFromEntry(entry, rawType);
   const connection_type = rawType;
   const cwd = typeof entry.cwd === "string" ? entry.cwd : undefined;
   const env_file =

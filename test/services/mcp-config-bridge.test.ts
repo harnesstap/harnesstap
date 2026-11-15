@@ -28,6 +28,36 @@ describe("mcp config bridge", () => {
     });
   });
 
+  describe("remote URL keys", () => {
+    it("reads Antigravity and Windsurf serverUrl as an HTTP server", () => {
+      expect(parseMcpServerEntry({ serverUrl: "https://example.com/mcp" })).toEqual(
+        expect.objectContaining({ transport: "http", url: "https://example.com/mcp" }),
+      );
+    });
+
+    it("reads Gemini CLI httpUrl as streamable HTTP", () => {
+      expect(parseMcpServerEntry({ httpUrl: "https://example.com/mcp" })).toEqual(
+        expect.objectContaining({
+          transport: "http",
+          url: "https://example.com/mcp",
+          http_transport: "streamable-http",
+        }),
+      );
+    });
+
+    it("reads Cline streamableHttp as streamable HTTP", () => {
+      expect(
+        parseMcpServerEntry({ type: "streamableHttp", url: "https://example.com/mcp" }),
+      ).toEqual(
+        expect.objectContaining({
+          transport: "http",
+          url: "https://example.com/mcp",
+          http_transport: "streamable-http",
+        }),
+      );
+    });
+  });
+
   describe("parseMcpServerEntry", () => {
     it("parses stdio entries with command, args, and env", () => {
       const metadata = parseMcpServerEntry({

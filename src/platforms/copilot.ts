@@ -3,7 +3,11 @@ import { BaseSerializer } from "./base-serializer.js";
 import { getPlatform } from "./registry.js";
 import { listInstalledCopilotPluginPinCreateInputs } from "../plugins/copilot-installed.js";
 import { serializedAgentDocument } from "../services/agent-bridge.js";
+import { overlayJsonPreservingFormat } from "../services/format-preserving-config.js";
 import { parseMcpServersDocument } from "../services/mcp-config-bridge.js";
+import { isClaudeLocalMcpResource } from "../services/claude-local-mcp.js";
+import { resourceHarnessScope } from "../services/harness-scope.js";
+import { sourceMatchesManagedPath } from "../services/mcp-target.js";
 import type {
   AgentMetadata,
   PlatformDefinition,
@@ -16,6 +20,12 @@ import type {
 } from "../types.js";
 
 const INSTRUCTIONS_FILE_SUFFIX = ".instructions.md";
+
+/**
+ * Workspace MCP files Copilot reads besides `.mcp.json`, plus the project
+ * file earlier HarnessTap versions wrote, scanned so their servers import.
+ */
+const PROJECT_MCP_ALTERNATES = [".github/mcp.json", ".copilot/mcp-config.json"];
 
 /**
  * `applyTo` is a comma separated glob list; `"**"` applies to every file.
@@ -41,7 +51,54 @@ interface CopilotSerializedMcpEntry {
   cwd?: string;
 }
 
+/**
+ * Workspace `.mcp.json` entry. Copilot needs `type` (`stdio`, `http`, or
+ * `sse`) and treats a missing `tools` as every tool, so `tools` is written
+ * only for an allow list. Claude Code reads the same shape.
+ */
+function emitWorkspaceMcpEntry(meta: McpServerMetadata): Record<string, unknown> {
+  if (meta.transport === "http" || meta.url) {
+    const sse = meta.http_transport === "sse" || meta.connection_type === "sse";
+    return {
+      type: sse ? "sse" : "http",
+      ...(meta.url ? { url: meta.url } : {}),
+      ...(meta.headers && Object.keys(meta.headers).length > 0 ? { headers: meta.headers } : {}),
+      ...(meta.enabled_tools ? { tools: meta.enabled_tools } : {}),
+    };
+  }
+  return {
+    type: "stdio",
+    ...(meta.command ? { command: meta.command } : {}),
+    ...(meta.args && meta.args.length > 0 ? { args: meta.args } : {}),
+    ...(meta.env && Object.keys(meta.env).length > 0 ? { env: meta.env } : {}),
+    ...(meta.enabled_tools ? { tools: meta.enabled_tools } : {}),
+  };
+}
+
 export class CopilotSerializer extends BaseSerializer {
+  /**
+   * Servers captured from `.github/mcp.json` or the old project
+   * `.copilot/mcp-config.json` belong in the workspace `.mcp.json` now.
+   */
+  protected override mcpServersForTarget(
+    resources: Resource[],
+    targetMcpPath: string | undefined,
+  ): Resource[] {
+    const selected = new Set(super.mcpServersForTarget(resources, targetMcpPath));
+    if (!targetMcpPath || targetMcpPath !== this.platform.projectPaths.mcp) {
+      return [...selected];
+    }
+    return resources.filter((resource) =>
+      selected.has(resource)
+      || (
+        resource.type === "mcp_server"
+        && !isClaudeLocalMcpResource(resource)
+        && resourceHarnessScope(resource).kind !== "subset"
+        && PROJECT_MCP_ALTERNATES.some((path) => sourceMatchesManagedPath(resource.source, path))
+      ),
+    );
+  }
+
   constructor(readonly platformId: "github-copilot" | "copilot-cli") {
     super();
     const p = getPlatform(platformId);
@@ -123,15 +180,17 @@ export class CopilotSerializer extends BaseSerializer {
 
     // 5. MCP servers
     if (this.platform.projectPaths.mcp) {
-      const configPathValue = this.platform.projectPaths.mcp;
-      const configPath = join(projectRoot, configPathValue);
-      const configContent = this.readFile(configPath);
-      if (configContent) {
+      const seen = new Set<string>();
+      for (const configPathValue of [this.platform.projectPaths.mcp, ...PROJECT_MCP_ALTERNATES]) {
+        const configContent = this.readFile(join(projectRoot, configPathValue));
+        if (!configContent) continue;
         try {
           const document = JSON.parse(configContent) as unknown;
           for (const [name, metadata] of Object.entries(
             parseMcpServersDocument(document),
           )) {
+            if (seen.has(name)) continue;
+            seen.add(name);
             resources.push(
               this.makeResource(
                 "mcp_server",
@@ -281,7 +340,22 @@ export class CopilotSerializer extends BaseSerializer {
 
     // MCP servers
     const mcps = this.mcpServersForTarget(resources, mcpPath);
-    if (mcps.length > 0 && mcpPath) {
+    if (mcps.length > 0 && mcpPath && target === "project") {
+      // `.mcp.json` is shared with Claude Code and other harnesses: write a
+      // shape they all read and merge only the servers HarnessTap manages.
+      const servers: Record<string, Record<string, unknown>> = {};
+      for (const r of mcps) {
+        servers[r.name] = emitWorkspaceMcpEntry(r.metadata as McpServerMetadata);
+      }
+      files.push({
+        path: mcpPath,
+        content: overlayJsonPreservingFormat(
+          this.readFile(join(_projectRoot, mcpPath)),
+          { mcpServers: servers },
+          { mergeObjectKeys: ["mcpServers"], onUnparseable: "keep" },
+        ),
+      });
+    } else if (mcps.length > 0 && mcpPath) {
       const mcpServers: Record<string, CopilotSerializedMcpEntry> = {};
       for (const r of mcps) {
         const meta = r.metadata as McpServerMetadata;

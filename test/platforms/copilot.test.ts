@@ -14,9 +14,8 @@ describe("CopilotSerializer", () => {
     const serializer = new CopilotSerializer("github-copilot");
     const resources = await serializer.scan(COPILOT_FIXTURE_DIR);
 
-    // github-copilot has no projectPaths.mcp, so instruction + skill + agent
     expect(resources.map((r) => r.type)).toEqual(
-      expect.arrayContaining(["instruction", "skill", "agent"]),
+      expect.arrayContaining(["instruction", "skill", "agent", "mcp_server"]),
     );
 
     const instruction = resources.find((r) => r.type === "instruction");
@@ -27,8 +26,9 @@ describe("CopilotSerializer", () => {
     expect(skill?.name).toBe("api-skill");
     expect(skill?.description).toBe("API helper");
 
-    // No MCP in project paths for github-copilot
-    expect(resources.find((r) => r.type === "mcp_server")).toBeUndefined();
+    // The old project `.copilot/mcp-config.json` still imports.
+    const mcp = resources.find((r) => r.type === "mcp_server");
+    expect(mcp?.source).toBe(".copilot/mcp-config.json");
   });
 
   it("scans copilot-cli project resources", async () => {
@@ -190,7 +190,8 @@ describe("CopilotSerializer", () => {
 
     const paths = files.map((f) => f.path);
     expect(paths).toContain("AGENTS.md");
-    expect(paths).toContain(".copilot/mcp-config.json");
+    expect(paths).toContain(".mcp.json");
+    expect(paths).not.toContain(".copilot/mcp-config.json");
   });
 
   it("serializes copilot-cli global resources into global paths", async () => {
@@ -225,65 +226,143 @@ describe("CopilotSerializer", () => {
     expect(paths).not.toContain(".agents/skills/research/SKILL.md");
   });
 
-  it("serializes MCP servers with tools: [\"*\"] for copilot", async () => {
-    const serializer = new CopilotSerializer("github-copilot");
-    const githubFiles = await serializer.serialize(
-      [
-        makeResource({
-          type: "mcp_server",
-          name: "local",
-          metadata: { transport: "stdio", command: "python3", args: ["srv.py"], env: { KEY: "v" } },
-        }),
-        makeResource({
-          type: "mcp_server",
-          name: "remote",
-          metadata: { transport: "http", url: "https://mcp.example.com" },
-        }),
-      ],
-      ".",
-    );
+  it("serializes workspace MCP servers into .mcp.json for both Copilot harnesses", async () => {
+    const resources = [
+      makeResource({
+        type: "mcp_server",
+        name: "local",
+        metadata: { transport: "stdio", command: "python3", args: ["srv.py"], env: { KEY: "v" } },
+      }),
+      makeResource({
+        type: "mcp_server",
+        name: "remote",
+        metadata: {
+          transport: "http",
+          url: "https://mcp.example.com",
+          headers: { Authorization: "Bearer ${TOKEN}" },
+          enabled_tools: ["search"],
+        },
+      }),
+    ];
 
-    // github-copilot doesn't have an mcp project path, so no config emitted
-    expect(
-      githubFiles.find((file) => file.path === ".copilot/mcp-config.json"),
-    ).toBeUndefined();
-    // Let's test with copilot-cli which has one
-    const serializer2 = new CopilotSerializer("copilot-cli");
-    const files2 = await serializer2.serialize(
-      [
-        makeResource({
-          type: "mcp_server",
-          name: "local",
-          metadata: { transport: "stdio", command: "python3", args: ["srv.py"], env: { KEY: "v" } },
-        }),
-        makeResource({
-          type: "mcp_server",
-          name: "remote",
-          metadata: { transport: "http", url: "https://mcp.example.com" },
-        }),
-      ],
-      ".",
-    );
-
-    const config2 = files2.find((f) => f.path === ".copilot/mcp-config.json");
-    expect(config2).toBeDefined();
-    if (!config2) throw new Error("Expected Copilot MCP config file");
-    const parsed = JSON.parse(config2.content);
-    expect(parsed.mcpServers.local).toEqual(
-      expect.objectContaining({
-        type: "local",
+    for (const platformId of ["github-copilot", "copilot-cli"]) {
+      const files = await new CopilotSerializer(platformId).serialize(resources, ".");
+      const config = files.find((f) => f.path === ".mcp.json");
+      if (!config) throw new Error(`Expected ${platformId} .mcp.json`);
+      const parsed = JSON.parse(config.content);
+      expect(parsed.mcpServers.local).toEqual({
+        type: "stdio",
         command: "python3",
         args: ["srv.py"],
         env: { KEY: "v" },
-        tools: ["*"],
-      }),
-    );
-    expect(parsed.mcpServers.remote).toEqual(
-      expect.objectContaining({
+      });
+      expect(parsed.mcpServers.remote).toEqual({
         type: "http",
         url: "https://mcp.example.com",
-        tools: ["*"],
-      }),
+        headers: { Authorization: "Bearer ${TOKEN}" },
+        tools: ["search"],
+      });
+    }
+  });
+
+  it("keeps other servers and keys in an existing .mcp.json", async () => {
+    const projectDir = createTempDir("copilot-mcp-merge");
+
+    try {
+      writeTextFile(
+        join(projectDir, ".mcp.json"),
+        JSON.stringify({ mcpServers: { mine: { command: "keep" } }, extra: true }, null, 2),
+      );
+      const files = await new CopilotSerializer("copilot-cli").serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "managed",
+            metadata: { transport: "stdio", command: "npx", args: ["managed"] },
+          }),
+        ],
+        projectDir,
+      );
+      const config = files.find((f) => f.path === ".mcp.json");
+      if (!config) throw new Error("Expected .mcp.json");
+      const parsed = JSON.parse(config.content);
+      expect(parsed.extra).toBe(true);
+      expect(parsed.mcpServers.mine).toEqual({ command: "keep" });
+      expect(parsed.mcpServers.managed).toEqual({ type: "stdio", command: "npx", args: ["managed"] });
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("moves servers captured from the old project config into .mcp.json", async () => {
+    const files = await new CopilotSerializer("copilot-cli").serialize(
+      [
+        makeResource({
+          type: "mcp_server",
+          name: "legacy",
+          source: ".copilot/mcp-config.json",
+          metadata: { transport: "stdio", command: "npx", args: ["legacy"] },
+        }),
+        makeResource({
+          type: "mcp_server",
+          name: "cursor-only",
+          source: ".cursor/mcp.json",
+          metadata: { transport: "stdio", command: "npx", args: ["cursor"] },
+        }),
+      ],
+      ".",
+    );
+    const config = files.find((f) => f.path === ".mcp.json");
+    if (!config) throw new Error("Expected .mcp.json");
+    expect(Object.keys(JSON.parse(config.content).mcpServers)).toEqual(["legacy"]);
+  });
+
+  it("scans .github/mcp.json and prefers .mcp.json on name clashes", async () => {
+    const projectDir = createTempDir("copilot-mcp-alternates");
+
+    try {
+      writeTextFile(join(projectDir, "AGENTS.md"), "# Instructions");
+      writeTextFile(
+        join(projectDir, ".mcp.json"),
+        JSON.stringify({ mcpServers: { shared: { command: "root" } } }),
+      );
+      writeTextFile(
+        join(projectDir, ".github", "mcp.json"),
+        JSON.stringify({ mcpServers: { shared: { command: "github" }, gh: { command: "gh" } } }),
+      );
+      const resources = await new CopilotSerializer("copilot-cli").scan(projectDir);
+      const mcps = resources.filter((r) => r.type === "mcp_server");
+      expect(mcps.map((r) => [r.name, r.source])).toEqual([
+        ["shared", ".mcp.json"],
+        ["gh", ".github/mcp.json"],
+      ]);
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
+  it("keeps the Copilot user config shape for global MCP servers", async () => {
+    const files = await (new CopilotSerializer("copilot-cli") as unknown as {
+      serialize: (
+        resources: ReturnType<typeof makeResource>[],
+        root: string,
+        options: { target: "global" },
+      ) => Promise<Array<{ path: string; content: string }>>;
+    }).serialize(
+      [
+        makeResource({
+          type: "mcp_server",
+          name: "local",
+          metadata: { transport: "stdio", command: "python3", args: ["srv.py"] },
+        }),
+      ],
+      ".",
+      { target: "global" },
+    );
+    const config = files.find((f) => f.path === ".copilot/mcp-config.json");
+    if (!config) throw new Error("Expected Copilot user MCP config");
+    expect(JSON.parse(config.content).mcpServers.local).toEqual(
+      expect.objectContaining({ type: "local", command: "python3", tools: ["*"] }),
     );
   });
 
@@ -316,7 +395,7 @@ describe("CopilotSerializer", () => {
 
     try {
       writeTextFile(join(projectDir, ".github", "copilot-instructions.md"), "# Instructions");
-      writeTextFile(join(projectDir, ".copilot", "mcp-config.json"), "{ not json }");
+      writeTextFile(join(projectDir, ".mcp.json"), "{ not json }");
 
       const serializer = new CopilotSerializer("github-copilot");
       const resources = await serializer.scan(projectDir);
@@ -335,7 +414,7 @@ describe("CopilotSerializer", () => {
       ".",
     );
 
-    expect(files.find((f) => f.path === ".copilot/mcp-config.json")).toBeUndefined();
+    expect(files.find((f) => f.path === ".mcp.json")).toBeUndefined();
   });
 
   it("emits skills-only github-copilot resources into copilot-instructions.md", async () => {

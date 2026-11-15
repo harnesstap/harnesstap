@@ -20,6 +20,10 @@ New text for the Install section of README.md.
 - `<!-- insert-after -->` adds a whole new section after the target section ends (its subsections included). The body may contain headings, written at `###` or deeper; the fold shifts them so the shallowest becomes the target's own level.
 - Only `insert-after` bodies may contain headings. Do not use level-1 or level-2 headings inside a body.
 
+## docs/supported-harnesses.md > MCP, rules, and hooks for Gemini CLI, Kiro, Zed, Droid, and GitHub Copilot
+<!-- append -->
+GitHub Copilot and Copilot CLI read workspace MCP servers from `.mcp.json` at the project root, so HarnessTap writes project MCP servers for both there (this replaces the `.copilot/mcp-config.json` and "unchanged" entries in the tables above). Each entry carries `type` (`stdio`, `http`, or `sse`); `tools` is written only for an `enabled_tools` allow list, because Copilot enables every tool when it is missing. `.mcp.json` is shared with Claude Code: HarnessTap merges only its own servers and keeps the rest. Scans also read `.github/mcp.json` and the project `.copilot/mcp-config.json` that earlier applies wrote; the next apply moves those servers into `.mcp.json` and removes the old file only when it is unchanged, with a backup. The user file `~/.copilot/mcp-config.json` is unchanged.
+
 ## docs/supported-harnesses.md > Antigravity notes
 <!-- insert-after -->
 ### Windsurf (Devin Local) and Devin notes

@@ -14,6 +14,9 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 - Docs: https://docs.devin.ai/get-started/devin-intro
 - Release notes: https://docs.devin.ai/release-notes/overview
 - Devin CLI docs: https://docs.devin.ai/cli
+- Rules: https://docs.devin.ai/cli/extensibility/rules
+- MCP: https://docs.devin.ai/cli/extensibility/mcp
+- Skills: https://docs.devin.ai/cli/extensibility/skills/overview
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 
