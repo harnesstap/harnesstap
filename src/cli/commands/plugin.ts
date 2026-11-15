@@ -168,6 +168,7 @@ import {
   readLockfile,
   writeLockfile,
   type ApmGitLockFields,
+  type Lockfile,
 } from "../../services/lockfile.js";
 import {
   gateDeployFiles,
@@ -1130,21 +1131,22 @@ export async function handleProjectApplyCommand(
   // `__ht_ephemeral_root__...` name that is never reusable via lockIsUsable : 
   // writing that lock would poison checked-in locks. Durable single-root
   // applies still record the resolved plugin set.
+  // Built here, written only after every harness applied: a cancelled
+  // apply must leave the previous lock (and its deployed hashes) in place so
+  // the next apply still knows which files it owns.
+  let pendingLock: Lockfile | undefined;
   if (!opts.dryRun && !applyBundle.resolution.root.ephemeral) {
     const manifest = findProjectConfig(projectRoot);
-    writeLockfile(
-      projectRoot,
-      lockfileFromResolution(applyBundle.resolution, {
-        ...(manifest?.default_environment
-          ? { environment: manifest.default_environment }
-          : {}),
-        deployedFiles: generated.flatMap((result) =>
-          result.files.map((file) => ({ path: file.path, content: file.content })),
-        ),
-        ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
-        ...(executableTrust.optedIn ? { execStatuses: executableTrust.execStatuses } : {}),
-      }),
-    );
+    pendingLock = lockfileFromResolution(applyBundle.resolution, {
+      ...(manifest?.default_environment
+        ? { environment: manifest.default_environment }
+        : {}),
+      deployedFiles: generated.flatMap((result) =>
+        result.files.map((file) => ({ path: file.path, content: file.content })),
+      ),
+      ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
+      ...(executableTrust.optedIn ? { execStatuses: executableTrust.execStatuses } : {}),
+    });
   }
 
   const capturedState = captureManagedSnapshotState({
@@ -1254,6 +1256,9 @@ export async function handleProjectApplyCommand(
     desiredPaths,
     { forceRemove: opts.forceRemove },
   );
+  if (pendingLock) {
+    writeLockfile(projectRoot, pendingLock);
+  }
   for (const warning of staleRemoved.warnings) {
     ui.warn(warning);
   }

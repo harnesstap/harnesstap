@@ -1,0 +1,5 @@
+kind: Fixed
+body: '`ht apply --update` that a conflict cancels no longer rewrites `apm.lock.yaml`. The lockfile is written only after the apply succeeds, so the next apply still removes files the earlier version deployed instead of leaving them behind.'
+time: 2026-11-15T04:45:00.000000Z
+custom:
+  Issue: ""
