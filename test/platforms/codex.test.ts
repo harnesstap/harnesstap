@@ -288,6 +288,43 @@ describe("CodexSerializer", () => {
     }
   });
 
+  it("writes remote MCP headers as http_headers and reads them back", async () => {
+    const projectDir = createTempDir("codex-http-headers");
+    try {
+      const serializer = new CodexSerializer();
+      const files = await serializer.serialize(
+        [
+          makeResource({
+            type: "mcp_server",
+            name: "remote",
+            metadata: {
+              transport: "http",
+              url: "https://mcp.example.com/mcp",
+              headers: { "X-Team": "core" },
+            },
+          }),
+        ],
+        projectDir,
+      );
+      const config = files.find((file) => file.path === ".codex/config.toml");
+      if (!config) throw new Error("Expected Codex config file");
+      const parsed = parse(config.content) as { mcp_servers: Record<string, unknown> };
+      expect(parsed.mcp_servers.remote).toEqual({
+        url: "https://mcp.example.com/mcp",
+        http_headers: { "X-Team": "core" },
+      });
+
+      writeTextFile(join(projectDir, ".codex", "config.toml"), config.content);
+      const scanned = await serializer.scan(projectDir);
+      const remote = scanned.find((resource) => resource.name === "remote");
+      expect(remote?.metadata).toEqual(
+        expect.objectContaining({ headers: { "X-Team": "core" } }),
+      );
+    } finally {
+      cleanupDir(projectDir);
+    }
+  });
+
   it("scans and serializes Codex prompts as commands", async () => {
     const projectDir = createTempDir("codex-prompts");
     try {

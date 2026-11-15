@@ -184,11 +184,16 @@ const PLATFORMS: PlatformDefinition[] = [
     ],
   }),
 
+  // Copilot reads workspace MCP servers from `.mcp.json` (`.github/mcp.json`
+  // only when the folder has no `.mcp.json`); `.vscode/mcp.json` is no longer read.
+  // https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
+  // https://code.visualstudio.com/docs/agents/reference/mcp-configuration
   def("github-copilot", "GitHub Copilot", ["instructions", "skills", "rules", "mcp", "agents"], {
     instructions: ".github/copilot-instructions.md",
     rules: ".github/instructions/",
     skills: ".agents/skills/",
     agents: ".github/agents/",
+    mcp: ".mcp.json",
   }, {
     skills: "~/.copilot/skills/",
     settings: "~/.copilot/mcp-config.json",
@@ -197,7 +202,7 @@ const PLATFORMS: PlatformDefinition[] = [
   def("copilot-cli", "Copilot CLI", ["instructions", "skills", "mcp", "agents"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
-    mcp: ".copilot/mcp-config.json",
+    mcp: ".mcp.json",
     agents: ".github/agents/",
   }, {
     skills: "~/.copilot/skills/",
@@ -219,14 +224,31 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.gemini/settings.json",
   }, "instruction-only"),
 
+  // Windsurf is now Devin Desktop. Its Devin Local agent uses the Devin CLI
+  // layout: rules in `.devin/rules/` with `trigger` frontmatter (`.windsurf/rules/`
+  // and `.windsurfrules` still load), skills in `.agents/skills/` and
+  // `~/.agents/skills/` (also `~/.config/devin/skills/`), MCP in `.devin/mcp_config.json` and
+  // `~/.config/devin/mcp_config.json`.
+  // https://docs.devin.ai/desktop/devin-local/customizations
   def("windsurf", "Windsurf", ["instructions", "skills", "rules", "mcp"], {
     instructions: ".windsurfrules",
-    rules: ".windsurf/rules/",
+    rules: ".devin/rules/",
+    legacy_rules: ".windsurf/rules/",
     skills: ".agents/skills/",
+    mcp: ".devin/mcp_config.json",
+    pathAlternates: {
+      rules: [".windsurf/rules/"],
+      skills: [".devin/skills/", ".windsurf/skills/"],
+    },
   }, {
-    skills: "~/.codeium/windsurf/skills/",
+    skills: "~/.agents/skills/",
+    rules: "~/.devin/rules/",
+    mcp: "~/.config/devin/mcp_config.json",
     settings: "~/.codeium/windsurf/mcp_config.json",
-  }, "instruction-only"),
+    pathAlternates: {
+      skills: ["~/.config/devin/skills/", "~/.codeium/windsurf/skills/"],
+    },
+  }),
 
   def("cline", "Cline", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
@@ -374,16 +396,26 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.config/zed/settings.json",
   }),
 
-  def("devin", "Devin", ["instructions", "skills"], {
+  // Devin CLI keeps MCP servers in dedicated `mcp_config.json` files (servers
+  // still in `config.json` are migrated by Devin on startup) and rules in
+  // `.devin/rules/` with `trigger` frontmatter.
+  // https://docs.devin.ai/cli/extensibility/mcp
+  // https://docs.devin.ai/cli/extensibility/rules
+  def("devin", "Devin", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
+    rules: ".devin/rules/",
+    mcp: ".devin/mcp_config.json",
     settings: ".devin/config.json",
     pathAlternates: {
       instructions: ["AGENTS.local.md", "AGENT.md"],
+      skills: [".devin/skills/"],
     },
   }, {
     instructions: "~/.config/devin/AGENTS.md",
     skills: "~/.agents/skills/",
+    rules: "~/.devin/rules/",
+    mcp: "~/.config/devin/mcp_config.json",
     settings: "~/.config/devin/config.json",
   }),
 

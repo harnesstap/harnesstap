@@ -151,6 +151,34 @@ describe("GenericAgentsSerializer", () => {
     }
   });
 
+  it("writes remote MCP servers without a transport the harness does not read", async () => {
+    const remote = makeResource({
+      type: "mcp_server",
+      name: "docs",
+      metadata: {
+        transport: "http",
+        url: "https://example.com/mcp",
+        headers: { "X-Team": "core" },
+      },
+    });
+    const antigravity = await new GenericAgentsSerializer("antigravity").serialize([remote], ".");
+    const agFile = antigravity.find((file) => file.path === ".agents/mcp_config.json");
+    expect(JSON.parse(agFile?.content ?? "{}").mcpServers.docs).toEqual({
+      url: "https://example.com/mcp",
+      headers: { "X-Team": "core" },
+    });
+
+    const cline = await new GenericAgentsSerializer("cline").serialize([remote], "/home/test", {
+      target: "global",
+    });
+    const clineFile = cline.find((file) => file.path.endsWith("cline_mcp_settings.json"));
+    expect(JSON.parse(clineFile?.content ?? "{}").mcpServers.docs).toEqual({
+      type: "streamableHttp",
+      url: "https://example.com/mcp",
+      headers: { "X-Team": "core" },
+    });
+  });
+
   it("does not let a command overwrite an antigravity skill of the same name", async () => {
     const serializer = new GenericAgentsSerializer("antigravity");
     const files = await serializer.serialize(

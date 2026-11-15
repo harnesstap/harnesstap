@@ -15,6 +15,7 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 - Changelog: https://github.blog/changelog/label/copilot/
 - Repository instructions: https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions
 - MCP: https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/extend-copilot-with-tools-and-context/extend-copilot-chat-with-mcp
+- MCP configuration reference (VS Code, workspace `.mcp.json`): https://code.visualstudio.com/docs/agents/reference/mcp-configuration
 - Custom agents: https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents
 - Agent skills: https://docs.github.com/en/copilot/concepts/customizations/agent-skills
 

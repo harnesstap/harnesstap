@@ -8,6 +8,9 @@ import {
   parseMcpServersDocument,
 } from "../services/mcp-config-bridge.js";
 import { overlayJsonPreservingFormat, parseJsonObject } from "../services/format-preserving-config.js";
+import { isClaudeLocalMcpResource } from "../services/claude-local-mcp.js";
+import { resourceHarnessScope } from "../services/harness-scope.js";
+import { sourceMatchesManagedPath } from "../services/mcp-target.js";
 import {
   emitKiroHookFiles,
   KIRO_HOOKS_PLATFORM_ID,
@@ -26,8 +29,8 @@ import type {
 } from "../types.js";
 
 interface GenericSerializedMcpEntry {
+  type?: string;
   url?: string;
-  protocol?: string;
   command?: string;
   args?: string[];
   env?: Record<string, string>;
@@ -58,7 +61,48 @@ const SHARED_MCP_FORMATS: Record<
     emit: (metadata) =>
       emitPlainMcpServerEntry(metadata, { typeField: true, disabledToolsKey: "disabledTools" }),
   },
+  devin: { wrapper: "mcpServers", emit: (metadata) => devinMcpEntry(metadata) },
+  windsurf: { wrapper: "mcpServers", emit: (metadata) => devinMcpEntry(metadata) },
 };
+
+/**
+ * Devin `mcp_config.json` entry. Remote servers default to Streamable HTTP
+ * with an SSE fallback, so only SSE servers name a `transport`.
+ * https://docs.devin.ai/cli/extensibility/mcp
+ */
+function devinMcpEntry(metadata: McpServerMetadata): Record<string, unknown> {
+  const entry = emitPlainMcpServerEntry(metadata, { disabledToolsKey: "disabledTools" });
+  if ((metadata.transport === "http" || metadata.url) && metadata.http_transport === "sse") {
+    entry.transport = "sse";
+  }
+  return entry;
+}
+
+/**
+ * MCP files a harness read before its current one. Servers captured there
+ * still belong to the harness, so they are scanned and written to its
+ * current file.
+ * - Windsurf used `~/.codeium/windsurf/mcp_config.json` before Devin Desktop.
+ * - Devin CLI kept `mcpServers` in `config.json` before `mcp_config.json`.
+ */
+const PREVIOUS_MCP_PATHS: Record<string, { project: string[]; global: string[] }> = {
+  windsurf: { project: [], global: ["~/.codeium/windsurf/mcp_config.json"] },
+  devin: { project: [".devin/config.json"], global: ["~/.config/devin/config.json"] },
+};
+
+/**
+ * `type` for a remote server in harnesses whose plain `mcpServers` file needs
+ * one. Cline treats a remote entry without `type` as legacy SSE:
+ * https://docs.cline.bot/mcp/configuring-mcp-servers
+ */
+function remoteTypeField(
+  platformId: string,
+  metadata: McpServerMetadata,
+): { type?: string } {
+  if (platformId !== "cline") return {};
+  const sse = metadata.http_transport === "sse" || metadata.connection_type === "sse";
+  return { type: sse ? "sse" : "streamableHttp" };
+}
 
 /**
  * Harnesses that load commands as skills: each command becomes
@@ -78,6 +122,10 @@ type RuleFileFormat = "paths" | "plain" | "antigravity";
 const RULE_FILE_FORMATS: Record<string, RuleFileFormat> = {
   roo: "plain",
   antigravity: "antigravity",
+  // Devin Local and Devin CLI use the same `trigger` values:
+  // https://docs.devin.ai/cli/extensibility/rules
+  windsurf: "antigravity",
+  devin: "antigravity",
 };
 
 /** Antigravity `trigger` for a HarnessTap rule. */
@@ -136,6 +184,28 @@ export class GenericAgentsSerializer extends BaseSerializer {
     const p = getPlatform(platformId);
     if (!p) throw new Error(`${platformId} platform not found in registry`);
     this.platform = p;
+  }
+
+  /** Servers captured from a previous MCP file of this harness move to its current one. */
+  protected override mcpServersForTarget(
+    resources: Resource[],
+    targetMcpPath: string | undefined,
+  ): Resource[] {
+    const selected = new Set(super.mcpServersForTarget(resources, targetMcpPath));
+    const previous = PREVIOUS_MCP_PATHS[this.platformId];
+    if (!targetMcpPath || !previous) {
+      return [...selected];
+    }
+    const previousPaths = [...previous.project, ...previous.global];
+    return resources.filter((resource) =>
+      selected.has(resource)
+      || (
+        resource.type === "mcp_server"
+        && !isClaudeLocalMcpResource(resource)
+        && resourceHarnessScope(resource).kind !== "subset"
+        && previousPaths.some((path) => sourceMatchesManagedPath(resource.source, path))
+      ),
+    );
   }
 
   private scanRulesAt(fullPath: string, displayPath: string): ResourceCreateInput[] {
@@ -305,6 +375,12 @@ export class GenericAgentsSerializer extends BaseSerializer {
     if (mcpPath) {
       resources.push(...this.scanMcpAt(join(projectRoot, mcpPath), mcpPath));
     }
+    for (const previous of PREVIOUS_MCP_PATHS[this.platformId]?.project ?? []) {
+      const known = new Set(resources.filter((r) => r.type === "mcp_server").map((r) => r.name));
+      resources.push(
+        ...this.scanMcpAt(join(projectRoot, previous), previous).filter((r) => !known.has(r.name)),
+      );
+    }
 
     return resources;
   }
@@ -336,6 +412,15 @@ export class GenericAgentsSerializer extends BaseSerializer {
           resolveGlobalPath(homeRoot, skillsPath),
           skillsPath.replace(/\/$/, ""),
         ),
+      );
+    }
+    for (const alternate of this.platform.globalPaths.pathAlternates?.skills ?? []) {
+      const known = new Set(resources.filter((r) => r.type === "skill").map((r) => r.name));
+      resources.push(
+        ...this.scanSkillsDirAt(
+          resolveGlobalPath(homeRoot, alternate),
+          alternate.replace(/\/$/, ""),
+        ).filter((r) => !known.has(r.name)),
       );
     }
 
@@ -396,10 +481,17 @@ export class GenericAgentsSerializer extends BaseSerializer {
       );
     }
 
-    const mcpPath = this.platform.globalPaths.settings;
+    const mcpPath = this.platform.globalPaths.mcp ?? this.platform.globalPaths.settings;
     if (mcpPath) {
       resources.push(
         ...this.scanMcpAt(resolveGlobalPath(homeRoot, mcpPath), mcpPath),
+      );
+    }
+    for (const previous of PREVIOUS_MCP_PATHS[this.platformId]?.global ?? []) {
+      const known = new Set(resources.filter((r) => r.type === "mcp_server").map((r) => r.name));
+      resources.push(
+        ...this.scanMcpAt(resolveGlobalPath(homeRoot, previous), previous)
+          .filter((r) => !known.has(r.name)),
       );
     }
 
@@ -455,7 +547,7 @@ export class GenericAgentsSerializer extends BaseSerializer {
       (target === "project" ? ".agents/skills/" : undefined);
     const rulesPath = this.toTargetRelativePath(targetPaths.rules, target);
     const mcpPath = this.toTargetRelativePath(
-      target === "global" ? targetPaths.settings : targetPaths.mcp,
+      target === "global" ? targetPaths.mcp ?? targetPaths.settings : targetPaths.mcp,
       target,
     );
     const agentsPath = this.toTargetRelativePath(targetPaths.agents, target);
@@ -636,9 +728,8 @@ export class GenericAgentsSerializer extends BaseSerializer {
         if (!meta) continue;
         if (meta.transport === "http") {
           servers[r.name] = {
+            ...remoteTypeField(this.platformId, meta),
             url: meta.url,
-            protocol: "sse",
-            env: meta.env,
             ...(meta.headers && Object.keys(meta.headers).length > 0
               ? { headers: meta.headers }
               : {}),

@@ -12,6 +12,7 @@ Compare the official Roo Code documentation with what HarnessTap supports for th
 Start here. If a link is dead or moved, find the new official page, use it, and list the replacement under "Source changes" in the report so the next run can update this file.
 
 - Docs: https://roocodeinc.github.io/Roo-Code/
+- Note: the RooCodeInc/Roo-Code repository is archived (last release v3.54.0, May 15 2026). Check for a successor before reporting gaps.
 - Changelog: https://github.com/RooCodeInc/Roo-Code/blob/main/CHANGELOG.md
 - Custom modes: https://roocodeinc.github.io/Roo-Code/features/custom-modes/
 - Custom instructions: https://roocodeinc.github.io/Roo-Code/features/custom-instructions/
