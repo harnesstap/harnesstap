@@ -504,22 +504,21 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     });
   }
 
-  if (!resolution.root.ephemeral) {
-    const manifest = findProjectConfig(projectRoot);
-    writeLockfile(
-      projectRoot,
-      lockfileFromResolution(resolution, {
-        ...(manifest?.default_environment
-          ? { environment: manifest.default_environment }
-          : {}),
-        deployedFiles: generated.flatMap((result) =>
-          result.files.map((file) => ({ path: file.path, content: file.content })),
-        ),
-        ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
-        ...(executableTrust.optedIn ? { execStatuses: executableTrust.execStatuses } : {}),
-      }),
-    );
-  }
+  // Written only after every harness applied, so a cancelled apply keeps the
+  // previous lock and the next apply still knows which files it owns.
+  const pendingLock = resolution.root.ephemeral
+    ? undefined
+    : (() => {
+        const manifest = findProjectConfig(projectRoot);
+        return lockfileFromResolution(resolution, {
+          ...(manifest?.default_environment
+            ? { environment: manifest.default_environment }
+            : {}),
+          deployedFiles: generatedFiles,
+          ...(manifestGitLocks.length > 0 ? { gitLocks: manifestGitLocks } : {}),
+          ...(executableTrust.optedIn ? { execStatuses: executableTrust.execStatuses } : {}),
+        });
+      })();
 
   const capturedState = captureManagedSnapshotState({
     rootPath: projectRoot,
@@ -543,11 +542,14 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   }
 
   const platformResults = [];
+  let cancelled = false;
   for (const result of generated) {
     const materialized = await materializeFiles(result.files, projectRoot, {
       conflictPolicy: parsed.onConflict,
     });
-    if (!materialized.cancelled) {
+    if (materialized.cancelled) {
+      cancelled = true;
+    } else {
       persistWrittenMaterializations({
         scope: "project",
         project_id: trackedProjectId ?? null,
@@ -572,6 +574,9 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     desiredPaths,
     { forceRemove: parsed.forceRemove },
   );
+  if (pendingLock && !cancelled) {
+    writeLockfile(projectRoot, pendingLock);
+  }
 
   const wroteCount = platformResults.reduce(
     (n, row) => n + row.written_files.length,
@@ -608,7 +613,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     platforms: platformResults,
     removed_files: staleRemoved.removed,
     snapshot_id: snapshotId,
-    cancelled: false,
+    cancelled,
     ...executableTrustResponseFields(executableTrust),
   });
 }
