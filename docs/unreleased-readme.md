@@ -23,3 +23,53 @@ New text for the Install section of README.md.
 ## docs/supported-harnesses.md > MCP, rules, and hooks for Gemini CLI, Kiro, Zed, Droid, and GitHub Copilot
 <!-- append -->
 GitHub Copilot and Copilot CLI read workspace MCP servers from `.mcp.json` at the project root, so HarnessTap writes project MCP servers for both there (this replaces the `.copilot/mcp-config.json` and "unchanged" entries in the tables above). Each entry carries `type` (`stdio`, `http`, or `sse`); `tools` is written only for an `enabled_tools` allow list, because Copilot enables every tool when it is missing. `.mcp.json` is shared with Claude Code: HarnessTap merges only its own servers and keeps the rest. Scans also read `.github/mcp.json` and the project `.copilot/mcp-config.json` that earlier applies wrote; the next apply moves those servers into `.mcp.json` and removes the old file only when it is unchanged, with a backup. The user file `~/.copilot/mcp-config.json` is unchanged.
+
+## docs/supported-harnesses.md > Antigravity notes
+<!-- insert-after -->
+### Windsurf (Devin Local) and Devin notes
+
+Windsurf is now Devin Desktop, and its Devin Local agent uses the Devin CLI layout. For both `windsurf` and `devin` (this replaces their rows in the table above):
+
+| Surface | Project | Global |
+|---|---|---|
+| Rules | `.devin/rules/<name>.md` with `trigger` frontmatter (`always_on`, `manual`, `model_decision`, `glob`) | `~/.devin/rules/` |
+| Skills | `.agents/skills/<name>/SKILL.md` | `~/.agents/skills/` |
+| MCP | `.devin/mcp_config.json` (`mcpServers`) | `~/.config/devin/mcp_config.json` |
+
+Windsurf instructions stay in `.windsurfrules`, which Devin Local still imports, and Windsurf skills are written as skill folders instead of rules. MCP files are shared with Devin: HarnessTap merges only the servers it manages and keeps every other key. Entries use `command`, `args`, and `env`, or `url` and `headers`; SSE servers add `transport: "sse"`, and `disabled_tools` becomes `disabledTools`. Scans also read `.windsurf/rules/`, `.devin/skills/`, `~/.config/devin/skills/`, `~/.codeium/windsurf/skills/`, `~/.codeium/windsurf/mcp_config.json`, and servers still listed in Devin `config.json`; servers from those older MCP files are written to the current one on the next apply. Files earlier applies wrote to `.windsurf/rules/` are removed only when unchanged, with a backup.
+
+## docs/scenarios/details/32-instruction-tier-apply.md > Scenario 32: Apply to instruction-tier harnesses
+<!-- replace -->
+**Frequency: Occasional** · **Status: Shipped**
+
+[← Back to scenarios index](../scenarios.md)
+
+Use this when applying a plugin to harnesses that load skills as **always-on
+instructions or rules** rather than agent-requested skill directories. Harnesses
+with registry `skillEmission: instruction-only` include `cline`,
+`github-copilot`, and `gemini-cli`.
+
+Typical commands:
+
+```bash
+# Preview per-harness output paths
+harnesstap apply my-setup --project . --harness cline,github-copilot --dry-run
+
+# Apply to instruction-tier harnesses alongside native-skill hosts
+harnesstap apply my-setup --project . --harness claude-code,codex,cline,cursor
+
+# List all harnesses; instruction-tier hosts have skillEmission: instruction-only
+harnesstap harness list --format json
+```
+
+**Expected emission paths** (instruction-tier hosts):
+
+| Harness | Skills become |
+| ------- | ------------- |
+| `cline` | `.clinerules/{name}.md` (or merged rules file) |
+| `github-copilot` | Sections in `.github/copilot-instructions.md` |
+| `gemini-cli` | Rules/instructions per Gemini serializer paths |
+
+Native-skill hosts (`claude-code`, `codex`, `cursor` with default mode,
+`windsurf`, `kiro`, etc.) continue to emit `.claude/skills/`, `.agents/skills/`,
+or harness-specific skill directories such as `.kiro/skills/`.
