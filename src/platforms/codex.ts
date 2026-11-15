@@ -30,6 +30,15 @@ interface CodexMcpServerEntry {
   url?: string;
   env?: Record<string, string>;
   cwd?: string;
+  http_headers?: Record<string, string>;
+}
+
+function stringRecord(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const entries = Object.entries(value).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
 interface CodexPermissionProfile {
@@ -195,6 +204,11 @@ function buildMcpServers(
     const entry: Record<string, unknown> = {};
     if (metadata.transport === "http" || metadata.url) {
       if (metadata.url) entry.url = metadata.url;
+      // Codex names static request headers `http_headers`:
+      // https://learn.chatgpt.com/docs/config-file/config-reference
+      if (metadata.headers && Object.keys(metadata.headers).length > 0) {
+        entry.http_headers = metadata.headers;
+      }
     } else {
       if (metadata.command) entry.command = metadata.command;
       if (metadata.args && metadata.args.length > 0) entry.args = metadata.args;
@@ -266,12 +280,14 @@ export class CodexSerializer extends BaseSerializer {
       for (const [name, entryValue] of Object.entries(mcpServers)) {
         if (!isRecord(entryValue)) continue;
         const entry = entryValue as CodexMcpServerEntry;
+        const headers = stringRecord(entry.http_headers);
         const metadata: McpServerMetadata = {
           transport: entry.url ? "http" : "stdio",
           command: entry.command,
           args: entry.args,
           url: entry.url,
           env: entry.env,
+          ...(headers ? { headers } : {}),
           ...(typeof entry.cwd === "string" ? { cwd: entry.cwd } : {}),
           ...parseMcpToolFilters(entryValue),
         };

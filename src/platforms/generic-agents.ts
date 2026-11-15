@@ -26,8 +26,8 @@ import type {
 } from "../types.js";
 
 interface GenericSerializedMcpEntry {
+  type?: string;
   url?: string;
-  protocol?: string;
   command?: string;
   args?: string[];
   env?: Record<string, string>;
@@ -59,6 +59,20 @@ const SHARED_MCP_FORMATS: Record<
       emitPlainMcpServerEntry(metadata, { typeField: true, disabledToolsKey: "disabledTools" }),
   },
 };
+
+/**
+ * `type` for a remote server in harnesses whose plain `mcpServers` file needs
+ * one. Cline treats a remote entry without `type` as legacy SSE:
+ * https://docs.cline.bot/mcp/configuring-mcp-servers
+ */
+function remoteTypeField(
+  platformId: string,
+  metadata: McpServerMetadata,
+): { type?: string } {
+  if (platformId !== "cline") return {};
+  const sse = metadata.http_transport === "sse" || metadata.connection_type === "sse";
+  return { type: sse ? "sse" : "streamableHttp" };
+}
 
 /**
  * Harnesses that load commands as skills: each command becomes
@@ -636,9 +650,8 @@ export class GenericAgentsSerializer extends BaseSerializer {
         if (!meta) continue;
         if (meta.transport === "http") {
           servers[r.name] = {
+            ...remoteTypeField(this.platformId, meta),
             url: meta.url,
-            protocol: "sse",
-            env: meta.env,
             ...(meta.headers && Object.keys(meta.headers).length > 0
               ? { headers: meta.headers }
               : {}),
