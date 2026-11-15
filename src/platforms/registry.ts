@@ -179,11 +179,16 @@ const PLATFORMS: PlatformDefinition[] = [
     ],
   }),
 
+  // Copilot reads workspace MCP servers from `.mcp.json` (`.github/mcp.json`
+  // only when the folder has no `.mcp.json`); `.vscode/mcp.json` is no longer read.
+  // https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
+  // https://code.visualstudio.com/docs/agents/reference/mcp-configuration
   def("github-copilot", "GitHub Copilot", ["instructions", "skills", "rules", "mcp", "agents"], {
     instructions: ".github/copilot-instructions.md",
     rules: ".github/instructions/",
     skills: ".agents/skills/",
     agents: ".github/agents/",
+    mcp: ".mcp.json",
   }, {
     skills: "~/.copilot/skills/",
     settings: "~/.copilot/mcp-config.json",
@@ -192,7 +197,7 @@ const PLATFORMS: PlatformDefinition[] = [
   def("copilot-cli", "Copilot CLI", ["instructions", "skills", "mcp", "agents"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
-    mcp: ".copilot/mcp-config.json",
+    mcp: ".mcp.json",
     agents: ".github/agents/",
   }, {
     skills: "~/.copilot/skills/",
