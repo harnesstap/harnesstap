@@ -13,17 +13,18 @@ const skillResources = [
 ];
 
 describe("instruction-tier skill emission", () => {
-  it("emits windsurf skills as .windsurf/rules/{name}.md", async () => {
+  it("emits windsurf skills natively under .agents/skills/{name}/SKILL.md", async () => {
     const context = await createInitializedTestContext("instruction-tier-windsurf");
 
     try {
       const files = await generateFiles(skillResources, ["windsurf"], context.projectDir);
       const windsurf = files.find((r) => r.platformId === "windsurf");
 
-      expect(windsurf?.files.some((f) => f.path === ".windsurf/rules/ponytail.md")).toBe(
+      expect(windsurf?.files.some((f) => f.path === ".agents/skills/ponytail/SKILL.md")).toBe(
         true,
       );
-      expect(windsurf?.files.some((f) => f.path.includes(".agents/skills"))).toBe(false);
+      expect(windsurf?.files.some((f) => f.path.startsWith(".windsurf/rules/"))).toBe(false);
+      expect(windsurf?.files.some((f) => f.path.startsWith(".devin/rules/"))).toBe(false);
     } finally {
       await context.cleanup();
     }

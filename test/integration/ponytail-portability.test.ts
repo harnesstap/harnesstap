@@ -87,7 +87,7 @@ describe("ponytail portability", () => {
     }
   });
 
-  it("plugin apply dry-run to windsurf emits .windsurf/rules/ not .agents/skills/", async () => {
+  it("plugin apply dry-run to windsurf emits .agents/skills/, not skills as rules", async () => {
     const context = await createInitializedTestContext("ponytail-apply-windsurf");
 
     try {
@@ -96,8 +96,8 @@ describe("ponytail portability", () => {
       const windsurf = results.find((result) => result.platformId === "windsurf");
       const paths = windsurf?.files.map((file) => file.path) ?? [];
 
-      expect(paths.some((path) => path.startsWith(".windsurf/rules/"))).toBe(true);
-      expect(paths.some((path) => path.includes(".agents/skills"))).toBe(false);
+      expect(paths.some((path) => path.startsWith(".agents/skills/"))).toBe(true);
+      expect(paths.some((path) => path.startsWith(".windsurf/rules/"))).toBe(false);
     } finally {
       await context.cleanup();
     }

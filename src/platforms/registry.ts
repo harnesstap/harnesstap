@@ -214,14 +214,31 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.gemini/settings.json",
   }, "instruction-only"),
 
+  // Windsurf is now Devin Desktop. Its Devin Local agent uses the Devin CLI
+  // layout: rules in `.devin/rules/` with `trigger` frontmatter (`.windsurf/rules/`
+  // and `.windsurfrules` still load), skills in `.agents/skills/` and
+  // `~/.agents/skills/` (also `~/.config/devin/skills/`), MCP in `.devin/mcp_config.json` and
+  // `~/.config/devin/mcp_config.json`.
+  // https://docs.devin.ai/desktop/devin-local/customizations
   def("windsurf", "Windsurf", ["instructions", "skills", "rules", "mcp"], {
     instructions: ".windsurfrules",
-    rules: ".windsurf/rules/",
+    rules: ".devin/rules/",
+    legacy_rules: ".windsurf/rules/",
     skills: ".agents/skills/",
+    mcp: ".devin/mcp_config.json",
+    pathAlternates: {
+      rules: [".windsurf/rules/"],
+      skills: [".devin/skills/", ".windsurf/skills/"],
+    },
   }, {
-    skills: "~/.codeium/windsurf/skills/",
+    skills: "~/.agents/skills/",
+    rules: "~/.devin/rules/",
+    mcp: "~/.config/devin/mcp_config.json",
     settings: "~/.codeium/windsurf/mcp_config.json",
-  }, "instruction-only"),
+    pathAlternates: {
+      skills: ["~/.config/devin/skills/", "~/.codeium/windsurf/skills/"],
+    },
+  }),
 
   def("cline", "Cline", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
@@ -369,16 +386,26 @@ const PLATFORMS: PlatformDefinition[] = [
     settings: "~/.config/zed/settings.json",
   }),
 
-  def("devin", "Devin", ["instructions", "skills"], {
+  // Devin CLI keeps MCP servers in dedicated `mcp_config.json` files (servers
+  // still in `config.json` are migrated by Devin on startup) and rules in
+  // `.devin/rules/` with `trigger` frontmatter.
+  // https://docs.devin.ai/cli/extensibility/mcp
+  // https://docs.devin.ai/cli/extensibility/rules
+  def("devin", "Devin", ["instructions", "skills", "rules", "mcp"], {
     instructions: "AGENTS.md",
     skills: ".agents/skills/",
+    rules: ".devin/rules/",
+    mcp: ".devin/mcp_config.json",
     settings: ".devin/config.json",
     pathAlternates: {
       instructions: ["AGENTS.local.md", "AGENT.md"],
+      skills: [".devin/skills/"],
     },
   }, {
     instructions: "~/.config/devin/AGENTS.md",
     skills: "~/.agents/skills/",
+    rules: "~/.devin/rules/",
+    mcp: "~/.config/devin/mcp_config.json",
     settings: "~/.config/devin/config.json",
   }),
 
