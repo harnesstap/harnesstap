@@ -15,6 +15,7 @@ Start here. If a link is dead or moved, find the new official page, use it, and 
 - Changelog: https://github.com/github/copilot-cli/blob/main/changelog.md
 - Releases: https://github.com/github/copilot-cli/releases
 - Agent skills: https://docs.github.com/en/copilot/concepts/customizations/agent-skills
+- MCP: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
 
 Prefer official vendor pages, the vendor's own repo, and machine-readable schemas over blog posts or third-party summaries.
 
