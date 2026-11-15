@@ -73,3 +73,7 @@ harnesstap harness list --format json
 Native-skill hosts (`claude-code`, `codex`, `cursor` with default mode,
 `windsurf`, `kiro`, etc.) continue to emit `.claude/skills/`, `.agents/skills/`,
 or harness-specific skill directories such as `.kiro/skills/`.
+
+## docs/supported-harnesses.md > On-disk paths (selected harnesses)
+<!-- append -->
+Kilo Code skills go to `.kilo/skills/` and `~/.kilo/skills/`, Kilo's current skill folders. `.kilocode/skills/` and `~/.kilocode/skills/`, mentioned above, are its earlier locations: HarnessTap still scans them, and a skill already applied there stays in place instead of being copied.
