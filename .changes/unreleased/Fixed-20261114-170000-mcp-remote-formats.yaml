@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Remote MCP servers keep their settings across harnesses: Codex reads and writes request headers as `http_headers`, Cline gets `type: streamableHttp` instead of falling back to legacy SSE, other plain `mcpServers` files no longer get a stray `protocol: sse` key, and scans read the `serverUrl` (Antigravity, Windsurf) and `httpUrl` (Gemini CLI) forms as remote servers instead of empty local ones.'
-time: 2026-11-15T03:00:00.000000Z
-custom:
-  Issue: ""

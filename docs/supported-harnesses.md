@@ -226,6 +226,8 @@ Generic harnesses in the skills-only tier use harness-specific skill roots such 
 
 Cursor plugin directories under `~/.cursor/plugins/cache`, `marketplaces/`, and `local/` count as installed, including when Cursor has the plugin turned off. `plugin-*` MCP folders count as installed too. A folder is matched to the plugin named in its manifest or under `~/.cursor/plugins/cache/<marketplace>/<plugin>/<version>`, and that plugin is not listed a second time. Status does not read `state.vscdb` or the Cursor logs folder. A HarnessTap database write that changes a profile is included in the next status. Adding a library resource that no profile uses does not refresh status. Whether Cursor loads other harness trees is read from `settings.json` only, and defaults to on.
 
+Kilo Code skills go to `.kilo/skills/` and `~/.kilo/skills/`, Kilo's current skill folders. `.kilocode/skills/` and `~/.kilocode/skills/`, mentioned above, are its earlier locations: HarnessTap still scans them, and a skill already applied there stays in place instead of being copied.
+
 ### Goose context engineering
 
 HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/context-engineering/) surfaces as follows:
@@ -245,6 +247,18 @@ HarnessTap maps [Goose context engineering](https://goose-docs.ai/docs/guides/co
 Antigravity IDE, Antigravity CLI (`agy`), and AGY share the same workspace layout under `.agents/`. Antigravity no longer reads workflows, so HarnessTap writes **commands** as skills (`.agents/skills/<name>/SKILL.md`, global `~/.gemini/skills/`); a skill with the same name wins. Existing `.agents/workflows/` and `~/.gemini/config/global_workflows/` files are still scanned as commands. On apply, workflow files HarnessTap wrote are backed up and removed, and files it did not write are kept with a warning (Antigravity's `/migrate-workflows` converts them). Rules in `.agents/rules/` carry the required `trigger` frontmatter: `glob` with `globs` when the rule has globs, `always_on` for always-apply rules, `model_decision` for rules with a description, and `manual` otherwise. Global config lives under `~/.gemini/` (`GEMINI.md`, `config/mcp_config.json`, `skills/`). This is distinct from the thinner `gemini-cli` entry.
 
 Roo rules are plain files in `.roo/rules/`, one per rule. HarnessTap no longer writes rules into `.roomodes`. On apply, a `.roomodes` HarnessTap wrote is backed up and removed. In a `.roomodes` you also edited, only the `## <rule>` sections that still match what HarnessTap wrote are removed; everything else, including text you added under one of those sections, is kept with a warning.
+
+### Windsurf (Devin Local) and Devin notes
+
+Windsurf is now Devin Desktop, and its Devin Local agent uses the Devin CLI layout. For both `windsurf` and `devin` (this replaces their rows in the table above):
+
+| Surface | Project | Global |
+|---|---|---|
+| Rules | `.devin/rules/<name>.md` with `trigger` frontmatter (`always_on`, `manual`, `model_decision`, `glob`) | `~/.devin/rules/` |
+| Skills | `.agents/skills/<name>/SKILL.md` | `~/.agents/skills/` |
+| MCP | `.devin/mcp_config.json` (`mcpServers`) | `~/.config/devin/mcp_config.json` |
+
+Windsurf instructions stay in `.windsurfrules`, which Devin Local still imports, and Windsurf skills are written as skill folders instead of rules. MCP files are shared with Devin: HarnessTap merges only the servers it manages and keeps every other key. Entries use `command`, `args`, and `env`, or `url` and `headers`; SSE servers add `transport: "sse"`, and `disabled_tools` becomes `disabledTools`. Scans also read `.windsurf/rules/`, `.devin/skills/`, `~/.config/devin/skills/`, `~/.codeium/windsurf/skills/`, `~/.codeium/windsurf/mcp_config.json`, and servers still listed in Devin `config.json`; servers from those older MCP files are written to the current one on the next apply. Files earlier applies wrote to `.windsurf/rules/` are removed only when unchanged, with a backup.
 
 ### OpenCode notes
 
@@ -335,6 +349,8 @@ Detection uses distinctive `.minimax/skills/`, `.minimax-plugin/`, and/or `~/.mi
 These files are shared with the harness. HarnessTap merges only the servers it manages, keeps every other key, and on removal takes out only its own entries. MCP servers can set `enabled_tools` (allow list) and `disabled_tools` (deny list); Codex writes both, Gemini CLI writes `includeTools` and `excludeTools`, Kiro and Droid write `disabledTools`, and Copilot uses `enabled_tools` as its `tools` list.
 
 Kiro hooks: `Stop`, `SessionStart`, `SessionEnd`, and `PreToolUse` or `PostToolUse` hooks that match every tool are written. Hooks for other events, or tool hooks with a specific matcher, are not written for Kiro, because Kiro tool IDs differ from other harnesses' tool names.
+
+GitHub Copilot and Copilot CLI read workspace MCP servers from `.mcp.json` at the project root, so HarnessTap writes project MCP servers for both there (this replaces the `.copilot/mcp-config.json` and "unchanged" entries in the tables above). Each entry carries `type` (`stdio`, `http`, or `sse`); `tools` is written only for an `enabled_tools` allow list, because Copilot enables every tool when it is missing. `.mcp.json` is shared with Claude Code: HarnessTap merges only its own servers and keeps the rest. Scans also read `.github/mcp.json` and the project `.copilot/mcp-config.json` that earlier applies wrote; the next apply moves those servers into `.mcp.json` and removes the old file only when it is unchanged, with a backup. The user file `~/.copilot/mcp-config.json` is unchanged.
 
 ## Related commands
 

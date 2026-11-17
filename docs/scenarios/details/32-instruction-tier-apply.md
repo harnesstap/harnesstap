@@ -6,17 +6,17 @@
 
 Use this when applying a plugin to harnesses that load skills as **always-on
 instructions or rules** rather than agent-requested skill directories. Harnesses
-with registry `skillEmission: instruction-only` include `windsurf`, `cline`,
-`github-copilot`, `gemini-cli`, and `kiro`.
+with registry `skillEmission: instruction-only` include `cline`,
+`github-copilot`, and `gemini-cli`.
 
 Typical commands:
 
 ```bash
 # Preview per-harness output paths
-harnesstap apply my-setup --project . --harness windsurf,cline,github-copilot --dry-run
+harnesstap apply my-setup --project . --harness cline,github-copilot --dry-run
 
 # Apply to instruction-tier harnesses alongside native-skill hosts
-harnesstap apply my-setup --project . --harness claude-code,codex,windsurf,cursor
+harnesstap apply my-setup --project . --harness claude-code,codex,cline,cursor
 
 # List all harnesses; instruction-tier hosts have skillEmission: instruction-only
 harnesstap harness list --format json
@@ -26,15 +26,13 @@ harnesstap harness list --format json
 
 | Harness | Skills become |
 | ------- | ------------- |
-| `windsurf` | `.windsurf/rules/{name}.md` |
 | `cline` | `.clinerules/{name}.md` (or merged rules file) |
 | `github-copilot` | Sections in `.github/copilot-instructions.md` |
 | `gemini-cli` | Rules/instructions per Gemini serializer paths |
-| `kiro` | `.kiro/steering/{name}.md` |
 
-Native-skill hosts (`claude-code`, `codex`, `cursor` with default mode, etc.)
-continue to emit `.claude/skills/`, `.agents/skills/`, or harness-specific skill
-directories.
+Native-skill hosts (`claude-code`, `codex`, `cursor` with default mode,
+`windsurf`, `kiro`, etc.) continue to emit `.claude/skills/`, `.agents/skills/`,
+or harness-specific skill directories such as `.kiro/skills/`.
 
 ### Cursor `cursor_skill_mode`
 
