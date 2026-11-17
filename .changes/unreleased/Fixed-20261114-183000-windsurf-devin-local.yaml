@@ -1,5 +1,0 @@
-kind: Fixed
-body: 'Windsurf and Devin follow the Devin Local layout: rules go to .devin/rules/ with trigger frontmatter, MCP servers merge into .devin/mcp_config.json and ~/.config/devin/mcp_config.json, and Windsurf skills are written as skill folders. Devin global MCP no longer goes into ~/.config/devin/config.json.'
-time: 2026-11-14T18:30:00.000000-10:00
-custom:
-  Issue: ""
