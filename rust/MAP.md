@@ -61,7 +61,7 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | Unit | State | Notes |
 | --- | --- | --- |
 | record and replay (`app-cases/`) | done | 564 cases, original 564/564 |
-| front door (`app/`) | open | next PR |
+| front door (`app/`) | done | 564/564, fallback 100% |
 | `src/version.ts` | open | leaf |
 | `src/node-version.ts` | open | leaf |
 | `src/constants/` | open | in the wave 2 cycle per `analyze`, but no imports of its own that need Rust first |
