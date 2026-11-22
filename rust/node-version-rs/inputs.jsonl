@@ -1,0 +1,58 @@
+{"fn": "parseNodeVersion", "args": ["22.12.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["22.12.0"]}
+{"fn": "parseNodeVersion", "args": ["22.11.9"]}
+{"fn": "isSupportedNodeVersion", "args": ["22.11.9"]}
+{"fn": "parseNodeVersion", "args": ["22.12"]}
+{"fn": "isSupportedNodeVersion", "args": ["22.12"]}
+{"fn": "parseNodeVersion", "args": ["22"]}
+{"fn": "isSupportedNodeVersion", "args": ["22"]}
+{"fn": "parseNodeVersion", "args": ["23.0.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["23.0.0"]}
+{"fn": "parseNodeVersion", "args": ["24.1.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["24.1.0"]}
+{"fn": "parseNodeVersion", "args": ["21.99.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["21.99.0"]}
+{"fn": "parseNodeVersion", "args": ["v22.12.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["v22.12.0"]}
+{"fn": "parseNodeVersion", "args": [""]}
+{"fn": "isSupportedNodeVersion", "args": [""]}
+{"fn": "parseNodeVersion", "args": ["abc"]}
+{"fn": "isSupportedNodeVersion", "args": ["abc"]}
+{"fn": "parseNodeVersion", "args": ["22.x"]}
+{"fn": "isSupportedNodeVersion", "args": ["22.x"]}
+{"fn": "parseNodeVersion", "args": ["0.0.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["0.0.0"]}
+{"fn": "parseNodeVersion", "args": ["100.0.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["100.0.0"]}
+{"fn": "parseNodeVersion", "args": ["22.012.0"]}
+{"fn": "isSupportedNodeVersion", "args": ["22.012.0"]}
+{"fn": "parseNodeVersion", "args": ["-1.5"]}
+{"fn": "isSupportedNodeVersion", "args": ["-1.5"]}
+{"fn": "parseNodeVersion", "args": ["22.12.0-nightly"]}
+{"fn": "isSupportedNodeVersion", "args": ["22.12.0-nightly"]}
+{"fn": "parseNodeVersion", "args": ["1e3.2"]}
+{"fn": "isSupportedNodeVersion", "args": ["1e3.2"]}
+{"fn": "parseNodeVersion", "args": [" 22.12.0"]}
+{"fn": "isSupportedNodeVersion", "args": [" 22.12.0"]}
+{"fn": "parseNodeVersion", "args": ["22 .12"]}
+{"fn": "isSupportedNodeVersion", "args": ["22 .12"]}
+{"fn": "launchedByBun", "args": [{}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["20.1.0", {}]}
+{"fn": "launchedByBun", "args": [{"npm_config_user_agent": "bun/1.3.14 npm/? node/v24"}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["20.1.0", {"npm_config_user_agent": "bun/1.3.14 npm/? node/v24"}]}
+{"fn": "launchedByBun", "args": [{"npm_config_user_agent": "npm/10 node/v22"}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["20.1.0", {"npm_config_user_agent": "npm/10 node/v22"}]}
+{"fn": "launchedByBun", "args": [{"npm_config_user_agent": " bun/1"}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["20.1.0", {"npm_config_user_agent": " bun/1"}]}
+{"fn": "launchedByBun", "args": [{"npm_config_user_agent": "Bun/1"}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["20.1.0", {"npm_config_user_agent": "Bun/1"}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["18.0.0", {}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["", {}]}
+{"fn": "nodeVersionRefusalMessage", "args": ["caf\u00e9", {}]}
+{"fn": "isBunRuntime", "args": [{"node": "24.1.0"}]}
+{"fn": "isBunRuntime", "args": [{"node": "24.1.0", "bun": "1.3.14"}]}
+{"fn": "isBunRuntime", "args": [{"node": "24.1.0", "bun": ""}]}
+{"fn": "isBunRuntime", "args": [{"node": "20.0.0", "bun": "1.3"}]}
+{"fn": "assertSupportedRuntime", "args": [{"node": "24.1.0"}]}
+{"fn": "assertSupportedRuntime", "args": [{"node": "22.12.0"}]}
+{"fn": "assertSupportedRuntime", "args": [{"node": "20.0.0", "bun": "1.3"}]}

@@ -1,0 +1,17 @@
+{
+  "unit": "src/node-version.ts",
+  "files": 1,
+  "fingerprint": "059e980d9ecf06d5",
+  "coverage": {
+    "lines": 52,
+    "reached": 50,
+    "files": [
+      {
+        "file": "src/node-version.ts",
+        "lines": 52,
+        "reached": 50,
+        "missed": "56-57"
+      }
+    ]
+  }
+}

@@ -62,8 +62,8 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | --- | --- | --- |
 | record and replay (`app-cases/`) | done | 564 cases, original 564/564 |
 | front door (`app/`) | done | 564/564, fallback 100% |
-| `src/version.ts` | open | leaf |
-| `src/node-version.ts` | open | leaf |
+| `src/version.ts` | done | `rust/version-rs`, gate passed, 90/90 cases |
+| `src/node-version.ts` | done | `rust/node-version-rs`, gate passed, 58/58 cases |
 | `src/constants/` | open | in the wave 2 cycle per `analyze`, but no imports of its own that need Rust first |
 | `src/services/toml/` | open | `smol-toml` emit rules (ADR-010) |
 | `src/types.ts` | open | types only (0 exports): ported as Rust types with their first user |
