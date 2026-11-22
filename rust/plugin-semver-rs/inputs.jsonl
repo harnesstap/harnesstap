@@ -1,0 +1,375 @@
+{"fn": "semverSafePluginVersion", "args": ["1.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["v1.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["=1.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 "]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "  "]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "---"]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": [" 1.2.3 ", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3.4", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["01.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.02.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["0.0.0", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-alpha.1", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-01", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-0a", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build.5", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3+build..5", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-rc.1+git.abc", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-α", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["１.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740991.0.0", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["9007199254740992.0.0", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["99999999999999999999.0.0", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-99999999999999999999", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["V1.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["v 1.2.3", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 "]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["﻿1.2.3 ", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3\n", "a"]}
+{"fn": "semverSafePluginVersion", "args": [""]}
+{"fn": "semverSafePluginVersion", "args": ["", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["   "]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["   ", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["ABCDEF1234567", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef12", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["abcdef1234567890abcdef1234567890abcdef123", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["abcde", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["g123456", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["latest"]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["latest", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["main"]}
+{"fn": "semverSafePluginVersion", "args": ["main", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["main", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["main", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["main", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["main", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["main", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["main", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-a-b--c", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-x.7.z.92", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.0.0-+", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0", "a"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "  "]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "---"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": ["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "a"]}
+{"fn": "semverSafePluginVersion", "args": [null]}
+{"fn": "semverSafePluginVersion", "args": [null, "abcdef1234567890"]}
+{"fn": "semverSafePluginVersion", "args": [null, "ABC-def_123/456.789xyz"]}
+{"fn": "semverSafePluginVersion", "args": [null, "  "]}
+{"fn": "semverSafePluginVersion", "args": [null, "---"]}
+{"fn": "semverSafePluginVersion", "args": [null, "é€😀"]}
+{"fn": "semverSafePluginVersion", "args": [null, "0123456789abcdefXYZ"]}
+{"fn": "semverSafePluginVersion", "args": [null, "a"]}
+{"fn": "pluginDescriptionFromManifest", "args": [null]}
+{"fn": "pluginDescriptionFromManifest", "args": [""]}
+{"fn": "pluginDescriptionFromManifest", "args": [" x "]}
+{"fn": "pluginDescriptionFromManifest", "args": ["﻿a "]}
+{"fn": "pluginDescriptionFromManifest", "args": ["y"]}
+{"fn": "pluginDescriptionFromManifest", "args": ["plain"]}
+{"fn": "pluginDescriptionFromManifest", "args": ["\t\n multi\nline \r\n"]}

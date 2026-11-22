@@ -1,0 +1,1019 @@
+{"fn":"semverSafePluginVersion","args":["İstanbul","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["hello","lo"],"ok":"0.0.0+git.lo"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix","src/a/b.tsHello World"],"ok":"0.0.0+git.srcabtshello"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"  padded  "],"ok":"0.0.0+git.padded"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json","./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["hello world","trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé","Hello World"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"hello"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["a","emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"{name} has {count} items"],"ok":"0.0.0+git.namehascount"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"a..b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["HELLO",":"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[":","ns:key.pathtrailing."],"ok":"0.0.0+git.nskeypathtra"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path","src/a/b.ts"],"ok":"0.0.0+git.srcabts"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix{name} has {count} items","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"😀key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["İstanbul",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.tsa😀b😀c",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["n","ünïcödéünïcödé"],"ok":"0.0.0+git.ncdncd"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["a..b  padded  ","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["trailing."],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path","ey.path"],"ok":"0.0.0+git.eypath"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":[".leading","emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":["abcstraße","a:b:c./x/**/*.json"],"ok":"0.0.0+git.abcxjson"}
+{"fn":"semverSafePluginVersion","args":["é",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"😀trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキスト","のテキスト"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["のテキ","日本語のテキスト"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcΣΊΣΥΦΟΣ","abcΣΊΣΥΦ"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[":",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ab",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["l","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["bo","﻿bom"],"ok":"0.0.0+git.bom"}
+{"fn":"semverSafePluginVersion","args":["a.b.ca:b:c"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["a.b.c","  padded    padded  "],"ok":"0.0.0+git.paddedpadded"}
+{"fn":"semverSafePluginVersion","args":["a..b",".."],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["straße","﻿bom"],"ok":"0.0.0+git.bom"}
+{"fn":"semverSafePluginVersion","args":["  padded  Hello World","ΣΊΣΥΦΟΣİstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["a","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["hellotab\tseparated"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abc  padded  ","{name} has {count} items"],"ok":"0.0.0+git.namehascount"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["a..b"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix","key_name-1a.b.c"],"ok":"0.0.0+git.keyname1abc"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","stanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"HELLO"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["abcsrc/a/b.ts","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[".leading"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["key_name-1"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣa😀b😀c","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":["Hello World","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["ab"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"ab"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["raß","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["HELLO","abc﻿bom"],"ok":"0.0.0+git.abcbom"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":["😀","😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["Hello World","{name} has {count} items"],"ok":"0.0.0+git.namehascount"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["  padded  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.ts","trailing..leading"],"ok":"0.0.0+git.trailinglead"}
+{"fn":"semverSafePluginVersion","args":["a.b.c","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[":",":"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},":"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキスト","é"],"ok":"0.0.0+git.e"}
+{"fn":"semverSafePluginVersion","args":["trailing.",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["HELLOa","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["key.pa","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path","a..btab\tseparated"],"ok":"0.0.0+git.abtabseparat"}
+{"fn":"semverSafePluginVersion","args":["abc","  padded  ΣΊΣΥΦΟΣ"],"ok":"0.0.0+git.padded"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix","hello"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.ts"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json","a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["N","./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["ΟΣ","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["hello","emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":["İstanbulé"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["HELLO"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abc","src/a/b.ts"],"ok":"0.0.0+git.srcabts"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキストab","./x/**/*.jsonab"],"ok":"0.0.0+git.xjsonab"}
+{"fn":"semverSafePluginVersion","args":["a..b","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["HELLO","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["a.b.c","a."],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["trailing.","./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["straße","Hello World"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.ts","a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["key_name-1",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["hello world","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":["llo wor","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["Hello World","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["hello world",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["a",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["HELLOHello World","emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c﻿bom",".leading"],"ok":"0.0.0+git.leading"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"é"],"ok":"0.0.0+git.e"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","hello"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["trailing.","li"],"ok":"0.0.0+git.li"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキスト"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items:","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["ount} ","{name} has {count} items"],"ok":"0.0.0+git.namehascount"}
+{"fn":"semverSafePluginVersion","args":["Hello World"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},".leading"],"ok":"0.0.0+git.leading"}
+{"fn":"semverSafePluginVersion","args":["trailing.","a..bHello World"],"ok":"0.0.0+git.abhelloworld"}
+{"fn":"semverSafePluginVersion","args":["abc",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"line1\nline2ab"],"ok":"0.0.0+git.line1line2ab"}
+{"fn":"semverSafePluginVersion","args":["hello world","HELLO"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキストHello World"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["HELLO","日本語のテキスト.leading"],"ok":"0.0.0+git.leading"}
+{"fn":"semverSafePluginVersion","args":["́","é"],"ok":"0.0.0+git.e"}
+{"fn":"semverSafePluginVersion","args":["HELLO",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abc","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["  padded  ",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"tab\tseparated"],"ok":"0.0.0+git.tabseparated"}
+{"fn":"semverSafePluginVersion","args":["a:b:c","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["s:key.path","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":[":","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"abc:"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["key_name-1","Y"],"ok":"0.0.0+git.y"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} itemsHELLO","key_name-1HELLO"],"ok":"0.0.0+git.keyname1hell"}
+{"fn":"semverSafePluginVersion","args":["a:","Hello World"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["straßetrailing.","a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["😀","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["key_name-1","HELLO"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":[".leading",":"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["straße","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"hello worlda.b.c"],"ok":"0.0.0+git.helloworldab"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["a:b:c","﻿bom"],"ok":"0.0.0+git.bom"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキスト","ab"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","😀c"],"ok":"0.0.0+git.c"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated","line1\nline2tab\tseparated"],"ok":"0.0.0+git.line1line2ta"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated","r"],"ok":"0.0.0+git.r"}
+{"fn":"semverSafePluginVersion","args":["a..b","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["Hello World","ab"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé","😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["  padded  ","key_name-1hello world"],"ok":"0.0.0+git.keyname1hell"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé","﻿bom"],"ok":"0.0.0+git.bom"}
+{"fn":"semverSafePluginVersion","args":["a.b.c","HELLO"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items","Hello World"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["","😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣtab\tseparated","ΣΊΣΥΦΟ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["trailing.","é"],"ok":"0.0.0+git.e"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","ΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ng",".leading"],"ok":"0.0.0+git.leading"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["a.b.c",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json:","İstanbula..b"],"ok":"0.0.0+git.stanbulab"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","a😀b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["hello world","a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["a.b.chello world","😀line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["HELLO","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["﻿bom"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["hello","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["İstanbulhello world"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["﻿bom","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"﻿bom"],"ok":"0.0.0+git.bom"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","İstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparateda😀b😀c","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items","a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["line1\nline2","ünïcödéünïcödé"],"ok":"0.0.0+git.ncdncd"}
+{"fn":"semverSafePluginVersion","args":["A","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["a:b:c","aba😀b😀c"],"ok":"0.0.0+git.ababc"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé","abline1\nline2"],"ok":"0.0.0+git.abline1line2"}
+{"fn":"semverSafePluginVersion","args":["key_name-1","a..b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.ts","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path.leading","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["﻿bom","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["Hello World","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["..b","a..b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":[":key_name-1","M"],"ok":"0.0.0+git.m"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"a:b:cline1\nline2"],"ok":"0.0.0+git.abcline1line"}
+{"fn":"semverSafePluginVersion","args":["li","trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣa.b.c","B.C"],"ok":"0.0.0+git.bc"}
+{"fn":"semverSafePluginVersion","args":["straße","aße"],"ok":"0.0.0+git.ae"}
+{"fn":"semverSafePluginVersion","args":[".leadingΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["é","./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["ns:key.path","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["N","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":[":","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[":","😀  padded  "],"ok":"0.0.0+git.padded"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["NA","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.ts","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[".leading",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["line1\nline2","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["😀",""],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"İstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"src/a/b.ts"],"ok":"0.0.0+git.srcabts"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparatedtrailing.","日本語のテキストtrailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"﻿boma.b.c"],"ok":"0.0.0+git.bomabc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"tab\tseparatedünïcödé"],"ok":"0.0.0+git.tabseparated"}
+{"fn":"semverSafePluginVersion","args":["a"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["b","a.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["  padded  ","ab"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["é","a..b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["line1\nline2:","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated","D"],"ok":"0.0.0+git.d"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},":emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":["a.b.c"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","n"],"ok":"0.0.0+git.n"}
+{"fn":"semverSafePluginVersion","args":["straßehello","hello"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["key_name-1﻿bom"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","emoji 👍🏽 mix"],"ok":"0.0.0+git.emojimix"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json日本語のテキスト","trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["a..bstraße","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":["straße","tab\tseparated"],"ok":"0.0.0+git.tabseparated"}
+{"fn":"semverSafePluginVersion","args":["line1\nline2ns:key.path","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["a..b","b"],"ok":"0.0.0+git.b"}
+{"fn":"semverSafePluginVersion","args":[":","İstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["","hello"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["a:b:c"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ey_name","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["straße"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abchello","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["😀straße","  padded  "],"ok":"0.0.0+git.padded"}
+{"fn":"semverSafePluginVersion","args":[":"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"﻿bomstraße"],"ok":"0.0.0+git.bomstrae"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated","a:b:c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["D./X/**/*.","tab\tseparated./x/**/*.json"],"ok":"0.0.0+git.tabseparated"}
+{"fn":"semverSafePluginVersion","args":["HELLO","hello world"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["emoji 👍🏽 mix","tab\tseparated"],"ok":"0.0.0+git.tabseparated"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},""],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキスト","İstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ  padded  ","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","C"],"ok":"0.0.0+git.c"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json","/x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["","ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":["src/a/b.tsa:b:c","b"],"ok":"0.0.0+git.b"}
+{"fn":"semverSafePluginVersion","args":["ns:ke","😀ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c","a..b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","ΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["Hello Worldabc","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["  padded  ","key_name-1"],"ok":"0.0.0+git.keyname1"}
+{"fn":"semverSafePluginVersion","args":[""],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["é","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparated"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["a","src/a/b.ts"],"ok":"0.0.0+git.srcabts"}
+{"fn":"semverSafePluginVersion","args":["{name} has {count} items",":"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["hello"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["trailing.trailing."],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":[".leading","./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":["abc","bc"],"ok":"0.0.0+git.bc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"trailing."],"ok":"0.0.0+git.trailing"}
+{"fn":"semverSafePluginVersion","args":["","İstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["ab","日本語のテキスト{name} has {count} items"],"ok":"0.0.0+git.namehascount"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"日本語のテキストa.b.c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"Hello World"],"ok":"0.0.0+git.helloworld"}
+{"fn":"semverSafePluginVersion","args":["﻿bom",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["日本語のテキストline1\nline2","a😀b😀c"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["tab\tseparatedstraße"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","a..b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["straße","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":[":é","a:b:c{name} has {count} items"],"ok":"0.0.0+git.abcnamehasco"}
+{"fn":"semverSafePluginVersion","args":["ünïcödéline1\nline2"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["a..b","HELLO"],"ok":"0.0.0+git.hello"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["a😀b😀c.leading","abc"],"ok":"0.0.0+git.abc"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["Hello World","./x/**/*.json"],"ok":"0.0.0+git.xjson"}
+{"fn":"semverSafePluginVersion","args":[{"$undefined":true},"ünïcödé"],"ok":"0.0.0+git.ncd"}
+{"fn":"semverSafePluginVersion","args":["é","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["Hello World","a.b.ca..b"],"ok":"0.0.0+git.abcab"}
+{"fn":"semverSafePluginVersion","args":["ab","😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["a:b:ca..b","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["😀",":tab\tseparated"],"ok":"0.0.0+git.tabseparated"}
+{"fn":"semverSafePluginVersion","args":["ahello world",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["./x/**/*.json.leading","  padded  "],"ok":"0.0.0+git.padded"}
+{"fn":"semverSafePluginVersion","args":["ünïcödé😀","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["hello world","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["line1\nline2",{"$undefined":true}],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["HELLO","ns:key.path"],"ok":"0.0.0+git.nskeypath"}
+{"fn":"semverSafePluginVersion","args":["héllo wörld","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["👍🏽 thumbs","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["日本語","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["é","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["straße","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["ılık ırmak","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["👨‍👩‍👧 family","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["a b","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["ΣΊΣΥΦΟΣ","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["a😀b","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["﻿bom","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["a²b x½ y①","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["aⅠb Ⅻ","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["a𐐀b 𝐀bc","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["कि ٣٤","line1\nline2"],"ok":"0.0.0+git.line1line2"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","héllo wörld"],"ok":"0.0.0+git.hllowrld"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","👍🏽 thumbs"],"ok":"0.0.0+git.thumbs"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","日本語"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["İstanbul",""],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","é"],"ok":"0.0.0+git.e"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","İstanbul"],"ok":"0.0.0+git.stanbul"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","straße"],"ok":"0.0.0+git.strae"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","ılık ırmak"],"ok":"0.0.0+git.lkrmak"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","👨‍👩‍👧 family"],"ok":"0.0.0+git.family"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","a b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","ΣΊΣΥΦΟΣ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","a😀b"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","﻿bom"],"ok":"0.0.0+git.bom"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","a²b x½ y①"],"ok":"0.0.0+git.abxy"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","aⅠb Ⅻ"],"ok":"0.0.0+git.ab"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","a𐐀b 𝐀bc"],"ok":"0.0.0+git.abbc"}
+{"fn":"semverSafePluginVersion","args":["İstanbul","कि ٣٤"],"ok":"0.0.0"}
+{"fn":"pluginDescriptionFromManifest","args":[{"$undefined":true}],"ok":""}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2"],"ok":"line1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":[".leading"],"ok":".leading"}
+{"fn":"pluginDescriptionFromManifest","args":["ΣΊΣΥΦΟΣ"],"ok":"ΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":[],"ok":""}
+{"fn":"pluginDescriptionFromManifest","args":[""],"ok":""}
+{"fn":"pluginDescriptionFromManifest","args":["abc"],"ok":"abc"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1"],"ok":"key_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["é"],"ok":"é"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} items"],"ok":"{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["hello"],"ok":"hello"}
+{"fn":"pluginDescriptionFromManifest","args":["😀"],"ok":"😀"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.json"],"ok":"./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} items{name} has {count} items"],"ok":"{name} has {count} items{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["straßetab\tseparated"],"ok":"straßetab\tseparated"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing."],"ok":"trailing."}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bom"],"ok":"bom"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödé"],"ok":"ünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.path"],"ok":"ns:key.path"}
+{"fn":"pluginDescriptionFromManifest","args":["straßeabc"],"ok":"straßeabc"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.ts"],"ok":"src/a/b.ts"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsonab"],"ok":"./x/**/*.jsonab"}
+{"fn":"pluginDescriptionFromManifest","args":["a"],"ok":"a"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadingline1\nline2"],"ok":".leadingline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello World"],"ok":"Hello World"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsonhello world"],"ok":"./x/**/*.jsonhello world"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:c"],"ok":"a:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["aΣΊΣΥΦΟΣ"],"ok":"aΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["ab"],"ok":"ab"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.line1\nline2"],"ok":"trailing.line1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparated"],"ok":"tab\tseparated"}
+{"fn":"pluginDescriptionFromManifest","args":["日本語のテキスト"],"ok":"日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worldkey_name-1"],"ok":"Hello Worldkey_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["hello world"],"ok":"hello world"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparateda😀b😀c"],"ok":"tab\tseparateda😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.c"],"ok":"a.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["aba.b.c"],"ok":"aba.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["a..b"],"ok":"a..b"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbul"],"ok":"İstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  "],"ok":"padded"}
+{"fn":"pluginDescriptionFromManifest","args":["éhello"],"ok":"éhello"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bomΣΊΣΥΦΟΣ"],"ok":"bomΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mix"],"ok":"emoji 👍🏽 mix"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mixİstanbul"],"ok":"emoji 👍🏽 mixİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.😀"],"ok":"trailing.😀"}
+{"fn":"pluginDescriptionFromManifest","args":["aa..b"],"ok":"aa..b"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.tskey_name-1"],"ok":"src/a/b.tskey_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":[":"],"ok":":"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLO"],"ok":"HELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.ca..b"],"ok":"a.b.ca..b"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbul﻿bom"],"ok":"İstanbul﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadingabc"],"ok":".leadingabc"}
+{"fn":"pluginDescriptionFromManifest","args":["hello worldİstanbul"],"ok":"hello worldİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:cHELLO"],"ok":"a:b:cHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["straße"],"ok":"straße"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀chello"],"ok":"a😀b😀chello"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsonabc"],"ok":"./x/**/*.jsonabc"}
+{"fn":"pluginDescriptionFromManifest","args":["😀a..b"],"ok":"😀a..b"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀c"],"ok":"a😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1ünïcödé"],"ok":"key_name-1ünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀ca.b.c"],"ok":"a😀b😀ca.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["helloab"],"ok":"helloab"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéa"],"ok":"ünïcödéa"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mix{name} has {count} items"],"ok":"emoji 👍🏽 mix{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.﻿bom"],"ok":"trailing.﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2:"],"ok":"line1\nline2:"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worldemoji 👍🏽 mix"],"ok":"Hello Worldemoji 👍🏽 mix"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1src/a/b.ts"],"ok":"key_name-1src/a/b.ts"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadingab"],"ok":".leadingab"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2ünïcödé"],"ok":"line1\nline2ünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2a:b:c"],"ok":"line1\nline2a:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.cstraße"],"ok":"a.b.cstraße"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  😀"],"ok":"padded  😀"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:cé"],"ok":"a:b:cé"}
+{"fn":"pluginDescriptionFromManifest","args":["é.leading"],"ok":"é.leading"}
+{"fn":"pluginDescriptionFromManifest","args":["a日本語のテキスト"],"ok":"a日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLO﻿bom"],"ok":"HELLO﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀c  padded  "],"ok":"a😀b😀c  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathkey_name-1"],"ok":"ns:key.pathkey_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bom﻿bom"],"ok":"bom﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadingkey_name-1"],"ok":".leadingkey_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worldtab\tseparated"],"ok":"Hello Worldtab\tseparated"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello World  padded  "],"ok":"Hello World  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparatedline1\nline2"],"ok":"tab\tseparatedline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1日本語のテキスト"],"ok":"key_name-1日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:cns:key.path"],"ok":"a:b:cns:key.path"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2é"],"ok":"line1\nline2é"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mixstraße"],"ok":"emoji 👍🏽 mixstraße"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀cΣΊΣΥΦΟΣ"],"ok":"a😀b😀cΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:c  padded  "],"ok":"a:b:c  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéa..b"],"ok":"ünïcödéa..b"}
+{"fn":"pluginDescriptionFromManifest","args":["ΣΊΣΥΦΟΣsrc/a/b.ts"],"ok":"ΣΊΣΥΦΟΣsrc/a/b.ts"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1ab"],"ok":"key_name-1ab"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbulstraße"],"ok":"İstanbulstraße"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparateda:b:c"],"ok":"tab\tseparateda:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.c﻿bom"],"ok":"a.b.c﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathHELLO"],"ok":"ns:key.pathHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["😀{name} has {count} items"],"ok":"😀{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemshello"],"ok":"{name} has {count} itemshello"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.ts日本語のテキスト"],"ok":"src/a/b.ts日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["abcemoji 👍🏽 mix"],"ok":"abcemoji 👍🏽 mix"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bom{name} has {count} items"],"ok":"bom{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["aa:b:c"],"ok":"aa:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2HELLO"],"ok":"line1\nline2HELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀cabc"],"ok":"a😀b😀cabc"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparatedİstanbul"],"ok":"tab\tseparatedİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.cİstanbul"],"ok":"a.b.cİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.json😀"],"ok":"./x/**/*.json😀"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbulHELLO"],"ok":"İstanbulHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bom.leading"],"ok":"bom.leading"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mixns:key.path"],"ok":"emoji 👍🏽 mixns:key.path"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemsab"],"ok":"{name} has {count} itemsab"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.c.leading"],"ok":"a.b.c.leading"}
+{"fn":"pluginDescriptionFromManifest","args":["hello world{name} has {count} items"],"ok":"hello world{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello World日本語のテキスト"],"ok":"Hello World日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadingtab\tseparated"],"ok":".leadingtab\tseparated"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparatedhello"],"ok":"tab\tseparatedhello"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2line1\nline2"],"ok":"line1\nline2line1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":[":a😀b😀c"],"ok":":a😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["straßeHELLO"],"ok":"straßeHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["helloünïcödé"],"ok":"helloünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1é"],"ok":"key_name-1é"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.tshello"],"ok":"src/a/b.tshello"}
+{"fn":"pluginDescriptionFromManifest","args":[":hello"],"ok":":hello"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1😀"],"ok":"key_name-1😀"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  src/a/b.ts"],"ok":"padded  src/a/b.ts"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2key_name-1"],"ok":"line1\nline2key_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathhello"],"ok":"ns:key.pathhello"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.c日本語のテキスト"],"ok":"a.b.c日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["ΣΊΣΥΦΟΣa:b:c"],"ok":"ΣΊΣΥΦΟΣa:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worldé"],"ok":"Hello Worldé"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mixa..b"],"ok":"emoji 👍🏽 mixa..b"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéa😀b😀c"],"ok":"ünïcödéa😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["éHello World"],"ok":"éHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["éİstanbul"],"ok":"éİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.trailing."],"ok":"trailing.trailing."}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéHello World"],"ok":"ünïcödéHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["abca.b.c"],"ok":"abca.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsonΣΊΣΥΦΟΣ"],"ok":"./x/**/*.jsonΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["éstraße"],"ok":"éstraße"}
+{"fn":"pluginDescriptionFromManifest","args":["hello:"],"ok":"hello:"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.tsHello World"],"ok":"src/a/b.tsHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2İstanbul"],"ok":"line1\nline2İstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéabc"],"ok":"ünïcödéabc"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéİstanbul"],"ok":"ünïcödéİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.ts{name} has {count} items"],"ok":"src/a/b.ts{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2ΣΊΣΥΦΟΣ"],"ok":"line1\nline2ΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1a.b.c"],"ok":"key_name-1a.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemsabc"],"ok":"{name} has {count} itemsabc"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.json./x/**/*.json"],"ok":"./x/**/*.json./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["aé"],"ok":"aé"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.c./x/**/*.json"],"ok":"a.b.c./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLO  padded  "],"ok":"HELLO  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["hello worldns:key.path"],"ok":"hello worldns:key.path"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.tsa..b"],"ok":"src/a/b.tsa..b"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1{name} has {count} items"],"ok":"key_name-1{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéline1\nline2"],"ok":"ünïcödéline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemsHELLO"],"ok":"{name} has {count} itemsHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worldabc"],"ok":"Hello Worldabc"}
+{"fn":"pluginDescriptionFromManifest","args":[":./x/**/*.json"],"ok":":./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["😀:"],"ok":"😀:"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello WorldHello World"],"ok":"Hello WorldHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOİstanbul"],"ok":"HELLOİstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀ctab\tseparated"],"ok":"a😀b😀ctab\tseparated"}
+{"fn":"pluginDescriptionFromManifest","args":["ΣΊΣΥΦΟΣ:"],"ok":"ΣΊΣΥΦΟΣ:"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:c./x/**/*.json"],"ok":"a:b:c./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparateda.b.c"],"ok":"tab\tseparateda.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["straßeΣΊΣΥΦΟΣ"],"ok":"straßeΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["abc日本語のテキスト"],"ok":"abc日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["hello worldkey_name-1"],"ok":"hello worldkey_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödékey_name-1"],"ok":"ünïcödékey_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bom  padded  "],"ok":"bom  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéhello world"],"ok":"ünïcödéhello world"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.c{name} has {count} items"],"ok":"a.b.c{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["éa:b:c"],"ok":"éa:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["straßea"],"ok":"straßea"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.key_name-1"],"ok":"trailing.key_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1ns:key.path"],"ok":"key_name-1ns:key.path"}
+{"fn":"pluginDescriptionFromManifest","args":["éline1\nline2"],"ok":"éline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["😀a:b:c"],"ok":"😀a:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathstraße"],"ok":"ns:key.pathstraße"}
+{"fn":"pluginDescriptionFromManifest","args":[":HELLO"],"ok":":HELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.path{name} has {count} items"],"ok":"ns:key.path{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:c﻿bom"],"ok":"a:b:c﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mix:"],"ok":"emoji 👍🏽 mix:"}
+{"fn":"pluginDescriptionFromManifest","args":["src/a/b.tsHELLO"],"ok":"src/a/b.tsHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1a😀b😀c"],"ok":"key_name-1a😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["straßestraße"],"ok":"straßestraße"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOünïcödé"],"ok":"HELLOünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["abca"],"ok":"abca"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.path😀"],"ok":"ns:key.path😀"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀c./x/**/*.json"],"ok":"a😀b😀c./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":[":😀"],"ok":":😀"}
+{"fn":"pluginDescriptionFromManifest","args":["hello./x/**/*.json"],"ok":"hello./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbul😀"],"ok":"İstanbul😀"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemsa"],"ok":"{name} has {count} itemsa"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLO.leading"],"ok":"HELLO.leading"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbulé"],"ok":"İstanbulé"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:c日本語のテキスト"],"ok":"a:b:c日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathemoji 👍🏽 mix"],"ok":"ns:key.pathemoji 👍🏽 mix"}
+{"fn":"pluginDescriptionFromManifest","args":[":  padded  "],"ok":":  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:cstraße"],"ok":"a:b:cstraße"}
+{"fn":"pluginDescriptionFromManifest","args":["éa"],"ok":"éa"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worldünïcödé"],"ok":"Hello Worldünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["é./x/**/*.json"],"ok":"é./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["abline1\nline2"],"ok":"abline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.cabc"],"ok":"a.b.cabc"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOa:b:c"],"ok":"HELLOa:b:c"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.ünïcödé"],"ok":"trailing.ünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödétrailing."],"ok":"ünïcödétrailing."}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödé日本語のテキスト"],"ok":"ünïcödé日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéé"],"ok":"ünïcödéé"}
+{"fn":"pluginDescriptionFromManifest","args":["a./x/**/*.json"],"ok":"a./x/**/*.json"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  hello"],"ok":"padded  hello"}
+{"fn":"pluginDescriptionFromManifest","args":["abemoji 👍🏽 mix"],"ok":"abemoji 👍🏽 mix"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOab"],"ok":"HELLOab"}
+{"fn":"pluginDescriptionFromManifest","args":["astraße"],"ok":"astraße"}
+{"fn":"pluginDescriptionFromManifest","args":["abcΣΊΣΥΦΟΣ"],"ok":"abcΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadingHello World"],"ok":".leadingHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.patha😀b😀c"],"ok":"ns:key.patha😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["😀ns:key.path"],"ok":"😀ns:key.path"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worlda.b.c"],"ok":"Hello Worlda.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  :"],"ok":"padded  :"}
+{"fn":"pluginDescriptionFromManifest","args":["hellostraße"],"ok":"hellostraße"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mixsrc/a/b.ts"],"ok":"emoji 👍🏽 mixsrc/a/b.ts"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿bom:"],"ok":"bom:"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathline1\nline2"],"ok":"ns:key.pathline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["a{name} has {count} items"],"ok":"a{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["abHello World"],"ok":"abHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["hello worldabc"],"ok":"hello worldabc"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéünïcödé"],"ok":"ünïcödéünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1  padded  "],"ok":"key_name-1  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["aba..b"],"ok":"aba..b"}
+{"fn":"pluginDescriptionFromManifest","args":["straßehello"],"ok":"straßehello"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathΣΊΣΥΦΟΣ"],"ok":"ns:key.pathΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.日本語のテキスト"],"ok":"trailing.日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.json.leading"],"ok":"./x/**/*.json.leading"}
+{"fn":"pluginDescriptionFromManifest","args":["a..bab"],"ok":"a..bab"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  {name} has {count} items"],"ok":"padded  {name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["key_name-1HELLO"],"ok":"key_name-1HELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀c日本語のテキスト"],"ok":"a😀b😀c日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  key_name-1"],"ok":"padded  key_name-1"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbulabc"],"ok":"İstanbulabc"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.pathhello world"],"ok":"ns:key.pathhello world"}
+{"fn":"pluginDescriptionFromManifest","args":["hello  padded  "],"ok":"hello  padded"}
+{"fn":"pluginDescriptionFromManifest","args":[":ünïcödé"],"ok":":ünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemsünïcödé"],"ok":"{name} has {count} itemsünïcödé"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsonHello World"],"ok":"./x/**/*.jsonHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.ca😀b😀c"],"ok":"a.b.ca😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["straße  padded  "],"ok":"straße  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["hellohello world"],"ok":"hellohello world"}
+{"fn":"pluginDescriptionFromManifest","args":["abhello"],"ok":"abhello"}
+{"fn":"pluginDescriptionFromManifest","args":["abc  padded  "],"ok":"abc  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mixabc"],"ok":"emoji 👍🏽 mixabc"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparatedab"],"ok":"tab\tseparatedab"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} items:"],"ok":"{name} has {count} items:"}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödé:"],"ok":"ünïcödé:"}
+{"fn":"pluginDescriptionFromManifest","args":["a:b:c.leading"],"ok":"a:b:c.leading"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} items  padded  "],"ok":"{name} has {count} items  padded"}
+{"fn":"pluginDescriptionFromManifest","args":["Hello Worlda"],"ok":"Hello Worlda"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOΣΊΣΥΦΟΣ"],"ok":"HELLOΣΊΣΥΦΟΣ"}
+{"fn":"pluginDescriptionFromManifest","args":["ns:key.patha"],"ok":"ns:key.patha"}
+{"fn":"pluginDescriptionFromManifest","args":["{name} has {count} itemstrailing."],"ok":"{name} has {count} itemstrailing."}
+{"fn":"pluginDescriptionFromManifest","args":["aHELLO"],"ok":"aHELLO"}
+{"fn":"pluginDescriptionFromManifest","args":["a..b:"],"ok":"a..b:"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b😀ca"],"ok":"a😀b😀ca"}
+{"fn":"pluginDescriptionFromManifest","args":["abcstraße"],"ok":"abcstraße"}
+{"fn":"pluginDescriptionFromManifest","args":["straßeline1\nline2"],"ok":"straßeline1\nline2"}
+{"fn":"pluginDescriptionFromManifest","args":["İstanbulHello World"],"ok":"İstanbulHello World"}
+{"fn":"pluginDescriptionFromManifest","args":["日本語のテキストsrc/a/b.ts"],"ok":"日本語のテキストsrc/a/b.ts"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOhello world"],"ok":"HELLOhello world"}
+{"fn":"pluginDescriptionFromManifest","args":["emoji 👍🏽 mix﻿bom"],"ok":"emoji 👍🏽 mix﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2hello"],"ok":"line1\nline2hello"}
+{"fn":"pluginDescriptionFromManifest","args":["abc:"],"ok":"abc:"}
+{"fn":"pluginDescriptionFromManifest","args":["aba"],"ok":"aba"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  .leading"],"ok":"padded  .leading"}
+{"fn":"pluginDescriptionFromManifest","args":[":ab"],"ok":":ab"}
+{"fn":"pluginDescriptionFromManifest","args":["hello日本語のテキスト"],"ok":"hello日本語のテキスト"}
+{"fn":"pluginDescriptionFromManifest","args":["HELLOtrailing."],"ok":"HELLOtrailing."}
+{"fn":"pluginDescriptionFromManifest","args":["ΣΊΣΥΦΟΣa.b.c"],"ok":"ΣΊΣΥΦΟΣa.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["abcabc"],"ok":"abcabc"}
+{"fn":"pluginDescriptionFromManifest","args":[":{name} has {count} items"],"ok":":{name} has {count} items"}
+{"fn":"pluginDescriptionFromManifest","args":["line1\nline2ab"],"ok":"line1\nline2ab"}
+{"fn":"pluginDescriptionFromManifest","args":["straßetrailing."],"ok":"straßetrailing."}
+{"fn":"pluginDescriptionFromManifest","args":[".leadinga"],"ok":".leadinga"}
+{"fn":"pluginDescriptionFromManifest","args":[":Hello World"],"ok":":Hello World"}
+{"fn":"pluginDescriptionFromManifest","args":["hello worldab"],"ok":"hello worldab"}
+{"fn":"pluginDescriptionFromManifest","args":["straßea.b.c"],"ok":"straßea.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["trailing.İstanbul"],"ok":"trailing.İstanbul"}
+{"fn":"pluginDescriptionFromManifest","args":["abc😀"],"ok":"abc😀"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparated﻿bom"],"ok":"tab\tseparated﻿bom"}
+{"fn":"pluginDescriptionFromManifest","args":["straßea😀b😀c"],"ok":"straßea😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["a.b.ca.b.c"],"ok":"a.b.ca.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":["tab\tseparatedtrailing."],"ok":"tab\tseparatedtrailing."}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  a😀b😀c"],"ok":"padded  a😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsona.b.c"],"ok":"./x/**/*.jsona.b.c"}
+{"fn":"pluginDescriptionFromManifest","args":[".leadinga😀b😀c"],"ok":".leadinga😀b😀c"}
+{"fn":"pluginDescriptionFromManifest","args":["  padded  trailing."],"ok":"padded  trailing."}
+{"fn":"pluginDescriptionFromManifest","args":["ünïcödéab"],"ok":"ünïcödéab"}
+{"fn":"pluginDescriptionFromManifest","args":["./x/**/*.jsonhello"],"ok":"./x/**/*.jsonhello"}
+{"fn":"pluginDescriptionFromManifest","args":["héllo wörld"],"ok":"héllo wörld"}
+{"fn":"pluginDescriptionFromManifest","args":["👍🏽 thumbs"],"ok":"👍🏽 thumbs"}
+{"fn":"pluginDescriptionFromManifest","args":["日本語"],"ok":"日本語"}
+{"fn":"pluginDescriptionFromManifest","args":["ılık ırmak"],"ok":"ılık ırmak"}
+{"fn":"pluginDescriptionFromManifest","args":["👨‍👩‍👧 family"],"ok":"👨‍👩‍👧 family"}
+{"fn":"pluginDescriptionFromManifest","args":["a b"],"ok":"a b"}
+{"fn":"pluginDescriptionFromManifest","args":["a😀b"],"ok":"a😀b"}
+{"fn":"pluginDescriptionFromManifest","args":["a²b x½ y①"],"ok":"a²b x½ y①"}
+{"fn":"pluginDescriptionFromManifest","args":["aⅠb Ⅻ"],"ok":"aⅠb Ⅻ"}
+{"fn":"pluginDescriptionFromManifest","args":["a𐐀b 𝐀bc"],"ok":"a𐐀b 𝐀bc"}
+{"fn":"pluginDescriptionFromManifest","args":["कि ٣٤"],"ok":"कि ٣٤"}
+{"fn":"semverSafePluginVersion","args":["1.2.3"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","abcdef1234567890"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","ABC-def_123/456.789xyz"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","  "],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","---"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","é€😀"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","0123456789abcdefXYZ"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3","a"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","abcdef1234567890"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","ABC-def_123/456.789xyz"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","  "],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","---"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","é€😀"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","0123456789abcdefXYZ"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["v1.2.3","a"],"ok":"v1.2.3"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["=1.2.3","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 "],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","abcdef1234567890"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","ABC-def_123/456.789xyz"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","  "],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","---"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","é€😀"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","0123456789abcdefXYZ"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[" 1.2.3 ","a"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3.4","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["01.2.3"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["01.2.3","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.02.3"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.02.3","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["0.0.0"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","abcdef1234567890"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","ABC-def_123/456.789xyz"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","0123456789abcdefXYZ"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["0.0.0","a"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","abcdef1234567890"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","ABC-def_123/456.789xyz"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","  "],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","---"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","é€😀"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","0123456789abcdefXYZ"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha","a"],"ok":"1.2.3-alpha"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","abcdef1234567890"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","ABC-def_123/456.789xyz"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","  "],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","---"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","é€😀"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","0123456789abcdefXYZ"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-alpha.1","a"],"ok":"1.2.3-alpha.1"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-01","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","abcdef1234567890"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","ABC-def_123/456.789xyz"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","  "],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","---"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","é€😀"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","0123456789abcdefXYZ"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0","a"],"ok":"1.2.3-0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","abcdef1234567890"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","ABC-def_123/456.789xyz"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","  "],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","---"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","é€😀"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","0123456789abcdefXYZ"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-0a","a"],"ok":"1.2.3-0a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","abcdef1234567890"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","ABC-def_123/456.789xyz"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","  "],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","---"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","é€😀"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","0123456789abcdefXYZ"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build.5","a"],"ok":"1.2.3+build.5"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3+build..5","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","abcdef1234567890"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","ABC-def_123/456.789xyz"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","  "],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","---"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","é€😀"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","0123456789abcdefXYZ"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-rc.1+git.abc","a"],"ok":"1.2.3-rc.1+git.abc"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-α","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["１.2.3"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["１.2.3","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","abcdef1234567890"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","ABC-def_123/456.789xyz"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","  "],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","---"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","é€😀"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","0123456789abcdefXYZ"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740991.0.0","a"],"ok":"9007199254740991.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["9007199254740992.0.0","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["99999999999999999999.0.0","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","abcdef1234567890"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","ABC-def_123/456.789xyz"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","  "],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","---"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","é€😀"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","0123456789abcdefXYZ"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-99999999999999999999","a"],"ok":"1.2.3-99999999999999999999"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["V1.2.3","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["v 1.2.3","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 "],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","abcdef1234567890"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","ABC-def_123/456.789xyz"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","  "],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","---"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","é€😀"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","0123456789abcdefXYZ"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["﻿1.2.3 ","a"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","abcdef1234567890"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","ABC-def_123/456.789xyz"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","  "],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","---"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","é€😀"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","0123456789abcdefXYZ"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":["1.2.3\n","a"],"ok":"1.2.3"}
+{"fn":"semverSafePluginVersion","args":[""],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["   "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["   ","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["   ","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["   ","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["   ","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["   ","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["   ","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["   ","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["abcdef1"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","abcdef1234567890"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","  "],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","---"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","é€😀"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","0123456789abcdefXYZ"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["abcdef1","a"],"ok":"0.0.0+git.abcdef1"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","  "],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","---"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","é€😀"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","0123456789abcdefXYZ"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["ABCDEF1234567","a"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","  "],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","---"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","é€😀"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","0123456789abcdefXYZ"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef12","a"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["abcdef1234567890abcdef1234567890abcdef123","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["abcde"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcde","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcde","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["abcde","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcde","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcde","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["abcde","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["abcde","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["g123456"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["g123456","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["g123456","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["g123456","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["g123456","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["g123456","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["g123456","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["g123456","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["latest"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["latest","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["latest","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["latest","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["latest","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["latest","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["latest","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["latest","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["main"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["main","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["main","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["main","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["main","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["main","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["main","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["main","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","abcdef1234567890"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","ABC-def_123/456.789xyz"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","  "],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","---"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","é€😀"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","0123456789abcdefXYZ"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-a-b--c","a"],"ok":"1.2.3-a-b--c"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","abcdef1234567890"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","ABC-def_123/456.789xyz"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","  "],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","---"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","é€😀"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","0123456789abcdefXYZ"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-x.7.z.92","a"],"ok":"1.2.3-x.7.z.92"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.0.0-+","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111.0","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":["1.2.3-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","a"],"ok":"0.0.0+git.a"}
+{"fn":"semverSafePluginVersion","args":[null],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[null,"abcdef1234567890"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":[null,"ABC-def_123/456.789xyz"],"ok":"0.0.0+git.abcdef123456"}
+{"fn":"semverSafePluginVersion","args":[null,"  "],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[null,"---"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[null,"é€😀"],"ok":"0.0.0"}
+{"fn":"semverSafePluginVersion","args":[null,"0123456789abcdefXYZ"],"ok":"0.0.0+git.0123456789ab"}
+{"fn":"semverSafePluginVersion","args":[null,"a"],"ok":"0.0.0+git.a"}
+{"fn":"pluginDescriptionFromManifest","args":[null],"ok":""}
+{"fn":"pluginDescriptionFromManifest","args":[""],"ok":""}
+{"fn":"pluginDescriptionFromManifest","args":[" x "],"ok":"x"}
+{"fn":"pluginDescriptionFromManifest","args":["﻿a "],"ok":"a"}
+{"fn":"pluginDescriptionFromManifest","args":["y"],"ok":"y"}
+{"fn":"pluginDescriptionFromManifest","args":["plain"],"ok":"plain"}
+{"fn":"pluginDescriptionFromManifest","args":["\t\n multi\nline \r\n"],"ok":"multi\nline"}

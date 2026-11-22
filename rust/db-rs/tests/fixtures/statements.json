@@ -1,0 +1,526 @@
+[
+ {
+  "sql": "INSERT INTO resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "INSERT INTO upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "INSERT INTO plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "INSERT INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "insert or replace into resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "insert or replace into resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "insert or replace into upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "insert or replace into notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "insert or replace into notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "insert or replace into plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "insert or replace into UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "UPDATE resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "UPDATE resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "UPDATE upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "UPDATE notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "UPDATE notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "UPDATE plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "UPDATE UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "DELETE FROM resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DELETE FROM resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DELETE FROM upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "DELETE FROM notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "DELETE FROM notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DELETE FROM plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DELETE FROM UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "REPLACE INTO resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "REPLACE INTO resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "REPLACE INTO upstream_checks (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "REPLACE INTO notifications (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "REPLACE INTO notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "REPLACE INTO plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "REPLACE INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE upstream_checks (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE notifications (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "CREATE TABLE UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX upstream_checks (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX notifications (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "DROP INDEX UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE upstream_checks (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE notifications (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "ALTER TABLE UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "SELECT * FROM resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "SELECT * FROM resources_x (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "SELECT * FROM upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "SELECT * FROM notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "SELECT * FROM notifications2 (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "SELECT * FROM plugins (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "SELECT * FROM UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x resources_x (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x notifications2 (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x plugins (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "PRAGMA x UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO upstream_checks (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO notifications (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) INSERT INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM resources_x (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM notifications2 (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM plugins (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "WITH t AS (SELECT 1) SELECT * FROM UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from upstream_checks (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from notifications (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "with recursive t as (select 1) delete from UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "INSERTX INTO resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERTX INTO resources_x (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERTX INTO upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERTX INTO notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERTX INTO notifications2 (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERTX INTO plugins (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERTX INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": " ﻿ INSERT INTO resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": " ﻿ INSERT INTO resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": " ﻿ INSERT INTO upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": " ﻿ INSERT INTO notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": " ﻿ INSERT INTO notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": " ﻿ INSERT INTO plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": " ﻿ INSERT INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO resources_x (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO notifications2 (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO plugins (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO resources (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO resources_x (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO notifications2 (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO plugins (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INſERT INTO UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "\n\t update resources (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "\n\t update resources_x (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "\n\t update upstream_checks (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "\n\t update notifications (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "\n\t update notifications2 (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "\n\t update plugins (a) VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "\n\t update UPSTREAM_CHECKS (a) VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "",
+  "affects": false
+ },
+ {
+  "sql": ";",
+  "affects": false
+ },
+ {
+  "sql": "INSERT OR IGNORE INTO notifications VALUES (1)",
+  "affects": false
+ },
+ {
+  "sql": "INSERT OR K INTO upstream_checks VALUES (1)",
+  "affects": true
+ },
+ {
+  "sql": "UPDATE  upstream_checks SET x = 1",
+  "affects": false
+ }
+]
