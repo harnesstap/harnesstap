@@ -1,0 +1,109 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "src/constants/",
+  "language": "ts",
+  "kind": "napi",
+  "crate_name": "constants-rs",
+  "exports": [
+    {
+      "name": "isEmptyBuiltinProfile",
+      "file": "src/constants/profile.ts",
+      "line": 36,
+      "params": [
+        {
+          "name": "name",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "isReservedProfileName",
+      "file": "src/constants/profile.ts",
+      "line": 40,
+      "params": [
+        {
+          "name": "name",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "isProfilePlugin",
+      "file": "src/constants/profile.ts",
+      "line": 44,
+      "params": [
+        {
+          "name": "plugin",
+          "ts_type": "Pick<Plugin, \"tags\">",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "isProjectProfilePlugin",
+      "file": "src/constants/profile.ts",
+      "line": 48,
+      "params": [
+        {
+          "name": "plugin",
+          "ts_type": "Pick<Plugin, \"tags\">",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "isAutoSeededDefaultProfileName",
+      "file": "src/constants/profile.ts",
+      "line": 52,
+      "params": [
+        {
+          "name": "name",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": [
+    {
+      "name": "listProfilePlugins",
+      "file": "src/constants/profile.ts",
+      "line": 59,
+      "reason": "reads the plugin database (src/models), ported with src/db"
+    }
+  ]
+}

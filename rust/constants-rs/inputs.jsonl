@@ -1,0 +1,17 @@
+{"fn":"isEmptyBuiltinProfile","args":["empty"]}
+{"fn":"isEmptyBuiltinProfile","args":["  empty\n"]}
+{"fn":"isEmptyBuiltinProfile","args":["\ufeffempty\u00a0"]}
+{"fn":"isEmptyBuiltinProfile","args":["Empty"]}
+{"fn":"isEmptyBuiltinProfile","args":["\u0085empty"]}
+{"fn":"isReservedProfileName","args":[" empty "]}
+{"fn":"isReservedProfileName","args":["global default"]}
+{"fn":"isProfilePlugin","args":[{"tags":["profile"]}]}
+{"fn":"isProfilePlugin","args":[{"tags":["Profile","project"]}]}
+{"fn":"isProfilePlugin","args":[{"tags":[]}]}
+{"fn":"isProjectProfilePlugin","args":[{"tags":["profile","project"]}]}
+{"fn":"isProjectProfilePlugin","args":[{"tags":["project"]}]}
+{"fn":"isProjectProfilePlugin","args":[{"tags":["profile"]}]}
+{"fn":"isAutoSeededDefaultProfileName","args":["default"]}
+{"fn":"isAutoSeededDefaultProfileName","args":["global default"]}
+{"fn":"isAutoSeededDefaultProfileName","args":[" default"]}
+{"fn":"isAutoSeededDefaultProfileName","args":["project default"]}

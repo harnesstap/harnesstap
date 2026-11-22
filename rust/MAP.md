@@ -64,7 +64,7 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | front door (`app/`) | done | 564/564, fallback 100% |
 | `src/version.ts` | done | `rust/version-rs`, gate passed, 90/90 cases |
 | `src/node-version.ts` | done | `rust/node-version-rs`, gate passed, 58/58 cases |
-| `src/constants/` | open | `record` never finishes: its import graph (via `src/models`) pulls in the tangled core and the tool spins after the node run; see open question 4 |
+| `src/constants/` | done | `rust/constants-rs`, gate passed, 668/668 cases; `listProfilePlugins` (reads the database) stays in the original until `src/models` is ported |
 | `src/services/toml/` | done | `rust/toml-rs`, gate passed, 1709/1709 cases; `parseTransportToml` (needs a smol-toml compatible parser) and `sortKeysDeep` (generic) stay in the original for now |
 | `src/types.ts` | open | types only (0 exports): ported as Rust types with their first user |
 | `src/generated/` | open | data only (0 exports): ported as Rust data with its first user |
@@ -103,11 +103,15 @@ Lift, per-platform npm packages, Homebrew formula and cask, installers
    unless the original is fixed first.
 3. Rust CI (build, clippy, replay) is not added: no workflow change without
    approval.
-4. `rust-anything record` on `src/constants/` finishes the node run in seconds,
-   then spins at full CPU for over 20 minutes (rust-anything 3.3.0). Recording
-   TS units also needs `--node-arg=--experimental-transform-types`, because
+4. rust-anything 3.3.0 loops forever in `with_local_imports` (`src/gate.rs`) for any
+   unit whose imports form a cycle through `../` paths: resolved paths are not
+   normalized, so `a/../b/../a/...` keeps growing. `record`, `gate` and `map` on
+   such units (`src/constants/`, and anything reaching `src/models` or `src/db`)
+   need a build with one line added: canonicalize the resolved path. Until the
+   fix is upstream, use that patched build for those units. Recording TS units
+   also needs `--node-arg=--experimental-transform-types`, because
    `src/services/cli-errors.ts` uses parameter properties that strip-only mode
-   rejects; without it `record` hangs instead of reporting the error.
+   rejects.
 
 ## Out of scope
 
