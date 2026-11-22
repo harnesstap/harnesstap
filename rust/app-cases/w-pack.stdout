@@ -1,0 +1,3 @@
+✓ Packed 6 files -> [CWD]/build/demo
+Plugin bundle ready: contains plugin.json plus plugin-native directories (agents/, skills/, commands/, hooks/) and an embedded apm.lock.yaml for install-time integrity verification.
+Share with: ht apply [CWD]/build/demo

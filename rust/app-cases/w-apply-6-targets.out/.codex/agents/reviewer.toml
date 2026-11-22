@@ -1,0 +1,3 @@
+name = "reviewer"
+description = "Reviews diffs"
+developer_instructions = "You review diffs."

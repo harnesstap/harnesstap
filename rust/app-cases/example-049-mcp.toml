@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["mcp", "search", "github"]
+status.code = 1
+fs.sandbox = true

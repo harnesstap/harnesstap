@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "from-project", "my-setup", "--project", ".", "--description", "Inferred from web repo"]
+status.code = 0
+fs.sandbox = true

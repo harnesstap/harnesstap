@@ -1,0 +1,2 @@
+Error: Profile 👍🏽 thumbs is not installed locally, and the catalog lookup failed: Request timed out after 30000ms (3 attempts): http://127.0.0.1:9/api/public/plugins?q=%F0%9F%91%8D%F0%9F%8F%BD+thumbs&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud.
+Pull it first: ht profile pull "👍🏽 thumbs"

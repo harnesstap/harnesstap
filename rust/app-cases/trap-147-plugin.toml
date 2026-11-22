@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "straße", "register", "acme/default"]
+status.code = 1
+fs.sandbox = true

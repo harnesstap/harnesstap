@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["apply", "--target", "nope", "--on-conflict", "replace"]
+status.code = 1
+fs.sandbox = true
+fs.base = "w-apply-unknown-target.in"

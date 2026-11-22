@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "./dist/my-pkg-1.0.0.zip"]
+status.code = 1
+fs.sandbox = true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["init", "--harnesses", "straße"]
+status.code = 1
+fs.sandbox = true

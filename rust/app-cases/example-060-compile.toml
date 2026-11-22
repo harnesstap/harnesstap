@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["compile", "--all"]
+status.code = 1
+fs.sandbox = true

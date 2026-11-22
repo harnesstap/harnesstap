@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["policy", "explain", "owner/repo", "--format", "json"]
+status.code = 0
+fs.sandbox = true

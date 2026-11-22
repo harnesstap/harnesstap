@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "catalog", "a b", "acme/default"]
+status.code = 1
+fs.sandbox = true

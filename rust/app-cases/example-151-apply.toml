@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "team-baseline", "--project", ".", "--dry-run"]
+status.code = 1
+fs.sandbox = true

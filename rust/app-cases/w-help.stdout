@@ -1,0 +1,50 @@
+
+harnesstap v1.6.3
+Agent harness configuration toolkit for Claude Code, Codex, Cursor, and other coding CLIs
+
+USAGE
+  harnesstap [options] [command]
+
+OPTIONS
+  -V, --version            output the version number
+  -v, --verbose              show verbose error output
+  --no-color               disable color output
+  --no-interactive         disable interactive prompts
+  -h, --help               display help for command
+
+COMMAND GROUPS
+  auth (a)           Authenticate with HarnessTap Cloud and manage cloud accounts
+  config             Manage project profile config (apm.yml)
+  environment (e)    Manage reusable environments and plugin environment cascade
+  github             Authenticate with GitHub for private marketplace and repo reads
+  harness (h)        Manage the registered harness set
+  help               Core concepts and scenario playbooks
+  lock               Read apm.lock.yaml and export inventory artifacts
+  marketplace (mkt)  Manage plugin marketplace sources
+  mcp                Discover and install MCP Registry servers
+  migrate (m)        Export or import workspace, plugins, or resources for offline sharing
+  notifications      List and mark plugin update notifications
+  plugin (l)         Manage plugins (named bundles of resources that can be applied to a project)
+  policy             Inspect executable-trust and apm-policy.yml decisions
+  profile (p)        Manage profile plugins and global profile switching
+  resource (r)       Manage resources (individual pieces of AI configuration like agents, skills, or instructions)
+
+PROJECT
+  add <source>           Add skills from a remote or local source
+  apply [plugins]        Resolve a plugin's dependency graph and materialize it
+  approve [PACKAGE_REF]  Approve executable primitives from dependency packages
+  audit                  Scan a project for hidden Unicode, lockfile hashes, apm-policy.yml, and executable trust
+  compile                Compile local .apm/ primitives into resolved target harness directories
+  deny [PACKAGE_REF]     Deny executable primitives from dependency packages
+  doctor                 Check Node, native modules, paths, and harness detection
+  history [path]         List configuration snapshots for a project
+  init                   Initialize the harnesstap database and config directory
+  install                Onboard a project from apm.yml (same as apply with no plugin selector)
+  mirror [path]          Rematerialize registered harness files from one on-disk harness (or plugin/AGENTS.md fallback)
+  open [path]            Open a file or directory in your system editor
+  pack                   Pack an apm.yml project into an Agent Plugins 1.0 bundle (plugin.json + primitives + apm.lock.yaml)
+  revert [snapshot-id]   Revert a project or global apply snapshot
+  scan [path]            Scan a project directory or plugin source and import configurations into the database
+  status [path]          Show current project status and drift summary
+  targets                Show which apply harness targets resolve for this project, and why
+  use                    Switch to a project-configured profile and environment

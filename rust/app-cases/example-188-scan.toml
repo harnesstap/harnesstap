@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["scan", ".", "--harness", "claude-code"]
+status.code = 0
+fs.sandbox = true

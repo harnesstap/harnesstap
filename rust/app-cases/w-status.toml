@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["status"]
+status.code = 0
+fs.sandbox = true
+fs.base = "w-status.in"

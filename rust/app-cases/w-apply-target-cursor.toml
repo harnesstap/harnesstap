@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["apply", "--target", "cursor", "--on-conflict", "replace"]
+status.code = 0
+fs.sandbox = true
+fs.base = "w-apply-target-cursor.in"

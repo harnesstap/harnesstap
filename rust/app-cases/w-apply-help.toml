@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "--help"]
+status.code = 0
+fs.sandbox = true

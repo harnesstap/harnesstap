@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["harness", "👍🏽 thumbs", "--supported"]
+status.code = 1
+fs.sandbox = true

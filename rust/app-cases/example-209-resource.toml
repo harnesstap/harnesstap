@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["resource", "list", "--type", "skill"]
+status.code = 0
+fs.sandbox = true

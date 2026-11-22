@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["init", "--harnesses", "not-a-harness"]
+status.code = 1
+fs.sandbox = true

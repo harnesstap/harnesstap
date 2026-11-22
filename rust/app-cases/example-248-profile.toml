@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "create", "work", "--description", "Work machine preset"]
+status.code = 0
+fs.sandbox = true

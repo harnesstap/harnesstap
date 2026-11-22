@@ -1,0 +1,3 @@
+Error: Plugin ./build/my-pkg is not in your catalog scope.
+Connect the org: ht plugin catalog connect org <slug>
+Connect one lib: ht plugin catalog connect plugin ./build/my-pkg.

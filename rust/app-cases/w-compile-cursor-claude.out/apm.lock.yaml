@@ -1,0 +1,18 @@
+lockfile_version: "1"
+generated_at: [..]
+apm_version: 1.6.3
+dependencies: []
+local_deployed_file_hashes:
+  .agents/skills/skill-1/SKILL.md: sha256:a1214224937515ac0c86318659772fec7351388c89380d64715ec337321fb6f0
+  .agents/skills/skill-2/SKILL.md: sha256:16900e12e0fce22939411d9abaec83a7437d57e1e4178dea2690971effcd3561
+  .agents/skills/skill-3/SKILL.md: sha256:c563899ea44481297d9c133940b16e511506db0a071e28a0518321fb41bb1d8c
+  .claude/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .claude/rules/style.md: sha256:c2a21a593413a871204c345046d2ea6acd55c25958e9e75df0915053d4396e9c
+  .claude/skills/skill-1/SKILL.md: sha256:a1214224937515ac0c86318659772fec7351388c89380d64715ec337321fb6f0
+  .claude/skills/skill-2/SKILL.md: sha256:16900e12e0fce22939411d9abaec83a7437d57e1e4178dea2690971effcd3561
+  .claude/skills/skill-3/SKILL.md: sha256:c563899ea44481297d9c133940b16e511506db0a071e28a0518321fb41bb1d8c
+  .cursor/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .cursor/rules/style.mdc: sha256:b734bdcfe272407eaab822d40bd53ae402a9a4d4abcc1aac1889740b457f48ae
+root: demo
+resource_map_hash: sha256:2d1116d801a3a69dde19323b87bc050c194577f2cfd28eb4d6486385b3dff827
+plugins: []

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["audit", "--ci", "--format", "json"]
+status.code = 0
+fs.sandbox = true

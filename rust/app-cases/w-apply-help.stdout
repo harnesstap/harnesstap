@@ -1,0 +1,35 @@
+
+USAGE
+  ht apply [options] [plugins...]
+
+Resolve a plugin's dependency graph and materialize it
+
+ARGUMENTS
+  [plugins]  Plugins to apply
+
+EXAMPLES
+  ht apply base
+  ht apply base --harness claude-code
+  ht apply work --global
+  ht apply ./build/my-pkg
+  ht apply base --format json
+  ht apply base --on-conflict replace
+
+OPTIONS
+  --global                  Materialize into machine home instead of the project
+  --project <path>          Project directory
+  --harness <slugs>         Comma-separated harness slugs
+  --all                     Install/apply every canonical HT-mapped target (not agent-skills)
+  --dry-run                 Show what would be written
+  --format <mode>           Output format: human or json
+  --interactive             Prompt instead of relying on explicit flags
+  --ignore-plugin-versions  Skip checking Claude plugin pins against installed versions
+  --strict-plugin-versions  Fail apply (exit 2) if any pinned plugin violates its version constraint
+  --sync-plugins            Refresh all pinned plugin resources from install trees before apply (unresolved plugins are synced by default)
+  --on-conflict <policy>    What to do when it already exists: replace, skip, prompt or cancel. overwrite, ignore and fail are aliases. Non-interactive default: cancel
+  --explain                 Print the resolution trail: selected versions with their constraints, and every resource decision
+  --update                  Ignore apm.lock.yaml, re-resolve the dependency graph, and refresh file hashes
+  --strict                  Fail apply when ${VAR} environment placeholders cannot be resolved
+  --force                   Override critical hidden-Unicode findings and continue apply
+  -y, --yes                 Install pinned marketplace plugins without a prompt
+  --force-remove            Also remove managed files you changed and unmanaged files in the way

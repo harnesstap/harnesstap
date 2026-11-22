@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["frobnicate"]
+status.code = 1
+fs.sandbox = true

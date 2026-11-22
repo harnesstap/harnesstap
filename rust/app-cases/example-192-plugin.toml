@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "edit", "my-setup", "--remove", "formatter@team-marketplace", "--type", "plugin_pin"]
+status.code = 1
+fs.sandbox = true

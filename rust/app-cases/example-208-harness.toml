@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["harness", "project", "set", "--project", ".", "--materialization-strategy", "copy"]
+status.code = 0
+fs.sandbox = true

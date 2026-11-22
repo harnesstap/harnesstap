@@ -1,0 +1,9 @@
+name: demo
+version: "1.0.0"
+targets: [claude, cursor, codex, copilot, gemini, opencode]
+dependencies:
+  mcp:
+    - name: remote-docs
+      registry: false
+      transport: http
+      url: https://mcp.example.invalid/mcp

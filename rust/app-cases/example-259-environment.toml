@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["environment", "edit", "personal", "--secret", "SLACK_BOT_TOKEN:keychain:harnesstap/slack-personal"]
+status.code = 1
+fs.sandbox = true

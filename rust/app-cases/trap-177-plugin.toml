@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "straße", "my-setup"]
+status.code = 1
+fs.sandbox = true

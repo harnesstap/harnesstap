@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "edit", "my-setup", "--add", "plugin:acme/default/base", "--version", "^2.0.0"]
+status.code = 1
+fs.sandbox = true

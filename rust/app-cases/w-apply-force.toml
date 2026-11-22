@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["apply", "--force", "--on-conflict", "replace"]
+status.code = 0
+fs.sandbox = true
+fs.base = "w-apply-force.in"

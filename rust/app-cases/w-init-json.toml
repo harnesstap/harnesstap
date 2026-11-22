@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["init", "--format", "json", "--harnesses", "claude-code"]
+status.code = 0
+fs.sandbox = true

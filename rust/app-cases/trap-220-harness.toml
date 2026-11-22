@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["harness", "a b", "--harnesses", "claude-code,cursor,codex"]
+status.code = 1
+fs.sandbox = true

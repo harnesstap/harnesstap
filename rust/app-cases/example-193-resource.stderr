@@ -1,0 +1,1 @@
+Error: "plugin_pin_pin" isn't a resource type. Valid: instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin.

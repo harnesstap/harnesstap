@@ -1,0 +1,3 @@
+Error: Provide at least one plugin name, plugin export path, or URL, or declare dependencies in apm.yml.
+ht apply <plugin>
+ht config init

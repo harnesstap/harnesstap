@@ -1,0 +1,2 @@
+Error: too many arguments for 'create'. Expected 1 argument but got 2.
+Run ht plugin create --help to see the options.

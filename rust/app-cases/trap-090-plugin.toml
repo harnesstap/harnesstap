@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "a b", "--search", "foundation", "--remote-only"]
+status.code = 1
+fs.sandbox = true

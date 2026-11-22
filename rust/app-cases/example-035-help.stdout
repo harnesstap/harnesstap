@@ -1,0 +1,18 @@
+
+SCENARIO 7: PREVIEW AND APPLY A PLUGIN TO ONE OR MORE TARGET HARNESSES
+
+Common · Shipped
+
+  Use this when you are ready to materialize a known-good setup into a project.
+  The dry-run preview is itself a frequent check before a real write.
+
+TYPICAL COMMANDS
+
+  ht apply my-setup --project . --harness claude-code,codex,cursor --dry-run
+  ht apply my-setup --project . --harness claude-code,codex,cursor
+  ht status .
+  ht apply my-setup --strict-plugin-versions   # exit 2 on pin violation
+  ht apply my-setup --ignore-plugin-versions   # skip validation
+
+Full doc: https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/07-preview-apply-plugin.md
+All scenarios: https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/scenarios.md

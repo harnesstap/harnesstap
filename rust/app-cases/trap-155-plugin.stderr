@@ -1,0 +1,2 @@
+Error: too many arguments for 'catalog'. Expected 0 arguments but got 2.
+Run ht plugin catalog --help to see the options.

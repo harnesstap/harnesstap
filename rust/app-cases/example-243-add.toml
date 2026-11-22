@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["add", "./vendor/skills", "--project", ".", "--skill", "triage", "--yes"]
+status.code = 1
+fs.sandbox = true

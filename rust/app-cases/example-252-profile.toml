@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "pull", "harnesstap-cloud/default/work@1.0.0"]
+status.code = 1
+fs.sandbox = true

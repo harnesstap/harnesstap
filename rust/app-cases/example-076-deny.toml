@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["deny", "--user", "owner/repo"]
+status.code = 0
+fs.sandbox = true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["help", "--format", "json"]
+status.code = 0
+fs.sandbox = true

@@ -1,0 +1,29 @@
+{
+  "ref": "owner/repo",
+  "name": "owner/repo",
+  "version": "",
+  "exec_status": "gated_pending_approval",
+  "opted_in": false,
+  "deciding_layer": "none",
+  "decisions": [
+    {
+      "type": "hooks",
+      "outcome": "gated_pending_approval",
+      "layer": "none",
+      "shadowed": []
+    },
+    {
+      "type": "bin",
+      "outcome": "gated_pending_approval",
+      "layer": "none",
+      "shadowed": []
+    },
+    {
+      "type": "mcp",
+      "outcome": "gated_pending_approval",
+      "layer": "none",
+      "shadowed": []
+    }
+  ],
+  "warnings": []
+}

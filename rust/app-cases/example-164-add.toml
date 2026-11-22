@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["add", "owner/repo", "--skill", "my-skill"]
+status.code = 1
+fs.sandbox = true

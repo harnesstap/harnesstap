@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "日本語", "acme/library"]
+status.code = 1
+fs.sandbox = true

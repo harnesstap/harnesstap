@@ -1,0 +1,5 @@
+Error: Invalid YAML in [CWD]/apm.yml: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:
+
+name: [unclosed
+
+^.

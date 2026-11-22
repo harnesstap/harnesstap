@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["resource", "show", "formatter@team-marketplace"]
+status.code = 1
+fs.sandbox = true

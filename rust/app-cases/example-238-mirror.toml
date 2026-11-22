@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["mirror", ".", "--from", "codex", "--reference", "auto"]
+status.code = 1
+fs.sandbox = true

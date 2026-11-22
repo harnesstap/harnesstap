@@ -1,0 +1,2 @@
+Error: too many arguments for 'status'. Expected 0 arguments but got 1.
+Run ht harness project status --help to see the options.

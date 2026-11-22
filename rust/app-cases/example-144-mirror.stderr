@@ -1,0 +1,1 @@
+Error: Harness "codex" has no on-disk resources in [CWD]. Try: ht mirror --reference plugin or ht scan . or ht harness project set --harnesses claude-code,cursor.

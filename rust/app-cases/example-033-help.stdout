@@ -1,0 +1,301 @@
+{
+  "concepts": {
+    "concepts": [
+      {
+        "term": "resource",
+        "definition": "Single canonical item (skill, rule, MCP, hook, agent, ...)"
+      },
+      {
+        "term": "plugin",
+        "definition": "Named bundle of resources you apply to projects"
+      },
+      {
+        "term": "profile",
+        "definition": "Plugin tagged profile; apply globally with profile use"
+      },
+      {
+        "term": "account",
+        "definition": "HarnessTap Cloud login identity stored locally"
+      },
+      {
+        "term": "environment",
+        "definition": "Named how-values (vars, secrets, model config)"
+      },
+      {
+        "term": "harness",
+        "definition": "Target CLI (claude-code, codex, cursor, ...)"
+      }
+    ],
+    "harness_roles": [
+      {
+        "term": "registered",
+        "definition": "Harnesses HarnessTap writes to (harness set --harnesses)"
+      },
+      {
+        "term": "default",
+        "definition": "First registered harness: mirror source and scans when none is named"
+      }
+    ],
+    "commands": [
+      {
+        "command": "plugin apply <plugin>",
+        "purpose": "Materialize plugins onto a project"
+      },
+      {
+        "command": "profile use <profile>",
+        "purpose": "Apply a profile plugin globally to home harness files"
+      },
+      {
+        "command": "migrate export <archive>",
+        "purpose": "Share your full local workspace with another machine"
+      },
+      {
+        "command": "mirror .",
+        "purpose": "Sync registered harnesses from the first registered one on disk"
+      },
+      {
+        "command": "plugin list --search foundation --remote-only",
+        "purpose": "Browse public catalog plugins"
+      },
+      {
+        "command": "plugin pull org/catalog/engineering-foundation",
+        "purpose": "Cache a catalog plugin locally"
+      },
+      {
+        "command": "plugin edit <plugin> --add <item> --type skill",
+        "purpose": "Add a local resource to a plugin"
+      }
+    ],
+    "environment_cascade": "home env ◂ plugin default env (last wins on apply)"
+  },
+  "scenarios": [
+    {
+      "id": 1,
+      "title": "Bootstrap HarnessTap on a machine and discover existing defaults",
+      "frequency": null,
+      "status": null
+    },
+    {
+      "id": 2,
+      "title": "Choose your registered harnesses",
+      "frequency": null,
+      "status": null
+    },
+    {
+      "id": 3,
+      "title": "Override harness preferences for one repository",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 4,
+      "title": "Scan an existing repository and import its current harness setup",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 5,
+      "title": "Build a reusable plugin from imported resources",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 6,
+      "title": "Add plugin constraints to a plugin",
+      "frequency": "Rare",
+      "status": "Shipped"
+    },
+    {
+      "id": 7,
+      "title": "Preview and apply a plugin to one or more target harnesses",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 8,
+      "title": "Audit plugin resources and plugin pins",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 9,
+      "title": "Review project state, history, and recover from a bad apply",
+      "frequency": "Rare",
+      "status": "Shipped"
+    },
+    {
+      "id": 10,
+      "title": "Export or import a plugin as a portable package",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 11,
+      "title": "Start from a catalog baseline instead of building from scratch",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 12,
+      "title": "Drive HarnessTap from scripts or other agents",
+      "frequency": null,
+      "status": null
+    },
+    {
+      "id": 13,
+      "title": "Choose a materialization strategy (symlink vs copy)",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 14,
+      "title": "Curate and clean up the local resource DB",
+      "frequency": "Rare",
+      "status": "Shipped"
+    },
+    {
+      "id": 15,
+      "title": "Apply a plugin to a subset of target platforms",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 16,
+      "title": "Enforce plugin and plugin state in CI",
+      "frequency": null,
+      "status": null
+    },
+    {
+      "id": 17,
+      "title": "Migrate HarnessTap state to a new machine",
+      "frequency": "Rare",
+      "status": "Shipped (manual workflow: see [Scenario 28](https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/28-machine-migration.md) for one-command migration)"
+    },
+    {
+      "id": 18,
+      "title": "Debug committed vs effective Claude plugin settings",
+      "frequency": "Rare",
+      "status": "Shipped"
+    },
+    {
+      "id": 19,
+      "title": "Sync plugin resources from install trees",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 20,
+      "title": "Inspect supported platforms before targeting",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 21,
+      "title": "Detect drift between project files and the last applied plugin",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 22,
+      "title": "Diff two plugins",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 23,
+      "title": "Doctor-check a plugin without writing",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 24,
+      "title": "Apply a plugin directly from a URL",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 25,
+      "title": "Stack multiple plugins",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 26,
+      "title": "Turn a project's current state into a plugin",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 27,
+      "title": "True cross-harness `mirror`",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 28,
+      "title": "One-command machine migration",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 31,
+      "title": "Import dual-mode plugin repo",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 32,
+      "title": "Apply to instruction-tier harnesses",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 33,
+      "title": "Mirror with plugin-source fallback",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 34,
+      "title": "Understand portability limits",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 35,
+      "title": "Add a remote skill package",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 36,
+      "title": "Switch global profile presets",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 37,
+      "title": "Publish a profile plugin to the catalog",
+      "frequency": "Occasional",
+      "status": "Shipped"
+    },
+    {
+      "id": 38,
+      "title": "Create a plugin from a skill package",
+      "frequency": "Common",
+      "status": "Shipped"
+    },
+    {
+      "id": 39,
+      "title": "MCP auth, environments, and account switching",
+      "frequency": "Occasional",
+      "status": "Documented"
+    },
+    {
+      "id": 40,
+      "title": "Use project profile config",
+      "frequency": "Common",
+      "status": "Shipped"
+    }
+  ]
+}

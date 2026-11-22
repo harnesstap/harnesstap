@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "fork", "web-search"]
+status.code = 1
+fs.sandbox = true

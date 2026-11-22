@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["add", "mattpocock/skills", "--all", "--global", "--create-plugin", "mattpocock-skills", "-y"]
+status.code = 1
+fs.sandbox = true

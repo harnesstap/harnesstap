@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "catalog", "register", "héllo wörld"]
+status.code = 1
+fs.sandbox = true

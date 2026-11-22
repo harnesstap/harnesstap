@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "list", "--search", "react", "--remote-only"]
+status.code = 0
+fs.sandbox = true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["scan", ".", "--dry-run"]
+status.code = 0
+fs.sandbox = true

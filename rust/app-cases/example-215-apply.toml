@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "my-setup", "--project", ".", "--dry-run", "--strict-plugin-versions", "--format", "json"]
+status.code = 1
+fs.sandbox = true

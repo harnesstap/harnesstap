@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "engineering-foundation", "--project", ".", "--harness", "straße"]
+status.code = 1
+fs.sandbox = true

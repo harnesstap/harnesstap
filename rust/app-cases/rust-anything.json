@@ -1,0 +1,15 @@
+{
+  "schema": "rust-anything/app-cases@1",
+  "name": "ht",
+  "run": [
+    "bash",
+    "rust/run-sandboxed.sh",
+    "node",
+    "dist/bin.js"
+  ],
+  "normalize": [
+    "timestamps",
+    "uuids"
+  ],
+  "timeout_secs": 30
+}

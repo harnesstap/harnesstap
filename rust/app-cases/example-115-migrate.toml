@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["migrate", "export", "./team", "--plugin", "my-setup", "--embed-plugins"]
+status.code = 1
+fs.sandbox = true
