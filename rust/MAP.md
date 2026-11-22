@@ -73,8 +73,8 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | `src/services/toml/` | done | `rust/toml-rs`, gate passed, 1709/1709 cases; `parseTransportToml` (needs a smol-toml compatible parser) and `sortKeysDeep` (generic) stay in the original for now |
 | `src/types.ts` | open | types only (0 exports): ported as Rust types with their first user |
 | `src/generated/` | open | data only (0 exports): ported as Rust data with its first user |
-| YAML emitter | open | ADR-008, no TS unit of its own (lives in `src/services/`) |
-| JSON emitter | open | `JSON.stringify` formatting, ADR-010 |
+| YAML emitter | done | `rust/emit-rs` (`emit_rs::yaml::stringify`): the `yaml` 2.8 `stringify` call with `{ indent: 2, lineWidth: 0, defaultKeyType: "PLAIN" }` that every YAML writer in `src/` uses (the original rebuilds the document rather than editing it in place, so there is no layout to keep beyond that). 3485 fixture cases recorded from the original by `emit-rs/tests/make-fixtures.mjs`, including every YAML file in `app-cases/`. Parsing (saphyr) comes with its first caller |
+| JSON emitter | done | `rust/emit-rs` (`emit_rs::json::stringify`): `JSON.stringify(value, null, gap)` with JavaScript key order and number printing (`ryu-js`). 3975 fixture cases, including every JSON file in `app-cases/` |
 | `src/models/` | open | in the wave 2 cycle |
 | `src/db/` | open | in the wave 2 cycle, rusqlite (ADR-012) |
 
