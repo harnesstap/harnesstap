@@ -44,13 +44,17 @@ git checkout src/generated/scenarios.ts
 rust-anything app record . --name ht --timeout 30 --inputs rust/app-inputs/cases.jsonl \
   --normalize timestamps --normalize uuids -- bash rust/run-sandboxed.sh node dist/bin.js
 rust-anything app replay .                                     # the original
-cargo build --manifest-path rust/app/Cargo.toml
+HT_RELEASE=1 cargo build --manifest-path rust/app/Cargo.toml   # bakes 1.6.3 like the original
 rust-anything app replay . --build "bash rust/run-sandboxed.sh rust/app/target/debug/ht"
 ```
 
 Always replay a Rust build through `run-sandboxed.sh`. `app front-door` and
 `app wire` replay the binary directly, so run them with `HOME` set to a
 throwaway folder.
+
+The front door bakes the version at build time (`app/build.rs`), like tsup
+bakes `__HT_VERSION__`. Build it with `HT_RELEASE=1` before a replay, or the
+`--version` cases print the dev build string instead of `1.6.3`.
 
 ## Waves and units
 
@@ -61,7 +65,8 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | Unit | State | Notes |
 | --- | --- | --- |
 | record and replay (`app-cases/`) | done | 564 cases, original 564/564 |
-| front door (`app/`) | done | 564/564, fallback 100% |
+| front door (`app/`) | done | 564/564, fallback 99.8% (563/564) |
+| `ht --version` | done | wired to `version-rs` (`app/src/units/version.rs`); kill switch `RUST_ANYTHING_UNIT_VERSION=original` |
 | `src/version.ts` | done | `rust/version-rs`, gate passed, 90/90 cases |
 | `src/node-version.ts` | done | `rust/node-version-rs`, gate passed, 58/58 cases |
 | `src/constants/` | done | `rust/constants-rs`, gate passed, 668/668 cases; `listProfilePlugins` (reads the database) stays in the original until `src/models` is ported |

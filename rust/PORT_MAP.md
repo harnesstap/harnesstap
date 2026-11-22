@@ -11,6 +11,12 @@
 | `src/services/toml/` | `rust/toml-rs` | `environmentsToTomlRecord`, `environmentsFromTomlRecord`, `environmentToTomlDocument`, `readTransportFile`, `sortStringRecord`, `assertTomlExtension`, `readSchemaHeader`, `formatTransportToml`, `writeTransportToml` | `parseTransportToml`, `sortKeysDeep` | 1709 | 1709/1709 | unchanged |
 | `src/version.ts` | `rust/version-rs` | `isReleaseBuild`, `readGitSha`, `formatDevBuildVersion`, `resolveBuildVersion` | - | 90 | 90/90 | unchanged |
 
+## Whole app
+
+| Glue | Runs |
+| --- | --- |
+| `rust/app/src/units/version.rs` | Rust, handing some cases to the original |
+
 ## Not ported yet
 
 In the order `analyze` suggests.
