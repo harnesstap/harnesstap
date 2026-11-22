@@ -1,12 +1,14 @@
 # Port map: rust-port-w0
 
-2 of 54 units have a Rust port; no original changed since it was recorded.
+4 of 54 units have a Rust port; no original changed since it was recorded.
 
 ## Ports
 
 | Unit | Crate | In Rust | Kept in the original | Cases | Last diff | Original |
 | --- | --- | --- | --- | ---: | ---: | --- |
+| `src/constants/` | `rust/constants-rs` | `isEmptyBuiltinProfile`, `isReservedProfileName`, `isProfilePlugin`, `isProjectProfilePlugin`, `isAutoSeededDefaultProfileName` | `listProfilePlugins` | 668 | not run | unchanged |
 | `src/node-version.ts` | `rust/node-version-rs` | `parseNodeVersion`, `isSupportedNodeVersion`, `launchedByBun`, `nodeVersionRefusalMessage`, `isBunRuntime`, `assertSupportedRuntime` | - | 58 | 58/58 | unchanged |
+| `src/services/toml/` | `rust/toml-rs` | `environmentsToTomlRecord`, `environmentsFromTomlRecord`, `environmentToTomlDocument`, `readTransportFile`, `sortStringRecord`, `assertTomlExtension`, `readSchemaHeader`, `formatTransportToml`, `writeTransportToml` | `parseTransportToml`, `sortKeysDeep` | 1709 | 1709/1709 | unchanged |
 | `src/version.ts` | `rust/version-rs` | `isReleaseBuild`, `readGitSha`, `formatDevBuildVersion`, `resolveBuildVersion` | - | 90 | 90/90 | unchanged |
 
 ## Not ported yet
@@ -15,9 +17,7 @@ In the order `analyze` suggests.
 
 | Unit | Lines | Exports | Readiness |
 | --- | ---: | ---: | ---: |
-| `src/services/toml/` | 169 | 11 | 93 |
 | `src/services/wizards/adapters/` | 138 | 4 | 100 |
-| `src/constants/` | 49 | 6 | 95 |
 | `src/services/completion/providers/` | 516 | 22 | 74 |
 | `src/copy/` | 489 | 56 | 74 |
 | `src/services/wizards/prompts/hooks/` | 300 | 21 | 73 |

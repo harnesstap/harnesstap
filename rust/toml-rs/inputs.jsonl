@@ -1,0 +1,59 @@
+{"fn": "environmentsToTomlRecord", "args": [[{"name": "prod", "values": {"B": "2", "a": "1"}}, {"name": "Dev", "values": {}}, {"name": "alpha", "values": {"x": "y"}, "secret_refs": {"TOKEN": {"provider": "env", "ref": "GH_TOKEN"}}}]]}
+{"fn": "environmentsToTomlRecord", "args": [[{"name": "b", "values": {"10": "x", "2": "y", "a": "z"}}, {"name": "a", "values": {"k": "v"}, "secret_refs": {}}]]}
+{"fn": "environmentsToTomlRecord", "args": [[{"name": "\u00e9t\u00e9", "values": {}}, {"name": "ete", "values": {}}, {"name": "Zed", "values": {}}, {"name": "_under", "values": {}}, {"name": "10", "values": {}}, {"name": "9", "values": {}}]]}
+{"fn": "environmentsToTomlRecord", "args": [[{"name": "same", "values": {"a": "1"}}, {"name": "same", "values": {"b": "2"}}]]}
+{"fn": "environmentsToTomlRecord", "args": [[]]}
+{"fn": "environmentsToTomlRecord", "args": [[{"name": "x", "values": {"\ud83d\ude80": "rocket", "\uff21": "fullwidth", "Z": "z"}}]]}
+{"fn": "environmentsFromTomlRecord", "args": [{"prod": {"values": {"A": "1", "b": 2, "c": true}}, "dev": {}}]}
+{"fn": "environmentsFromTomlRecord", "args": [{"x": {"values": {"n": null, "arr": [1, 2], "o": {"k": 1}}, "secret_refs": {"T": {"provider": "keychain", "ref": "r"}, "U": {}, "V": "str", "W": {"ref": 5}}}}]}
+{"fn": "environmentsFromTomlRecord", "args": [{"bad": "not a table"}]}
+{"fn": "environmentsFromTomlRecord", "args": [{"ok": {}, "bad2": [1]}]}
+{"fn": "environmentsFromTomlRecord", "args": [null]}
+{"fn": "environmentsFromTomlRecord", "args": ["str"]}
+{"fn": "environmentsFromTomlRecord", "args": [[1, 2]]}
+{"fn": "environmentsFromTomlRecord", "args": [{}]}
+{"fn": "environmentsFromTomlRecord", "args": [{"\u00e9": {}, "e": {}, "E": {}, "10": {}, "2": {}}]}
+{"fn": "environmentToTomlDocument", "args": [{"name": "p", "values": {"b": "2", "a": "1"}}]}
+{"fn": "environmentToTomlDocument", "args": [{"name": "p", "values": {}, "secret_refs": {"T": {"provider": "env", "ref": "X"}}}]}
+{"fn": "environmentToTomlDocument", "args": [{"name": "p", "values": {"1": "a", "0": "b"}, "secret_refs": {}}]}
+{"fn": "sortStringRecord", "args": [{"b": "2", "a": "1"}]}
+{"fn": "sortStringRecord", "args": [{"B": "x", "a": "y", "_": "z", "10": "t", "9": "u"}]}
+{"fn": "sortStringRecord", "args": [{"a": null}]}
+{"fn": "sortStringRecord", "args": [{}]}
+{"fn": "sortStringRecord", "args": [{"\ud83d\ude00": "1", "\uffff": "2"}]}
+{"fn": "assertTomlExtension", "args": ["a.toml"]}
+{"fn": "assertTomlExtension", "args": ["A.TOML"]}
+{"fn": "assertTomlExtension", "args": ["x.json"]}
+{"fn": "assertTomlExtension", "args": ["x.JSONC"]}
+{"fn": "assertTomlExtension", "args": ["dir/x.toml"]}
+{"fn": "assertTomlExtension", "args": ["x"]}
+{"fn": "assertTomlExtension", "args": ["x.toml.bak"]}
+{"fn": "assertTomlExtension", "args": [".toml"]}
+{"fn": "assertTomlExtension", "args": ["dir.toml/"]}
+{"fn": "assertTomlExtension", "args": ["x.Toml"]}
+{"fn": "assertTomlExtension", "args": ["/abs/p.toml"]}
+{"fn": "assertTomlExtension", "args": ["..toml"]}
+{"fn": "assertTomlExtension", "args": ["a.b.TOML"]}
+{"fn": "assertTomlExtension", "args": ["\u0130.toml"]}
+{"fn": "assertTomlExtension", "args": ["caf\u00e9.TOMl"]}
+{"fn": "readSchemaHeader", "args": [{"schema": "harnesstap/plugin", "version": 1}]}
+{"fn": "readSchemaHeader", "args": [{"schema": "", "version": 1}]}
+{"fn": "readSchemaHeader", "args": [{"version": 1}]}
+{"fn": "readSchemaHeader", "args": [{"schema": "s"}]}
+{"fn": "readSchemaHeader", "args": [{"schema": "s", "version": "1"}]}
+{"fn": "readSchemaHeader", "args": [{"schema": "s", "version": 1.5}]}
+{"fn": "readSchemaHeader", "args": [{"schema": 5, "version": 1}]}
+{"fn": "formatTransportToml", "args": [{"schema": "harnesstap/plugin", "version": 1, "name": "demo", "tags": ["a", "b"], "meta": {"z": 1, "a": true}}]}
+{"fn": "formatTransportToml", "args": [{"b": {"y": {"k": "v"}}, "a": [{"n": 1}, {"n": 2, "sub": {"x": "y"}}], "c": "str"}]}
+{"fn": "formatTransportToml", "args": [{"weird key": "v", "quote\"d": "q", "ctl": "\u0001\u007f\n\t", "emoji": "\ud83d\ude80", "empty": ""}]}
+{"fn": "formatTransportToml", "args": [{"arr": [[1, 2], ["a"], []], "inline": [{"a": 1}, "mixed"], "nums": [0, -1, 1.5, 1e+21, 1e-07, 123456789012]}]}
+{"fn": "formatTransportToml", "args": [{}]}
+{"fn": "formatTransportToml", "args": [{"t": {}}]}
+{"fn": "formatTransportToml", "args": [{"t": {"u": {}}}]}
+{"fn": "formatTransportToml", "args": [{"n": null, "x": 1}]}
+{"fn": "formatTransportToml", "args": [{"10": "a", "2": "b", "a": "c"}]}
+{"fn": "formatTransportToml", "args": [{"arr": [null]}]}
+{"fn": "formatTransportToml", "args": [{"arr": [{"a": null}]}]}
+{"fn": "formatTransportToml", "args": [{"deep": {"a": {"b": {"c": {"d": "e"}}}}}]}
+{"fn": "formatTransportToml", "args": [{"tables": [{"x": {"y": 1}}, {"x": {"y": 2}}]}]}
+{"fn": "formatTransportToml", "args": [{"bool": false, "neg0": -0.0}]}
