@@ -64,6 +64,7 @@ import { resolveProjectCompileTargets } from "../../services/compile-apm.js";
 import {
   generateFiles,
   materializeFiles,
+  planMaterializationAcrossHarnesses,
   removeStaleProjectDeployedFiles,
 } from "../../services/applier.js";
 import { persistWrittenMaterializations } from "../../services/materialization-ownership.js";
@@ -1200,7 +1201,7 @@ export async function handleProjectApplyCommand(
       wouldKeep,
       unchanged: Math.max(
         0,
-        desiredPaths.length - dryMaterialized.writtenFiles.length,
+        new Set(desiredPaths).size - dryMaterialized.writtenFiles.length,
       ),
     });
     return;
@@ -1219,20 +1220,24 @@ export async function handleProjectApplyCommand(
     skipped_files: string[];
   }> = [];
 
+  // Settle every conflict across all harnesses before the first write: a
+  // cancelled apply must leave the project exactly as it was.
+  const plan = await planMaterializationAcrossHarnesses(generated, projectRoot, {
+    conflictPolicy,
+    conflictResolver,
+  });
+  if (plan.cancelled) {
+    fail(applyCancelledMessage(plan.conflicts.map((conflict) => conflict.path), "apply"), {
+      hint: CLI_HINTS.onConflictReplace,
+    });
+    process.exitCode = 1;
+    return;
+  }
+
   for (const result of generated) {
     const spin = createProgress(`Applying ${result.platformId}`);
-    const materialized = await materializeFiles(result.files, projectRoot, {
-      conflictPolicy,
-      conflictResolver,
-    });
+    const materialized = await materializeFiles(result.files, projectRoot, { plan });
     spin.stop();
-    if (materialized.cancelled) {
-      fail(applyCancelledMessage(materialized.conflicts.map((conflict) => conflict.path), "apply"), {
-        hint: CLI_HINTS.onConflictReplace,
-      });
-      process.exitCode = 1;
-      return;
-    }
     persistWrittenMaterializations({
       scope: "project",
       project_id: null,
@@ -1271,7 +1276,7 @@ export async function handleProjectApplyCommand(
     const reason = removalSkipReason(entry.reason);
     return reason ? [{ path: entry.path, reason }] : [];
   });
-  const unchanged = Math.max(0, desiredPaths.length - wroteCount);
+  const unchanged = Math.max(0, new Set(desiredPaths).size - wroteCount);
   const hasChanges = wroteCount > 0 || staleRemoved.removed.length > 0;
 
   let snapshotId: string | undefined;
