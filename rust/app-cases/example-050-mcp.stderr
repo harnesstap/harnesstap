@@ -1,1 +1,1 @@
-Error: Request timed out after 30000ms (3 attempts): http://127.0.0.1:9/v0.1/servers?version=latest&limit=20.
+Error: fetch failed (3 attempts): http://127.0.0.1:9/v0.1/servers?version=latest&limit=20.
