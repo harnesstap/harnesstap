@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
@@ -392,3 +392,57 @@ executables: {}
   });
 });
 
+
+describe("project apply with harnesses that share AGENTS.md", () => {
+  function seedRulesAndSkills(name: string): void {
+    const plugin = createPlugin({ name });
+    for (const [type, resourceName, content] of [
+      ["rule", "style", "Use spaces."],
+      ["skill", "ship", "Run the checklist."],
+    ] as const) {
+      const resource = createResource({
+        type,
+        name: resourceName,
+        description: `${resourceName} ${type}`,
+        content,
+        metadata: {},
+        source: "manual",
+      });
+      addResourceToPlugin(plugin.id, resource.id);
+    }
+  }
+
+  async function applyProject(): Promise<Array<{ platform: string; written_files: string[] }>> {
+    const response = await handle(
+      applyRequest({
+        plugins: ["tooling"],
+        scope: "project",
+        projectPath: ctx.projectDir,
+        harness: "codex,gemini-cli",
+      }),
+    );
+    expect(response?.status).toBe(200);
+    const body = (await response?.json()) as {
+      cancelled: boolean;
+      platforms: Array<{ platform: string; written_files: string[] }>;
+    };
+    expect(body.cancelled).toBe(false);
+    return body.platforms;
+  }
+
+  it("writes AGENTS.md once with both slices and nothing on a repeat", async () => {
+    seedRulesAndSkills("tooling");
+
+    const first = await applyProject();
+    const agents = readFileSync(join(ctx.projectDir, "AGENTS.md"), "utf-8");
+    expect(agents).toContain("Use spaces.");
+    expect(agents).toContain("Run the checklist.");
+    expect(first.flatMap((row) => row.written_files).filter((path) => path === "AGENTS.md")).toEqual([
+      "AGENTS.md",
+    ]);
+
+    const second = await applyProject();
+    expect(second.flatMap((row) => row.written_files)).toEqual([]);
+    expect(readFileSync(join(ctx.projectDir, "AGENTS.md"), "utf-8")).toBe(agents);
+  });
+});
