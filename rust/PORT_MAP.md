@@ -6,7 +6,7 @@
 
 | Unit | Crate | In Rust | Kept in the original | Cases | Last diff | Original |
 | --- | --- | --- | --- | ---: | ---: | --- |
-| `src/constants/` | `rust/constants-rs` | `isEmptyBuiltinProfile`, `isReservedProfileName`, `isProfilePlugin`, `isProjectProfilePlugin`, `isAutoSeededDefaultProfileName` | `listProfilePlugins` | 668 | not run | unchanged |
+| `src/constants/` | `rust/constants-rs` | `isEmptyBuiltinProfile`, `isReservedProfileName`, `isProfilePlugin`, `isProjectProfilePlugin`, `isAutoSeededDefaultProfileName` | `listProfilePlugins` | 668 | 668/668 | unchanged |
 | `src/node-version.ts` | `rust/node-version-rs` | `parseNodeVersion`, `isSupportedNodeVersion`, `launchedByBun`, `nodeVersionRefusalMessage`, `isBunRuntime`, `assertSupportedRuntime` | - | 58 | 58/58 | unchanged |
 | `src/services/toml/` | `rust/toml-rs` | `environmentsToTomlRecord`, `environmentsFromTomlRecord`, `environmentToTomlDocument`, `readTransportFile`, `sortStringRecord`, `assertTomlExtension`, `readSchemaHeader`, `formatTransportToml`, `writeTransportToml` | `parseTransportToml`, `sortKeysDeep` | 1709 | 1709/1709 | unchanged |
 | `src/version.ts` | `rust/version-rs` | `isReleaseBuild`, `readGitSha`, `formatDevBuildVersion`, `resolveBuildVersion` | - | 90 | 90/90 | unchanged |
