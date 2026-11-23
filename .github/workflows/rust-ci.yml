@@ -1,0 +1,179 @@
+name: Rust
+
+# Path filtering is done in rust-detect with job-level `if:`, not with
+# on.<event>.paths. A workflow skipped by a top-level paths filter does
+# not report its jobs, so if rust-check or rust-replay is later added to
+# main-ci-required, unrelated PRs and merge-queue entries would be
+# blocked by a missing check. Jobs skipped by `if:` still count as
+# passing. This workflow is not in main-ci-required; that ruleset is
+# unchanged.
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: rust-ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_TARGET_DIR: ${{ github.workspace }}/rust/target
+
+jobs:
+  rust-detect:
+    name: rust-detect
+    runs-on: ubuntu-26.04
+    outputs:
+      run_checks: ${{ steps.resolve.outputs.run_checks }}
+      run_replay: ${{ steps.resolve.outputs.run_replay }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Detect rust path changes
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || '' }}
+          filters: |
+            rust:
+              - 'rust/**'
+              - '.github/workflows/rust-ci.yml'
+              - '.github/scripts/rust-ci.sh'
+
+      - name: Resolve whether rust jobs should run
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            changed=true
+          else
+            changed="${{ steps.filter.outputs.rust }}"
+            changed="${changed:-false}"
+          fi
+
+          has_crates=false
+          has_front_door=false
+          if [ -d rust ]; then
+            if find rust -name Cargo.toml -not -path '*/target/*' | grep -q .; then
+              has_crates=true
+            fi
+            if [ -f rust/app/Cargo.toml ] && [ -d rust/app-cases ] && [ -f rust/run-sandboxed.sh ]; then
+              has_front_door=true
+            fi
+          fi
+
+          run_checks=false
+          run_replay=false
+          if [ "$changed" = "true" ] && [ "$has_crates" = "true" ]; then
+            run_checks=true
+          fi
+          if [ "$changed" = "true" ] && [ "$has_front_door" = "true" ]; then
+            run_replay=true
+          fi
+
+          {
+            echo "changed=$changed"
+            echo "has_crates=$has_crates"
+            echo "has_front_door=$has_front_door"
+            echo "run_checks=$run_checks"
+            echo "run_replay=$run_replay"
+          } >> "$GITHUB_OUTPUT"
+          echo "changed=$changed has_crates=$has_crates has_front_door=$has_front_door run_checks=$run_checks run_replay=$run_replay"
+
+  rust-check:
+    name: rust-check
+    needs: rust-detect
+    if: needs.rust-detect.outputs.run_checks == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust 1.90 (MSRV, ADR-013)
+        uses: dtolnay/rust-toolchain@1.90
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: rust-1.90-${{ runner.os }}-${{ hashFiles('rust/**/Cargo.lock') }}
+          restore-keys: |
+            rust-1.90-${{ runner.os }}-
+
+      - name: cargo fmt --check
+        run: bash .github/scripts/rust-ci.sh fmt
+
+      - name: cargo clippy --all-targets -- -D warnings
+        run: bash .github/scripts/rust-ci.sh clippy
+
+      - name: cargo test
+        run: bash .github/scripts/rust-ci.sh test
+
+  rust-replay:
+    name: rust-replay
+    needs: rust-detect
+    if: needs.rust-detect.outputs.run_replay == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust 1.90 (MSRV, ADR-013)
+        uses: dtolnay/rust-toolchain@1.90
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: rust-1.90-${{ runner.os }}-${{ hashFiles('rust/**/Cargo.lock') }}
+          restore-keys: |
+            rust-1.90-${{ runner.os }}-
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Published 3.3.0, with its crate lockfile. Replay does not use
+      # record/gate/map, so it does not need the local
+      # with_local_imports patch. The patch stays local only.
+      - name: Install rust-anything 3.3.0
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: rust-anything
+          version: "3.3.0"
+          locked: true
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Replay front-door app-cases
+        run: bash .github/scripts/rust-ci.sh replay
