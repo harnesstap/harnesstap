@@ -1,3 +1,7 @@
+## style
+
+Use two spaces.
+
 ## skill-1
 
 # Skill 1
