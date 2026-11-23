@@ -1,0 +1,5 @@
+kind: Fixed
+body: A refused network connection no longer prints "Request timed out after 30000ms". The error says the connection was refused and includes the target URL. A request that actually times out still says it timed out.
+time: 2026-11-23T00:00:00.000000Z
+custom:
+  Issue: ""
