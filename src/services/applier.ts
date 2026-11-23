@@ -88,7 +88,7 @@ import {
   type SafeFileRemovalResult,
   type SafeRemovalSkip,
 } from "./safe-file-removal.js";
-import { pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
+import { mergeSharedInstructionEmits, pinSkillEmitsToExistingLivePaths } from "./shared-emit-paths.js";
 import { captureManagedSnapshotState } from "./snapshot-capture.js";
 import { hostPluginFilesCreatedForApply } from "./host-plugin-install-files.js";
 
@@ -122,6 +122,20 @@ export interface MaterializeFilesOptions {
   currentSnapshotId?: string;
   replaceOwnedSnapshotIds?: string[];
   dryRun?: boolean;
+  /**
+   * Decisions already made for these files by planMaterialization. Skips
+   * planning, so a multi-harness apply asks once and writes nothing when the
+   * plan was cancelled.
+   */
+  plan?: MaterializationPlan;
+}
+
+/** The conflicts found and what to do with each, decided before anything is written. */
+export interface MaterializationPlan {
+  cancelled: boolean;
+  /** Conflicts that still need the user's say (auto-replaced ones left out). */
+  conflicts: MaterializationConflict[];
+  decisions: ReadonlyMap<string, ConflictResolution>;
 }
 
 export interface GenerateFilesOptions extends SerializeOptions {
@@ -523,16 +537,18 @@ export async function generateFiles(
   }
 
   if (options.pinSkillEmits === false) {
-    return results;
+    return mergeSharedInstructionEmits(results);
   }
-  return pinSkillEmitsToExistingLivePaths(
-    projectRoot,
-    results,
-    platforms,
-    target,
-    options.previousManagedPlacements !== undefined
-      ? { previousManagedPlacements: options.previousManagedPlacements }
-      : undefined,
+  return mergeSharedInstructionEmits(
+    pinSkillEmitsToExistingLivePaths(
+      projectRoot,
+      results,
+      platforms,
+      target,
+      options.previousManagedPlacements !== undefined
+        ? { previousManagedPlacements: options.previousManagedPlacements }
+        : undefined,
+    ),
   );
 }
 
@@ -686,11 +702,15 @@ function noteHostPluginViewWrite(fullPath: string): void {
   if (hash) recordHostPluginViewWrite(fullPath, hash);
 }
 
-export async function materializeFiles(
+/**
+ * Find every conflict in `files` against what is on disk and settle each one
+ * (replace, skip or cancel) without writing anything.
+ */
+export async function planMaterialization(
   files: SerializedFile[],
   rootPath: string,
   options: MaterializeFilesOptions = {},
-): Promise<MaterializationResult> {
+): Promise<MaterializationPlan> {
   const conflictPolicy = options.conflictPolicy ?? "replace";
   const conflicts = await planMaterializationConflicts(files, rootPath);
   const decisions = new Map<string, ConflictResolution>();
@@ -730,26 +750,57 @@ export async function materializeFiles(
     }
   }
 
+  return {
+    cancelled: [...decisions.values()].includes("cancel"),
+    conflicts,
+    decisions,
+  };
+}
+
+/**
+ * Plan one apply that spans several harnesses. A file two harnesses emit with
+ * the same bytes counts once, so only a real conflict can cancel the apply.
+ */
+export async function planMaterializationAcrossHarnesses(
+  results: readonly ApplyResult[],
+  rootPath: string,
+  options: MaterializeFilesOptions = {},
+): Promise<MaterializationPlan> {
+  const keptByPath = new Map<string, SerializedFile[]>();
+  const files = results.flatMap((result) => result.files).filter((file) => {
+    const kept = keptByPath.get(file.path) ?? [];
+    const repeat = kept.some(
+      (other) =>
+        (other.encoding ?? "utf8") === (file.encoding ?? "utf8") &&
+        (file.encoding === "base64"
+          ? other.content === file.content
+          : fileContentsEquivalentForDrift(file.path, other.content, file.content)),
+    );
+    if (repeat) return false;
+    keptByPath.set(file.path, [...kept, file]);
+    return true;
+  });
+  return planMaterialization(files, rootPath, options);
+}
+
+export async function materializeFiles(
+  files: SerializedFile[],
+  rootPath: string,
+  options: MaterializeFilesOptions = {},
+): Promise<MaterializationResult> {
+  const { cancelled, conflicts, decisions } =
+    options.plan ?? (await planMaterialization(files, rootPath, options));
+
   // A dry run reports the replace plan. Cancelling here would hide the
   // writes --on-conflict replace would make, and would not change disk.
-  if ([...decisions.values()].includes("cancel") && !options.dryRun) {
+  if (cancelled && !options.dryRun) {
     return {
       cancelled: true,
       writtenFiles: [],
       skippedFiles: files
         .filter((file) => decisions.get(file.path) === "skip")
         .map((file) => file.path),
-      conflicts: conflicts.filter(
-        (conflict) =>
-          !(
-            !options.conflictResolver &&
-            isAutoReplaceConflict(
-              conflict,
-              options.currentSnapshotId,
-              options.replaceOwnedSnapshotIds,
-            )
-          ),
-      ),
+      conflicts,
     };
   }
 
@@ -790,17 +841,7 @@ export async function materializeFiles(
           decisions.get(file.path) === "skip" || skippedPreexistingPaths.has(file.path),
         )
         .map((file) => file.path),
-      conflicts: conflicts.filter(
-        (conflict) =>
-          !(
-            !options.conflictResolver &&
-            isAutoReplaceConflict(
-              conflict,
-              options.currentSnapshotId,
-              options.replaceOwnedSnapshotIds,
-            )
-          ),
-      ),
+      conflicts,
     };
   }
 
@@ -856,17 +897,7 @@ export async function materializeFiles(
     writtenFiles,
     skippedFiles,
     adoptedFiles,
-    conflicts: conflicts.filter(
-      (conflict) =>
-        !(
-          !options.conflictResolver &&
-          isAutoReplaceConflict(
-            conflict,
-            options.currentSnapshotId,
-            options.replaceOwnedSnapshotIds,
-          )
-        ),
-    ),
+    conflicts,
   };
 }
 
