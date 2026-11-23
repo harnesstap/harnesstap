@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["auth", "ılık ırmak"]
+status.code = 1
+fs.sandbox = true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["mcp", "show", "io.github.github/github-mcp-server"]
+status.code = 1
+fs.sandbox = true

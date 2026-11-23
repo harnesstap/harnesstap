@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "switch", "work"]
+status.code = 1
+fs.sandbox = true

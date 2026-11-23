@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "show", "dbt-expert"]
+status.code = 1
+fs.sandbox = true

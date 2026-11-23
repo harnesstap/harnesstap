@@ -1,0 +1,2 @@
+Error: Profile 日本語 is not installed locally, and the catalog lookup failed: fetch failed (3 attempts): http://127.0.0.1:9/api/public/plugins?q=%E6%97%A5%E6%9C%AC%E8%AA%9E&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud.
+Pull it first: ht profile pull 日本語

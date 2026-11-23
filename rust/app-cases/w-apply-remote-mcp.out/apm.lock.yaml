@@ -1,0 +1,37 @@
+lockfile_version: "1"
+generated_at: [..]
+apm_version: 1.6.3
+dependencies: []
+mcp_servers:
+  - name: remote-docs
+    transport: http
+    url: https://mcp.example.invalid/mcp
+local_deployed_file_hashes:
+  .agents/skills/skill-1/SKILL.md: sha256:a1214224937515ac0c86318659772fec7351388c89380d64715ec337321fb6f0
+  .agents/skills/skill-2/SKILL.md: sha256:16900e12e0fce22939411d9abaec83a7437d57e1e4178dea2690971effcd3561
+  .agents/skills/skill-3/SKILL.md: sha256:c563899ea44481297d9c133940b16e511506db0a071e28a0518321fb41bb1d8c
+  .claude/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .claude/rules/style.md: sha256:c2a21a593413a871204c345046d2ea6acd55c25958e9e75df0915053d4396e9c
+  .claude/skills/skill-1/SKILL.md: sha256:a1214224937515ac0c86318659772fec7351388c89380d64715ec337321fb6f0
+  .claude/skills/skill-2/SKILL.md: sha256:16900e12e0fce22939411d9abaec83a7437d57e1e4178dea2690971effcd3561
+  .claude/skills/skill-3/SKILL.md: sha256:c563899ea44481297d9c133940b16e511506db0a071e28a0518321fb41bb1d8c
+  .codex/agents/reviewer.toml: sha256:b6083e0337fbb408542be50dd6da40acb1c419f02bdda5662c02942cc5ab20b3
+  .codex/config.toml: sha256:d8a191a4651ead62581c4220f36d04cfb8ed256bd2e12b41f878c7d5ba8b8cb0
+  .cursor/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .cursor/mcp.json: sha256:10bc812c4dcb2a8e086d339f442af9abd7536fbc2fa55c9ac9e051dffbf4e95f
+  .cursor/rules/style.mdc: sha256:b734bdcfe272407eaab822d40bd53ae402a9a4d4abcc1aac1889740b457f48ae
+  .gemini/settings.json: sha256:33921c46b7f245b02848110adfb171712cd12973859954aecb1ad93ba2c1bb0a
+  .github/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .github/copilot-instructions.md: sha256:0354b00f085c17b2480a1d00a09d091c03a0a3e2b3b4939af2e1072c10121ed3
+  .github/instructions/style.instructions.md: sha256:21130cda9d85e10a20bea12de1d92100913346bb700863efd9a40a59bb35a3de
+  .mcp.json: sha256:07e70266861d93ba52670cbf7e23625e4850c9aee531985c215d23c337922b26
+  .opencode/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .opencode/skills/skill-1/SKILL.md: sha256:a1214224937515ac0c86318659772fec7351388c89380d64715ec337321fb6f0
+  .opencode/skills/skill-2/SKILL.md: sha256:16900e12e0fce22939411d9abaec83a7437d57e1e4178dea2690971effcd3561
+  .opencode/skills/skill-3/SKILL.md: sha256:c563899ea44481297d9c133940b16e511506db0a071e28a0518321fb41bb1d8c
+  AGENTS.md: sha256:a08f69d919d83cc0a5217cafa69c1cbe4d70e2aacb921c325276825282e607b8
+  gemini-extension.json: sha256:c1fe512587823e0efc136f4da1d283d60f20a8602aa833c1d3f3a7ec4066e9d7
+  opencode.json: sha256:b1ff96e7617ebc63c5e255a1960105ebdc70303f7cd1c900718c7e6879d6bdd0
+root: demo
+resource_map_hash: sha256:adca31ac95e33fa3346b3a5dfdd7249a64ac1d9190b19358a3dca1a042150918
+plugins: []

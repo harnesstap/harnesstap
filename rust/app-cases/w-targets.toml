@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["targets"]
+status.code = 1
+fs.sandbox = true
+fs.base = "w-targets.in"

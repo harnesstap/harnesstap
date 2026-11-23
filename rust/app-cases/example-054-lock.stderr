@@ -1,0 +1,3 @@
+Error: No lockfile found at [CWD]/apm.lock.yaml. Run ht apply or ht install to generate one first.
+ht apply
+ht install

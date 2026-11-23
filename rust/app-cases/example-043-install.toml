@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["install", "--target", "cursor,claude"]
+status.code = 1
+fs.sandbox = true

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "remote-docs": {
+      "type": "remote",
+      "url": "https://mcp.example.invalid/mcp",
+      "enabled": true
+    }
+  }
+}

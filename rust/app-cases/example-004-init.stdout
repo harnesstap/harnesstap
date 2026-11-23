@@ -1,0 +1,24 @@
+✓ HarnessTap initialized
+
+  Database              /tmp/ht-home.[..]/.harnesstap/harnesstap.db
+
+TRACKED DIRECTORIES
+
++------------------------------------------+-------------+-----------+----------+------------------+
+| PATH                                     | RESOURCES   | FOLDERS   | KIND     | PLATFORMS        |
++------------------------------------------+-------------+-----------+----------+------------------+
+| ~                                        | 0           | 0         | home     | :                |
++------------------------------------------+-------------+-----------+----------+------------------+
+
+1 tracked directory
+
+  HARNESSES       codex, claude-code, cursor
+
+NEXT STEPS
+
+  Pick your harnesses: ht harness set
+  ht profile use "global default"
+  ht plugin list --search foundation --remote-only
+  ht apply engineering-foundation
+  ht help
+Enable tab completion: ht init completion <bash|zsh|fish>

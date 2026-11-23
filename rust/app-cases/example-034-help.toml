@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["help", "scenario", "11"]
+status.code = 0
+fs.sandbox = true

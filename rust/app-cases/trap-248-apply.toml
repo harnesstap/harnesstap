@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "ılık ırmak", "--project", ".", "--harness", "codex"]
+status.code = 1
+fs.sandbox = true

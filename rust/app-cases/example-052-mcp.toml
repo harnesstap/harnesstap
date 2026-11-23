@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["mcp", "install", "io.github.github/github-mcp-server", "--target", "cursor"]
+status.code = 1
+fs.sandbox = true

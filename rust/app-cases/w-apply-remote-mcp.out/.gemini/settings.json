@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "remote-docs": {
+      "httpUrl": "https://mcp.example.invalid/mcp"
+    }
+  }
+}

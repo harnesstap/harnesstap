@@ -1,0 +1,4 @@
+{
+  "registered_harnesses": [],
+  "materialization_strategy": "symlink-preferred"
+}

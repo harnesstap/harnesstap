@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "summary": {
+    "critical": 0,
+    "warning": 0,
+    "info": 0
+  },
+  "findings": [],
+  "integrity": {
+    "ok": true,
+    "issues": []
+  },
+  "policy": {
+    "status": "skipped",
+    "skippedReason": "no-policy",
+    "enforcement": "off",
+    "warnings": [],
+    "violations": [],
+    "blocks": false
+  },
+  "stripped": [],
+  "scanned_files": [],
+  "exit_code": 0
+}

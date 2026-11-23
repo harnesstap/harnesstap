@@ -1,0 +1,1 @@
+Error: Could not install formatter@my-marketplace: marketplace my-marketplace is not configured. Add it with ht marketplace add <git-url> --name my-marketplace, then run this command again.

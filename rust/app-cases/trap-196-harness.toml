@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["harness", "İstanbul"]
+status.code = 1
+fs.sandbox = true

@@ -1,0 +1,71 @@
+
+CORE CONCEPTS
+
+  resource      Single canonical item (skill, rule, MCP, hook, agent, ...)
+  plugin        Named bundle of resources you apply to projects
+  profile       Plugin tagged profile; apply globally with profile use
+  account       HarnessTap Cloud login identity stored locally
+  environment   Named how-values (vars, secrets, model config)
+  harness       Target CLI (claude-code, codex, cursor, ...)
+
+HARNESS ROLES
+
+  registered    Harnesses HarnessTap writes to (harness set --harnesses)
+  default       First registered harness: mirror source and scans when none is named
+
+COMMON COMMANDS
+
+  ht plugin apply <plugin>  Materialize plugins onto a project
+  ht profile use <profile>  Apply a profile plugin globally to home harness files
+  ht migrate export <archive>  Share your full local workspace with another machine
+  ht mirror .  Sync registered harnesses from the first registered one on disk
+  ht plugin list --search foundation --remote-only  Browse public catalog plugins
+  ht plugin pull org/catalog/engineering-foundation  Cache a catalog plugin locally
+  ht plugin edit <plugin> --add <item> --type skill  Add a local resource to a plugin
+
+ENVIRONMENT CASCADE
+
+  home env ◂ plugin default env (last wins on apply)
+
+SCENARIOS
+
+   1  Bootstrap HarnessTap on a machine and discover existing defaults
+   2  Choose your registered harnesses
+   3  Override harness preferences for one repository  Common · Shipped
+   4  Scan an existing repository and import its current harness setup  Common · Shipped
+   5  Build a reusable plugin from imported resources  Occasional · Shipped
+   6  Add plugin constraints to a plugin  Rare · Shipped
+   7  Preview and apply a plugin to one or more target harnesses  Common · Shipped
+   8  Audit plugin resources and plugin pins  Occasional · Shipped
+   9  Review project state, history, and recover from a bad apply  Rare · Shipped
+  10  Export or import a plugin as a portable package  Occasional · Shipped
+  11  Start from a catalog baseline instead of building from scratch  Common · Shipped
+  12  Drive HarnessTap from scripts or other agents
+  13  Choose a materialization strategy (symlink vs copy)  Occasional · Shipped
+  14  Curate and clean up the local resource DB  Rare · Shipped
+  15  Apply a plugin to a subset of target platforms  Common · Shipped
+  16  Enforce plugin and plugin state in CI
+  17  Migrate HarnessTap state to a new machine  Rare · Shipped (manual workflow: see Scenario 28 (https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/28-machine-migration.md) for one-command migration)
+  18  Debug committed vs effective Claude plugin settings  Rare · Shipped
+  19  Sync plugin resources from install trees  Occasional · Shipped
+  20  Inspect supported platforms before targeting  Occasional · Shipped
+  21  Detect drift between project files and the last applied plugin  Occasional · Shipped
+  22  Diff two plugins  Occasional · Shipped
+  23  Doctor-check a plugin without writing  Occasional · Shipped
+  24  Apply a plugin directly from a URL  Occasional · Shipped
+  25  Stack multiple plugins  Common · Shipped
+  26  Turn a project's current state into a plugin  Common · Shipped
+  27  True cross-harness `mirror`  Common · Shipped
+  28  One-command machine migration  Occasional · Shipped
+  31  Import dual-mode plugin repo  Common · Shipped
+  32  Apply to instruction-tier harnesses  Occasional · Shipped
+  33  Mirror with plugin-source fallback  Occasional · Shipped
+  34  Understand portability limits  Occasional · Shipped
+  35  Add a remote skill package  Common · Shipped
+  36  Switch global profile presets  Common · Shipped
+  37  Publish a profile plugin to the catalog  Occasional · Shipped
+  38  Create a plugin from a skill package  Common · Shipped
+  39  MCP auth, environments, and account switching  Occasional · Documented
+  40  Use project profile config  Common · Shipped
+
+Run ht help scenario <id> for a scenario playbook.

@@ -1,0 +1,16 @@
+
+SCENARIO 11: START FROM A CATALOG BASELINE INSTEAD OF BUILDING FROM SCRATCH
+
+Common · Shipped
+
+  Use this when you want a fast starting point and only need to tailor it for
+  your repo afterward.
+
+TYPICAL COMMANDS
+
+  ht init --main codex --aliases claude-code,cursor
+  ht plugin list --search foundation --remote-only
+  ht apply engineering-foundation
+
+Full doc: https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/details/11-builtin-plugin.md
+All scenarios: https://github.com/harnesstap/harnesstap/blob/main/docs/scenarios/scenarios.md

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["config", "init", "--profile", "work", "--profile", "personal", "--default", "work"]
+status.code = 1
+fs.sandbox = true

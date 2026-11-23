@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["harness", "project", "set", "--harnesses", "claude-code,cursor"]
+status.code = 0
+fs.sandbox = true

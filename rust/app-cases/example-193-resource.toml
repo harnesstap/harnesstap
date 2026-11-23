@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["resource", "list", "--type", "plugin_pin_pin"]
+status.code = 1
+fs.sandbox = true

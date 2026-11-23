@@ -1,0 +1,2 @@
+Error: Profile ılık ırmak is not installed locally, and the catalog lookup failed: fetch failed (3 attempts): http://127.0.0.1:9/api/public/plugins?q=%C4%B1l%C4%B1k+%C4%B1rmak&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud.
+Pull it first: ht profile pull "ılık ırmak"

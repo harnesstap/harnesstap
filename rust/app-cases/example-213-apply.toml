@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "my-setup", "--project", ".", "--harness", "claude-code,codex", "--dry-run"]
+status.code = 1
+fs.sandbox = true

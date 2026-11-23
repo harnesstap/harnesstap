@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["approve", "--recommended"]
+status.code = 0
+fs.sandbox = true

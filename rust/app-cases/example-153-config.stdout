@@ -1,0 +1,3 @@
+{
+  "error": "No project config found. Run `ht config init` to create `apm.yml`."
+}

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "edit", "my-setup", "--add", "research-helper", "--type", "skill"]
+status.code = 1
+fs.sandbox = true

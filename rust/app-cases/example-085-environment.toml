@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["environment", "edit", "staging", "--secret", "API_KEY:file:/run/secrets/api-key"]
+status.code = 1
+fs.sandbox = true

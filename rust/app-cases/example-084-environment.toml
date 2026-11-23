@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["environment", "edit", "staging", "--secret", "SLACK_TOKEN:keychain:harnesstap/slack-staging"]
+status.code = 1
+fs.sandbox = true

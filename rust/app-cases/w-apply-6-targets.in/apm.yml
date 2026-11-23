@@ -1,0 +1,10 @@
+name: demo
+version: "1.0.0"
+targets: [claude, cursor, codex, copilot, gemini, opencode]
+dependencies:
+  mcp:
+    - name: local-fs
+      registry: false
+      transport: stdio
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "."]

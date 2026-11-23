@@ -1,0 +1,19 @@
+PROJECT
+  Root                  [CWD]
+  Git origin            (none)
+  Platforms             (none detected)
+  Drift                 (not tracked)
+PROFILE
+  Active                (none)
+APPLIED PLUGINS
+  (none applied)
+  Run `ht apply <plugin>`
+RESOLVED
+  Total                 0 resources
+  Environment           0 vars · 0 secrets
+PROJECT RESOURCES
+  On disk         0 resources
+  In library      0 resources (not scanned)
+SCAN
+  Status          no harness files
+  Hint            Scans project files on disk, not harness setup: see `ht harness status`

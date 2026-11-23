@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "create", "my-setup", "--description", "Shared project assistant setup"]
+status.code = 0
+fs.sandbox = true

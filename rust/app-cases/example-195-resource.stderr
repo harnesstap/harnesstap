@@ -1,0 +1,1 @@
+Error: Could not install formatter@team-marketplace: marketplace team-marketplace is not configured. Add it with ht marketplace add <git-url> --name team-marketplace, then run this command again.

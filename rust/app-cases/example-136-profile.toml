@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "publish", "work", "--org", "acme", "--catalog", "default"]
+status.code = 1
+fs.sandbox = true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["environment", "edit", "staging", "--secret", "GITHUB_TOKEN:env:GITHUB_TOKEN"]
+status.code = 1
+fs.sandbox = true

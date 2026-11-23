@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "cut", "my-setup", "--version", "1.0.1"]
+status.code = 1
+fs.sandbox = true

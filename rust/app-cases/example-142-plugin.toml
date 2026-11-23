@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "from-project", "inferred-stack", "--project", "."]
+status.code = 0
+fs.sandbox = true

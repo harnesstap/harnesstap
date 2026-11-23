@@ -1,0 +1,2 @@
+Error: too many arguments for 'list'. Expected 1 argument but got 2.
+Run ht resource list --help to see the options.

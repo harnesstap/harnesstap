@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "diff", "team-baseline", "./incoming-bundle.harnesstap.json"]
+status.code = 1
+fs.sandbox = true

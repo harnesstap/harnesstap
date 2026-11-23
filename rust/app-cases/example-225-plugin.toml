@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "doctor", "--list-checks"]
+status.code = 0
+fs.sandbox = true

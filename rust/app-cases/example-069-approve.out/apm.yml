@@ -1,0 +1,8 @@
+name: project
+version: 1.0.0
+executables:
+  allow:
+    owner/repo:
+      hooks: true
+      bin: true
+      mcp: true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["add", "mattpocock/skills", "--list"]
+status.code = 1
+fs.sandbox = true

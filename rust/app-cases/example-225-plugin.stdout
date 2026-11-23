@@ -1,0 +1,15 @@
++--------------------------+-----------------------------------------------------------------------+
+| CHECK                    | DESCRIPTION                                                           |
++--------------------------+-----------------------------------------------------------------------+
+| empty-plugin             | Detect plugins that do not contain any resources                      |
++--------------------------+-----------------------------------------------------------------------+
+| duplicate-resources      | Detect duplicate resource type/name entries in a plugin               |
++--------------------------+-----------------------------------------------------------------------+
+| empty-content            | Detect resources whose definition is empty or incomplete              |
++--------------------------+-----------------------------------------------------------------------+
+| plugin-metadata          | Validate plugin refs, versions, and Claude plugin metadata            |
++--------------------------+-----------------------------------------------------------------------+
+| skipped-files            | Detect package files that import skipped (bad frontmatter, unsuppo... |
++--------------------------+-----------------------------------------------------------------------+
+
+5 checks

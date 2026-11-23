@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["init", "--harnesses", "👨‍👩‍👧 family"]
+status.code = 1
+fs.sandbox = true

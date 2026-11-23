@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["migrate", "export", "./harnesstap-state.tar.gz", "--include-plugins"]
+status.code = 0
+fs.sandbox = true

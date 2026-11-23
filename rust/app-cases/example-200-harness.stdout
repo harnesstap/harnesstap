@@ -1,0 +1,421 @@
+[
+  {
+    "id": "claude-code",
+    "name": "Claude Code",
+    "supports": [
+      "agents",
+      "commands",
+      "env_vars",
+      "hooks",
+      "instructions",
+      "mcp",
+      "model_config",
+      "permissions",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "codex",
+    "name": "Codex",
+    "supports": [
+      "agents",
+      "commands",
+      "env_vars",
+      "hooks",
+      "instructions",
+      "mcp",
+      "model_config",
+      "permissions",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "cursor",
+    "name": "Cursor",
+    "supports": [
+      "agents",
+      "hooks",
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "warp",
+    "name": "Warp",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "opencode",
+    "name": "OpenCode",
+    "supports": [
+      "agents",
+      "commands",
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "github-copilot",
+    "name": "GitHub Copilot",
+    "supports": [
+      "agents",
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "copilot-cli",
+    "name": "Copilot CLI",
+    "supports": [
+      "agents",
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "gemini-cli",
+    "name": "Gemini CLI",
+    "supports": [
+      "commands",
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "windsurf",
+    "name": "Windsurf",
+    "supports": [
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "cline",
+    "name": "Cline",
+    "supports": [
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "roo",
+    "name": "Roo Code",
+    "supports": [
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "continue",
+    "name": "Continue",
+    "supports": [
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "goose",
+    "name": "Goose",
+    "supports": [
+      "commands",
+      "hooks",
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "trae",
+    "name": "Trae",
+    "supports": [
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "openhands",
+    "name": "OpenHands",
+    "supports": [
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "kiro",
+    "name": "Kiro",
+    "supports": [
+      "hooks",
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "pi",
+    "name": "Pi",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "antigravity",
+    "name": "Antigravity",
+    "supports": [
+      "commands",
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "amazon-q",
+    "name": "Amazon Q Developer",
+    "supports": [
+      "instructions",
+      "mcp",
+      "rules"
+    ]
+  },
+  {
+    "id": "aider",
+    "name": "Aider",
+    "supports": [
+      "instructions"
+    ]
+  },
+  {
+    "id": "zed",
+    "name": "Zed",
+    "supports": [
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "devin",
+    "name": "Devin",
+    "supports": [
+      "instructions",
+      "mcp",
+      "rules",
+      "skills"
+    ]
+  },
+  {
+    "id": "jules",
+    "name": "Jules",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "cody",
+    "name": "Sourcegraph Cody",
+    "supports": [
+      "instructions",
+      "mcp"
+    ]
+  },
+  {
+    "id": "grok-build",
+    "name": "Grok Build",
+    "supports": [
+      "agents",
+      "commands",
+      "hooks",
+      "instructions",
+      "mcp",
+      "model_config",
+      "permissions",
+      "skills"
+    ]
+  },
+  {
+    "id": "deepseek-harness",
+    "name": "DeepSeek Harness",
+    "supports": [
+      "agents",
+      "hooks",
+      "instructions",
+      "mcp",
+      "model_config",
+      "permissions",
+      "skills"
+    ]
+  },
+  {
+    "id": "muse-code",
+    "name": "Muse Code",
+    "supports": [
+      "hooks",
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "minimax-code",
+    "name": "MiniMax Code",
+    "supports": [
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "amp",
+    "name": "Amp",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "kilo",
+    "name": "Kilo Code",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "augment",
+    "name": "Augment",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "firebender",
+    "name": "Firebender",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "junie",
+    "name": "Junie",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "zencoder",
+    "name": "Zencoder",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "deepagents",
+    "name": "Deep Agents",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "qwen-code",
+    "name": "Qwen Code",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "crush",
+    "name": "Crush",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "droid",
+    "name": "Droid",
+    "supports": [
+      "instructions",
+      "mcp",
+      "skills"
+    ]
+  },
+  {
+    "id": "codebuddy",
+    "name": "CodeBuddy",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "mux",
+    "name": "Mux",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "kode",
+    "name": "Kode",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "command-code",
+    "name": "Command Code",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "cortex",
+    "name": "Cortex Code",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  },
+  {
+    "id": "neovate",
+    "name": "Neovate",
+    "supports": [
+      "instructions",
+      "skills"
+    ]
+  }
+]

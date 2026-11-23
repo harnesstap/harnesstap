@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "edit", "my-setup", "--add", "shared-rules", "--type", "rule"]
+status.code = 1
+fs.sandbox = true

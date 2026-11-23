@@ -1,0 +1,22 @@
+{
+  "home_defaults": [],
+  "tracked_directories": [
+    {
+      "path": "/tmp/ht-home.[..]",
+      "kind": "home_default",
+      "label": "Home harness defaults",
+      "platform_ids": [],
+      "resource_count": 0,
+      "removable": false,
+      "folders": [],
+      "display_path": "~"
+    }
+  ],
+  "database_path": "/tmp/ht-home.[..]/.harnesstap/harnesstap.db",
+  "harness_preference": {
+    "registered_harnesses": [
+      "claude-code"
+    ],
+    "updated_at": "[..]"
+  }
+}

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["pack", "--archive", "-o", "ılık ırmak"]
+status.code = 1
+fs.sandbox = true

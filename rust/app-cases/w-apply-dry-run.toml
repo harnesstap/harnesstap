@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["apply", "--dry-run", "--on-conflict", "replace"]
+status.code = 0
+fs.sandbox = true
+fs.base = "w-apply-dry-run.in"

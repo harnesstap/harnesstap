@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["resource", "delete", "legacy-helper"]
+status.code = 1
+fs.sandbox = true

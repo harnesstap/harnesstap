@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["apply", "--nope"]
+status.code = 1
+fs.sandbox = true
+fs.base = "w-unknown-flag.in"

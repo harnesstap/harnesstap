@@ -1,0 +1,4 @@
+→ project [CWD]
+Applied "demo" to 2 harnesses.
+Wrote 10.
+Snapshot saved. Undo with: ht revert [..]

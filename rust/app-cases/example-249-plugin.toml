@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "edit", "work", "--add", "plugin:engineering-foundation"]
+status.code = 1
+fs.sandbox = true

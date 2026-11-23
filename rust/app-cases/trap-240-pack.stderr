@@ -1,0 +1,3 @@
+Error: No apm.yml found under [CWD]. Run ht config init or add an apm.yml at the project root.
+ht config init
+ht apply

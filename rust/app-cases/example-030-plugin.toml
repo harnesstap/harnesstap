@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "pull", "org/plugin-name"]
+status.code = 1
+fs.sandbox = true

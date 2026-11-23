@@ -1,0 +1,5 @@
+bin.name = "ht"
+args = ["apply", "--target", "cursor", "--all"]
+status.code = 1
+fs.sandbox = true
+fs.base = "w-apply-target-and-all.in"

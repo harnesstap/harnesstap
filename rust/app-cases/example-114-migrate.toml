@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["migrate", "import", "./my-setup.ap.json"]
+status.code = 1
+fs.sandbox = true

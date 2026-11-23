@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "my-setup", "--project", ".", "--harness", "cline,github-copilot", "--dry-run"]
+status.code = 1
+fs.sandbox = true

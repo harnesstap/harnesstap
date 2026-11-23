@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "create", "dbt-expert", "--from", "dbt-labs/dbt-agent-skills"]
+status.code = 1
+fs.sandbox = true

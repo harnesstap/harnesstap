@@ -1,0 +1,28 @@
+lockfile_version: "1"
+generated_at: [..]
+apm_version: 1.6.3
+dependencies: []
+local_deployed_file_hashes:
+  .agents/skills/skill-1/SKILL.md: sha256:406336f475f850b78a5a099a01877b30755e135611cb277d553e9b5b9c5c42f3
+  .agents/skills/skill-2/SKILL.md: sha256:092588220f36a24dd3b18fcba0ecf2c8f5e956caebe78b6f896531eb5d5ae4f9
+  .agents/skills/skill-3/SKILL.md: sha256:023aff1c3b19a22c0a58f2958e24b6c7122ff57e8a2ecf4127fa58e9ce1b1c6b
+  .claude/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .claude/rules/style.md: sha256:c2a21a593413a871204c345046d2ea6acd55c25958e9e75df0915053d4396e9c
+  .claude/skills/skill-1/SKILL.md: sha256:406336f475f850b78a5a099a01877b30755e135611cb277d553e9b5b9c5c42f3
+  .claude/skills/skill-2/SKILL.md: sha256:092588220f36a24dd3b18fcba0ecf2c8f5e956caebe78b6f896531eb5d5ae4f9
+  .claude/skills/skill-3/SKILL.md: sha256:023aff1c3b19a22c0a58f2958e24b6c7122ff57e8a2ecf4127fa58e9ce1b1c6b
+  .codex/agents/reviewer.toml: sha256:b6083e0337fbb408542be50dd6da40acb1c419f02bdda5662c02942cc5ab20b3
+  .cursor/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .cursor/rules/style.mdc: sha256:b734bdcfe272407eaab822d40bd53ae402a9a4d4abcc1aac1889740b457f48ae
+  .github/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .github/copilot-instructions.md: sha256:5ed649912830fbb75b7e832162edd527bd0947625781c67dd39912fb5702f53b
+  .github/instructions/style.instructions.md: sha256:21130cda9d85e10a20bea12de1d92100913346bb700863efd9a40a59bb35a3de
+  .opencode/agents/reviewer.md: sha256:d44363d25149d13c619181b758d33e3e76d4e3c600eac3ae95c3473ba7724c2d
+  .opencode/skills/skill-1/SKILL.md: sha256:406336f475f850b78a5a099a01877b30755e135611cb277d553e9b5b9c5c42f3
+  .opencode/skills/skill-2/SKILL.md: sha256:092588220f36a24dd3b18fcba0ecf2c8f5e956caebe78b6f896531eb5d5ae4f9
+  .opencode/skills/skill-3/SKILL.md: sha256:023aff1c3b19a22c0a58f2958e24b6c7122ff57e8a2ecf4127fa58e9ce1b1c6b
+  AGENTS.md: sha256:1c55c68d2f0bd865a65806d9f4f605a425eae62e11043b48873f1fc400886efd
+  gemini-extension.json: sha256:c1fe512587823e0efc136f4da1d283d60f20a8602aa833c1d3f3a7ec4066e9d7
+root: demo
+resource_map_hash: sha256:0e83f3dd9e2f88d1d1a3ded410e7fe74e9216c154ac6596f359d412a1a356bdb
+plugins: []

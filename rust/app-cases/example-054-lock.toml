@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["lock", "export", "--format", "cyclonedx", "-o", "sbom.json"]
+status.code = 1
+fs.sandbox = true

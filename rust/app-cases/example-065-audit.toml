@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["audit", "--file", ".cursorrules"]
+status.code = 2
+fs.sandbox = true

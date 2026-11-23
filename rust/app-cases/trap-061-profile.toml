@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "héllo wörld", "global default"]
+status.code = 1
+fs.sandbox = true

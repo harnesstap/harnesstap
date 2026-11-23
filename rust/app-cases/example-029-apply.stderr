@@ -1,0 +1,3 @@
+Error: Plugin org/catalog/plugin-name is not in your catalog scope.
+Connect the org: ht plugin catalog connect org <slug>
+Connect one lib: ht plugin catalog connect plugin org/catalog/plugin-name.

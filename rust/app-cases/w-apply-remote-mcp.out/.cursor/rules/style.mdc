@@ -1,0 +1,6 @@
+---
+description: Style rule
+alwaysApply: false
+globs: '**/*.ts'
+---
+Use two spaces.

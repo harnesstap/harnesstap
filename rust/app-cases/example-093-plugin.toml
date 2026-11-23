@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "edit", "my-web-search"]
+status.code = 1
+fs.sandbox = true

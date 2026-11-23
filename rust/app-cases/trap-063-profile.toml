@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["profile", "日本語", "global default"]
+status.code = 1
+fs.sandbox = true

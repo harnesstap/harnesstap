@@ -1,0 +1,30 @@
+→ project [CWD]
+Dry run. Nothing was changed.
+
+Would write (24)
+  .claude/rules/style.md
+  .claude/skills/skill-1/SKILL.md
+  .claude/skills/skill-2/SKILL.md
+  .claude/skills/skill-3/SKILL.md
+  .claude/agents/reviewer.md
+  .agents/skills/skill-1/SKILL.md
+  .agents/skills/skill-2/SKILL.md
+  .agents/skills/skill-3/SKILL.md
+  .cursor/agents/reviewer.md
+  .cursor/rules/style.mdc
+  .agents/skills/skill-1/SKILL.md
+  .agents/skills/skill-2/SKILL.md
+  .agents/skills/skill-3/SKILL.md
+  .codex/agents/reviewer.toml
+  AGENTS.md
+  .github/copilot-instructions.md
+  .github/agents/reviewer.md
+  .github/instructions/style.instructions.md
+  AGENTS.md
+  gemini-extension.json
+  .opencode/skills/skill-1/SKILL.md
+  .opencode/skills/skill-2/SKILL.md
+  .opencode/skills/skill-3/SKILL.md
+  .opencode/agents/reviewer.md
+
+Would write 24, remove 0, keep 0. 0 unchanged.

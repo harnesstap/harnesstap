@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["apply", "org/catalog/plugin-name", "--project", "."]
+status.code = 1
+fs.sandbox = true

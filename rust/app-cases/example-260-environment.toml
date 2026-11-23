@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["environment", "show", "work", "--plugin", "my-setup"]
+status.code = 1
+fs.sandbox = true

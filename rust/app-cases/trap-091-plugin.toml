@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "list", "--search", "héllo wörld", "--remote-only"]
+status.code = 0
+fs.sandbox = true

@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["plugin", "rollback", "my-setup", "--to", "1.0.0"]
+status.code = 1
+fs.sandbox = true

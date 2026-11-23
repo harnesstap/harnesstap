@@ -1,0 +1,7 @@
+{
+  "project_root": "[CWD]",
+  "snapshot_id": null,
+  "has_drift": false,
+  "changes": [],
+  "message": "No project record. Run ht apply first."
+}

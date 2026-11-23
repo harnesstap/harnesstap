@@ -1,0 +1,4 @@
+bin.name = "ht"
+args = ["resource", "sync", "formatter@team-marketplace", "--overwrite", "--force"]
+status.code = 1
+fs.sandbox = true
