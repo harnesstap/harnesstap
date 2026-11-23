@@ -10,12 +10,17 @@
 // `PluginComposition`.
 import { setSystemTime, spyOn } from "bun:test";
 import { rmSync, writeFileSync } from "node:fs";
-import { ulid } from "ulid";
 import { closeDb, getDb } from "../../../src/db/connection.ts";
 import { initializeSchema } from "../../../src/db/schema.ts";
 import * as model from "../../../src/models/plugin-model.ts";
 import { mapResourceRow } from "../../../src/models/resource.ts";
 import * as composition from "../../../src/services/plugin-composition.ts";
+import * as marketplaceCatalog from "../../../src/services/marketplace-catalog.ts";
+import * as parseCatalog from "../../../src/services/marketplace-catalog-parse.ts";
+import * as pinCache from "../../../src/services/marketplace-pin-cache.ts";
+import * as resourceSync from "../../../src/services/resource-sync.ts";
+import * as gitConstraint from "../../../src/utils/git-dependency-constraint.ts";
+import * as upstreamPlugin from "../../../src/services/upstream-plugin.ts";
 import * as extendsSvc from "../../../src/services/plugin-extends.ts";
 import * as pins from "../../../src/services/claude-plugin-pins.ts";
 import * as claudeRef from "../../../src/plugins/claude-plugin-ref.ts";
@@ -47,19 +52,25 @@ const refs = (pluginId: string) =>
       version_constraint: String((r.metadata as Record<string, unknown>).version_constraint ?? "latest"),
       resource: r,
     }));
-spyOn(composition, "listAttachedPluginRefs").mockImplementation(refs as never);
-spyOn(composition, "ensurePluginResource").mockImplementation(((selector: string, opts?: { versionConstraint?: string }) => {
-  const db = getDb();
-  const name = selector.replace(/^plugin:/, "");
-  const metadata = JSON.stringify(opts?.versionConstraint ? { version_constraint: opts.versionConstraint } : {});
-  const now = new Date().toISOString();
-  const existing = db.prepare("SELECT id FROM resources WHERE type = 'plugin' AND name = ?").get(name) as { id: string } | undefined;
-  if (existing) {
-    db.prepare("UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?").run(metadata, now, existing.id);
-  } else {
-    db.prepare("INSERT INTO resources (id, type, name, metadata, created_at, updated_at) VALUES (?, 'plugin', ?, ?, ?, ?)").run(ulid(), name, metadata, now, now);
-  }
-  return mapResourceRow(db.prepare("SELECT * FROM resources WHERE type = 'plugin' AND name = ?").get(name) as never);
+// What composition hands to code that is not ported (the marketplace
+// catalog, the pin cache, resource sync): logged, and failing on cue.
+const hostLog: string[] = [];
+spyOn(marketplaceCatalog, "marketplaceCatalogWarnings").mockImplementation(((_dir: string, name: string) => {
+  hostLog.push(`warnings:${name}`);
+  return name === "esc" ? [parseCatalog.escapingMarketplaceSourceWarning("bad"), parseCatalog.escapingMarketplaceSourceWarning("twin")] : [];
+}) as never);
+spyOn(marketplaceCatalog, "listCatalogPlugins").mockImplementation(((_dir: string, opts: { name: string }) => {
+  hostLog.push(`list:${opts.name}`);
+  return opts.name === "esc" ? [{ name: "twin" }, { name: "other" }] : [];
+}) as never);
+spyOn(pinCache, "installMarketplacePinIntoCache").mockImplementation((async (input: { originRef: string; versionConstraint: string; homeRoot: string }) => {
+  hostLog.push(`install:${input.originRef}:${input.versionConstraint}:${input.homeRoot === HOME}`);
+  if (input.originRef.startsWith("boom")) throw new Error("network down");
+}) as never);
+spyOn(resourceSync, "syncPluginResource").mockImplementation((async (resource: { name: string }) => {
+  hostLog.push(`sync:${resource.name}`);
+  if (resource.name.startsWith("nosync")) throw new Error(`cannot sync ${resource.name}`);
+  return {};
 }) as never);
 // resolveComposition until services/resolve is ported: the root's plugin-typed
 // attachments at depth 1; a root named broken* does not resolve.
@@ -209,6 +220,40 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   __writeFile: ((rel: string, text: string) => { mkdirSync(dirname(join(HOME, rel)), { recursive: true }); writeFileSync(join(HOME, rel), text); }) as never,
   __mkdir: ((rel: string) => { mkdirSync(join(HOME, rel), { recursive: true }); }) as never,
   __rm: ((rel: string) => { rmSync(join(HOME, rel), { recursive: true, force: true }); }) as never,
+  isCompositionResourceType: composition.isCompositionResourceType,
+  pluginResourceNamespace: composition.pluginResourceNamespace,
+  formatPluginRef: ((r: { $res: string }) => composition.formatPluginRef(mapResourceRow(getDb().prepare("SELECT * FROM resources WHERE name = ?").get(r.$res) as never))) as never,
+  findPluginResourceByPin: composition.findPluginResourceByPin,
+  compositionParsePluginRef: composition.parsePluginRef,
+  ensurePluginResource: composition.ensurePluginResource,
+  listAttachedPluginPins: composition.listAttachedPluginPins,
+  attachPluginPinToPlugin: composition.attachPluginPinToPlugin,
+  detachPluginPinFromPlugin: composition.detachPluginPinFromPlugin,
+  listAttachedPluginRefs: composition.listAttachedPluginRefs,
+  attachCompositionResource: ((id: string, resourceId: string) =>
+    composition.attachCompositionResource(id, mapResourceRow(getDb().prepare("SELECT * FROM resources WHERE id = ?").get(resourceId) as never))) as never,
+  resolveAttachmentType: ((selector: string, type?: string, ctx?: { pluginName?: string }) => {
+    try {
+      return composition.resolveAttachmentType(selector, type, ctx);
+    } catch (error) {
+      if (error instanceof composition.PluginAttachmentHintError) throw new Error(`${error.message} | ${error.hints.join(" | ")}`);
+      throw error;
+    }
+  }) as never,
+  attachmentTypeRequiredHints: composition.attachmentTypeRequiredHints,
+  validatePluginAttachmentType: composition.validatePluginAttachmentType,
+  addPluginAttachment: ((input: { plugin: PluginArg } & Record<string, unknown>) =>
+    composition.addPluginAttachment({ ...input, plugin: P(input.plugin) } as never)) as never,
+  removePluginAttachment: ((input: { plugin: PluginArg } & Record<string, unknown>) =>
+    composition.removePluginAttachment({ ...input, plugin: P(input.plugin) } as never)) as never,
+  findMarketplacePluginNameCollision: upstreamPlugin.findMarketplacePluginNameCollision,
+  assertNoMarketplacePluginNameCollision: upstreamPlugin.assertNoMarketplacePluginNameCollision,
+  parseGitDependencyConstraint: gitConstraint.parseGitDependencyConstraint,
+  isGitRefConstraint: gitConstraint.isGitRefConstraint,
+  isValidGitRefName: gitConstraint.isValidGitRefName,
+  isFullCommitSha: gitConstraint.isFullCommitSha,
+  gitPinFetchRef: ((raw: string) => gitConstraint.gitPinFetchRef(gitConstraint.parseGitDependencyConstraint(raw))) as never,
+  __hostLog: (() => hostLog.splice(0)) as never,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
   __query: ((sql: string) => (getDb().prepare(sql).all() as Record<string, unknown>[]).map((row) => Object.values(row))) as never,
   __writeConfig: ((text: string) => {
@@ -924,6 +969,209 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
     ],
   },
   {
+    name: "composition",
+    ops: [
+      { fn: "parseGitDependencyConstraint", args: [""] },
+      { fn: "parseGitDependencyConstraint", args: ["latest"] },
+      { fn: "parseGitDependencyConstraint", args: ["*"] },
+      { fn: "parseGitDependencyConstraint", args: [" main "] },
+      { fn: "parseGitDependencyConstraint", args: ["#main"] },
+      { fn: "parseGitDependencyConstraint", args: ["# abc1234 "] },
+      { fn: "parseGitDependencyConstraint", args: ["#ABCDEF1"] },
+      { fn: "parseGitDependencyConstraint", args: ["#bad..ref"] },
+      { fn: "parseGitDependencyConstraint", args: ["ref:v1.2.0"] },
+      { fn: "parseGitDependencyConstraint", args: ["ref: bad ref"] },
+      { fn: "parseGitDependencyConstraint", args: ["ref:"] },
+      { fn: "parseGitDependencyConstraint", args: ["abc1234"] },
+      { fn: "parseGitDependencyConstraint", args: ["ABCDEF1234"] },
+      { fn: "parseGitDependencyConstraint", args: ["abc123"] },
+      { fn: "parseGitDependencyConstraint", args: ["1.2.3"] },
+      { fn: "parseGitDependencyConstraint", args: ["^1.2"] },
+      { fn: "parseGitDependencyConstraint", args: ["~1"] },
+      { fn: "parseGitDependencyConstraint", args: ["v1.2.3"] },
+      { fn: "parseGitDependencyConstraint", args: ["1.2.3 - 2.0.0"] },
+      { fn: "parseGitDependencyConstraint", args: ["feature/x"] },
+      { fn: "parseGitDependencyConstraint", args: ["-bad"] },
+      { fn: "parseGitDependencyConstraint", args: ["a..b"] },
+      { fn: "parseGitDependencyConstraint", args: ["x.lock"] },
+      { fn: "parseGitDependencyConstraint", args: ["@"] },
+      { fn: "parseGitDependencyConstraint", args: ["a@{b"] },
+      { fn: "parseGitDependencyConstraint", args: ["with space"] },
+      { fn: "parseGitDependencyConstraint", args: ["a/.b"] },
+      { fn: "parseGitDependencyConstraint", args: ["a//b"] },
+      { fn: "parseGitDependencyConstraint", args: [".hidden"] },
+      { fn: "parseGitDependencyConstraint", args: ["release/"] },
+      { fn: "parseGitDependencyConstraint", args: ["x~y"] },
+      { fn: "parseGitDependencyConstraint", args: ["\u65e5\u672c"] },
+      { fn: "parseGitDependencyConstraint", args: ["0123456789abcdef0123456789abcdef01234567"] },
+      { fn: "parseGitDependencyConstraint", args: ["0123456789abcdef0123456789abcdef012345678"] },
+      { fn: "parseGitDependencyConstraint", args: ["x\u0085y"] },
+      { fn: "parseGitDependencyConstraint", args: ["\u00a0#main\u00a0"] },
+      { fn: "parseGitDependencyConstraint", args: ["x:y"] },
+      { fn: "parseGitDependencyConstraint", args: ["a."] },
+      { fn: "parseGitDependencyConstraint", args: ["a\\b"] },
+      { fn: "parseGitDependencyConstraint", args: [null] },
+      { fn: "isGitRefConstraint", args: ["#main"] },
+      { fn: "isGitRefConstraint", args: ["abc1234"] },
+      { fn: "isGitRefConstraint", args: ["^1"] },
+      { fn: "isGitRefConstraint", args: ["latest"] },
+      { fn: "isGitRefConstraint", args: ["bad..x"] },
+      { fn: "gitPinFetchRef", args: ["#main"] },
+      { fn: "gitPinFetchRef", args: ["abc1234"] },
+      { fn: "gitPinFetchRef", args: ["^1"] },
+      { fn: "gitPinFetchRef", args: ["latest"] },
+      { fn: "isFullCommitSha", args: ["0123456789abcdef0123456789abcdef01234567"] },
+      { fn: "isFullCommitSha", args: ["0123456789ABCDEF0123456789abcdef01234567"] },
+      { fn: "isFullCommitSha", args: ["abc"] },
+      { fn: "pluginResourceNamespace", args: [{"name": "n", "namespace": "m", "origin_ref": "r"}, "^1"] },
+      { fn: "pluginResourceNamespace", args: [{"name": "n", "namespace": "", "origin_ref": "r"}, "^1"] },
+      { fn: "pluginResourceNamespace", args: [{"name": "n", "namespace": "m", "origin_ref": "r"}, ""] },
+      { fn: "pluginResourceNamespace", args: [{"name": "n", "namespace": "", "origin_ref": "r"}] },
+      { fn: "pluginResourceNamespace", args: [{"name": "n", "namespace": "o/c", "origin_ref": "r"}, "1.0.0"] },
+      { fn: "compositionParsePluginRef", args: ["dep@mk"] },
+      { fn: "compositionParsePluginRef", args: ["./x"] },
+      { fn: "compositionParsePluginRef", args: ["o/c/n"] },
+      { fn: "compositionParsePluginRef", args: ["https://h/r.git"] },
+      { fn: "compositionParsePluginRef", args: [" a@b "] },
+      { fn: "resolveAttachmentType", args: ["skill:a"] },
+      { fn: "resolveAttachmentType", args: ["plugin:x@m"] },
+      { fn: "resolveAttachmentType", args: ["plugin_pin:x"] },
+      { fn: "resolveAttachmentType", args: ["bogus:x"] },
+      { fn: "resolveAttachmentType", args: ["a", "skill"] },
+      { fn: "resolveAttachmentType", args: ["a", "plugin_pin"] },
+      { fn: "resolveAttachmentType", args: ["a", "nope"] },
+      { fn: "resolveAttachmentType", args: ["a"] },
+      { fn: "resolveAttachmentType", args: ["a", ""] },
+      { fn: "resolveAttachmentType", args: ["instruction:i", "rule"] },
+      { fn: "resolveAttachmentType", args: ["x@m", "plugin"] },
+      { fn: "resolveAttachmentType", args: ["a", null, {"pluginName": "pp"}] },
+      { fn: "attachmentTypeRequiredHints", args: ["x"] },
+      { fn: "attachmentTypeRequiredHints", args: ["x", "p"] },
+      { fn: "validatePluginAttachmentType", args: [] },
+      { fn: "validatePluginAttachmentType", args: [""] },
+      { fn: "validatePluginAttachmentType", args: ["plugin"] },
+      { fn: "validatePluginAttachmentType", args: ["plugin_pin"] },
+      { fn: "validatePluginAttachmentType", args: ["skill"] },
+      { fn: "validatePluginAttachmentType", args: ["nope"] },
+      { fn: "validatePluginAttachmentType", args: ["env_var"] },
+      { fn: "validatePluginAttachmentType", args: ["model_config"] },
+      { fn: "createPlugin", args: [{"name": "p", "version": "1.0.0"}] },
+      { fn: "createPlugin", args: [{"name": "host"}] },
+      insertResource("S1", "skill", "s1"),
+      insertResource("R1", "rule", "r1"),
+      { fn: "__exec", args: [`INSERT INTO resources (id, type, name, namespace, metadata, content, created_at, updated_at) VALUES ('D1', 'skill', 'dup', 'a', '{}', 'x', '${T}', '${T}'), ('D2', 'skill', 'dup', 'b', '{}', 'y', '${T}', '${T}')`] },
+      { fn: "ensurePluginResource", args: ["plugin:dep@mk", {"versionConstraint": "^1"}] },
+      { fn: "ensurePluginResource", args: ["skill:x"] },
+      { fn: "ensurePluginResource", args: ["bogus:y@m"] },
+      { fn: "ensurePluginResource", args: ["plugin_pin:z", {"portable": "embed"}] },
+      { fn: "findPluginResourceByPin", args: ["dep@mk", "^1"] },
+      { fn: "findPluginResourceByPin", args: ["dep@mk"] },
+      { fn: "findPluginResourceByPin", args: ["x"] },
+      { fn: "findPluginResourceByPin", args: ["x", "2"] },
+      { fn: "findPluginResourceByPin", args: ["nope@mk"] },
+      { fn: "formatPluginRef", args: [{"$res": "x"}] },
+      { fn: "attachPluginPinToPlugin", args: [{"$ref": [84, "id"]}, "dep@mk", "latest"] },
+      { fn: "attachPluginPinToPlugin", args: [{"$ref": [84, "id"]}, "dep2@mk", "^2", {"embedOnExport": true}] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "markPluginClean", args: [{"$ref": [84, "id"]}] },
+      { fn: "attachPluginPinToPlugin", args: [{"$ref": [84, "id"]}, "g@x", "*", {"markDirty": false}] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "listAttachedPluginPins", args: [{"$ref": [84, "id"]}] },
+      { fn: "listAttachedPluginRefs", args: [{"$ref": [84, "id"]}] },
+      { fn: "listAttachedPluginRefs", args: ["missing"] },
+      { fn: "detachPluginPinFromPlugin", args: [{"$ref": [84, "id"]}, "dep2@mk"] },
+      { fn: "detachPluginPinFromPlugin", args: [{"$ref": [84, "id"]}, "nothing"] },
+      { fn: "markPluginClean", args: [{"$ref": [84, "id"]}] },
+      { fn: "attachCompositionResource", args: [{"$ref": [84, "id"]}, "S1"] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "markPluginClean", args: [{"$ref": [84, "id"]}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "s1", "type": "skill"}] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "r1"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "rule:r1"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "rule:s1"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "dup", "type": "skill"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "nothing", "type": "skill"}] },
+      { fn: "markPluginClean", args: [{"$ref": [84, "id"]}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "s1", "type": "skill", "version": "1"}] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "s1", "type": "skill", "embed": true}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "s1", "type": "skill", "sync": true}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "x@mk", "type": "plugin", "version": "^1.0.0"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:y@mk", "version": "bad range!!"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:https://github.com/o/r.git", "version": "#main"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:https://github.com/o/r2.git", "version": "bad..ref"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:bad@esc"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:twin@esc"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:boom@mk", "sync": true}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:nosync@mk", "sync": true, "version": "1.0.0"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:./local", "sync": true}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "x@mk", "type": "plugin_pin", "embed": true}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "s1", "type": "weird"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "  spaced@mk ", "type": "plugin"}] },
+      { fn: "__hostLog", args: [] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "listAttachedPluginPins", args: [{"$ref": [84, "id"]}] },
+      { fn: "createPlugin", args: [{"name": "coll", "version": "1.0.0"}] },
+      { fn: "setPluginOrigin", args: [{"$ref": [141, "id"]}, "upstream"] },
+      { fn: "stampPluginOrigin", args: [{"$ref": [141, "id"]}, {"locator": "coll@a"}] },
+      { fn: "__exec", args: [`INSERT INTO resources (id, type, name, namespace, origin_ref, metadata, content, created_at, updated_at) VALUES ('CP', 'plugin', 'coll', 'a', 'coll@a', '{}', '{}', '${T}', '${T}')`] },
+      { fn: "findMarketplacePluginNameCollision", args: ["coll@b"] },
+      { fn: "findMarketplacePluginNameCollision", args: ["coll@a"] },
+      { fn: "findMarketplacePluginNameCollision", args: ["coll"] },
+      { fn: "findMarketplacePluginNameCollision", args: ["none@b"] },
+      { fn: "assertNoMarketplacePluginNameCollision", args: ["coll@b"] },
+      { fn: "assertNoMarketplacePluginNameCollision", args: ["coll@a"] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:coll@b"}] },
+      { fn: "addPluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:coll@a"}] },
+      { fn: "__hostLog", args: [] },
+      { fn: "markPluginClean", args: [{"$ref": [84, "id"]}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "x@mk", "type": "plugin"}] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:nothere"}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "s1", "type": "skill"}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:twin"}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "zzz"}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "rule:nothing"}] },
+      { fn: "removePluginAttachment", args: [{"plugin": {"$ref": [84, "id"]}, "selector": "plugin:https://github.com/o/r.git"}] },
+      { fn: "listAttachedPluginPins", args: [{"$ref": [84, "id"]}] },
+      { fn: "addDependencyToPlugin", args: [{"$ref": [84, "id"]}, "dep@mk", "^3"] },
+      { fn: "addDependencyToPlugin", args: [{"$ref": [84, "id"]}, "dep@mk", "latest"] },
+      { fn: "listPluginDependencies", args: [{"$ref": [84, "id"]}] },
+      { fn: "removeDependencyFromPlugin", args: [{"$ref": [84, "id"]}, "dep@mk"] },
+      { fn: "removeDependencyFromPlugin", args: [{"$ref": [84, "id"]}, "dep@mk"] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+      { fn: "isValidGitRefName", args: ["main"] },
+      { fn: "isValidGitRefName", args: ["feature/x"] },
+      { fn: "isValidGitRefName", args: ["v1.2.0"] },
+      { fn: "isValidGitRefName", args: ["a\x7fb"] },
+      { fn: "isValidGitRefName", args: ["a\x1fb"] },
+      { fn: "isValidGitRefName", args: ["a b"] },
+      { fn: "isValidGitRefName", args: ["a..b"] },
+      { fn: "isValidGitRefName", args: ["a@{b"] },
+      { fn: "isValidGitRefName", args: ["@"] },
+      { fn: "isValidGitRefName", args: ["-x"] },
+      { fn: "isValidGitRefName", args: ["x.lock"] },
+      { fn: "isValidGitRefName", args: ["x/"] },
+      { fn: "isValidGitRefName", args: ["/x"] },
+      { fn: "isValidGitRefName", args: ["a//b"] },
+      { fn: "isValidGitRefName", args: ["a~b"] },
+      { fn: "isValidGitRefName", args: ["a^b"] },
+      { fn: "isValidGitRefName", args: ["a:b"] },
+      { fn: "isValidGitRefName", args: ["a?b"] },
+      { fn: "isValidGitRefName", args: ["a*b"] },
+      { fn: "isValidGitRefName", args: ["a[b"] },
+      { fn: "isValidGitRefName", args: ["a\\b"] },
+      { fn: "isValidGitRefName", args: [".x"] },
+      { fn: "isValidGitRefName", args: ["x/.y"] },
+      { fn: "isValidGitRefName", args: [""] },
+      { fn: "isValidGitRefName", args: ["ünï"] },
+      { fn: "markPluginClean", args: [{"$ref": [84, "id"]}] },
+      { fn: "removePluginAttachment", args: [{ plugin: {"$ref": [84, "id"]}, selector: "rule:r1" }] },
+      { fn: "getPluginById", args: [{"$ref": [84, "id"]}] },
+    ],
+  },
+  {
     name: "versioning",
     ops: [
       { fn: "createPlugin", args: [{ name: "v", version: "1.0.0", tags: ["t"], claude: { plugins: [{ id: "a@m", version: "1", enabled: true }] }, needs: ["N"] }] },
@@ -1051,28 +1299,31 @@ scenarios.push({ name: "names", ops: nameOps });
 
 process.env.HARNESSTAP_HOME = HOME;
 process.env.HOME = HOME;
-const out = scenarios.map(({ name, ops }) => {
+const out: unknown[] = [];
+for (const { name, ops } of scenarios) {
   closeDb();
   rmSync(HOME, { recursive: true, force: true });
   clearMarketplaceManifestCache();
   initializeSchema(getDb());
   getDb().exec(SETUP);
+  hostLog.length = 0;
   const results: unknown[] = [];
-  const calls = ops.map((op, i) => {
+  const calls: unknown[] = [];
+  for (const [i, op] of ops.entries()) {
     setSystemTime(new Date(BASE + i * 1000));
     const args = resolve(op.args, results) as never[];
     try {
-      const result = fns[op.fn]!(...args);
+      const result = await fns[op.fn]!(...args);
       results.push(result);
-      return { ...op, result: plain(result) };
+      calls.push({ ...op, result: plain(result) });
     } catch (error) {
       results.push(undefined);
-      return { ...op, error: error instanceof Error ? error.message : String(error) };
+      calls.push({ ...op, error: error instanceof Error ? error.message : String(error) });
     }
-  });
-  return { name, calls, dump: dump() };
-});
+  }
+  out.push({ name, calls, dump: dump() });
+}
 closeDb();
 rmSync(HOME, { recursive: true, force: true });
 writeFileSync("rust/plugin-model-rs/tests/fixtures/plugin-model.json", JSON.stringify({ setup: SETUP, scenarios: out }, null, 1) + "\n");
-console.log(`${out.length} scenarios, ${out.reduce((n, s) => n + s.calls.length, 0)} calls`);
+console.log(`${out.length} scenarios, ${(out as Array<{ calls: unknown[] }>).reduce((n, s) => n + s.calls.length, 0)} calls`);

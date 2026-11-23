@@ -3,9 +3,13 @@
 //! ([`name`]). `plugin-constraints.ts` comes from `resolve-rs` and
 //! `harness-scope.ts` from `harness-scope-rs`.
 //!
-//! `plugin-composition.ts`, `plugin-extends.ts` and `claude-plugin-pins.ts`
-//! reach the marketplace, the cloud API and forks, so the model takes them
-//! through [`PluginComposition`] (see `rust/MAP.md`).
+//! The plugin services the model and each other call live here as modules
+//! (they call each other in a cycle): [`composition`], [`dependency`],
+//! [`extends`], [`versioning`], [`origin`] and [`claude_pins`]. What reaches
+//! past the database goes through traits: [`composition::CompositionHost`]
+//! (marketplace catalog, pin cache, resource sync),
+//! [`claude_pins::ClaudeHost`] (Claude's own files) and, until
+//! `resolve/index.ts` is ported, [`versioning::ResolveComposition`].
 //!
 //! Like the other models, the port runs outside a status computation, so
 //! `computationSlot` is a plain call, and it keeps no statement cache, so the
@@ -16,8 +20,10 @@
 
 pub mod claude_pins;
 pub mod cloud_error;
+pub mod composition;
 pub mod dependency;
 pub mod extends;
+pub mod git_constraint;
 pub mod name;
 pub mod origin;
 pub mod upstream;
@@ -141,20 +147,6 @@ pub struct MergedPluginContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claude: Option<Value>,
     pub plugin_pins: Vec<PluginPin>,
-}
-
-/// The plugin services the model calls into, which reach well past the
-/// database (marketplace pins, the cloud API, forks).
-pub trait PluginComposition {
-    /// `listAttachedPluginRefs` (`plugin-composition.ts`).
-    fn attached_plugin_refs(&self, ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginRefView>>;
-    /// `ensurePluginResource(selector, { versionConstraint })` (`plugin-composition.ts`).
-    fn ensure_plugin_resource(
-        &self,
-        ctx: &Ctx,
-        selector: &str,
-        version_constraint: Option<&str>,
-    ) -> Result<Resource>;
 }
 
 // ---------------------------------------------------------------------------
@@ -1290,34 +1282,29 @@ pub fn sync_claude_marketplace_plugins_after_remove(
 /// `addDependencyToPlugin`.
 pub fn add_dependency_to_plugin(
     ctx: &Ctx,
-    composition: &dyn PluginComposition,
     plugin_id: &str,
     dependency_name: &str,
     version_constraint: &str,
 ) -> Result<()> {
-    for r in composition.attached_plugin_refs(ctx, plugin_id)? {
+    for r in composition::list_attached_plugin_refs(ctx, plugin_id)? {
         if r.dependency_name == dependency_name {
             remove_resource_from_plugin(ctx, plugin_id, &r.resource.resource.id)?;
         }
     }
     let constraint =
         (version_constraint != "latest" && version_constraint != "*").then_some(version_constraint);
-    let resource = composition.ensure_plugin_resource(
+    let resource = composition::ensure_plugin_resource(
         ctx,
         &format!("plugin:{dependency_name}"),
         constraint,
+        None,
     )?;
     add_resource_to_plugin(ctx, plugin_id, &resource.id, None)
 }
 
 /// `listPluginDependencies`.
-pub fn list_plugin_dependencies(
-    ctx: &Ctx,
-    composition: &dyn PluginComposition,
-    plugin_id: &str,
-) -> Result<Vec<PluginDependencyRef>> {
-    Ok(composition
-        .attached_plugin_refs(ctx, plugin_id)?
+pub fn list_plugin_dependencies(ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginDependencyRef>> {
+    Ok(composition::list_attached_plugin_refs(ctx, plugin_id)?
         .into_iter()
         .enumerate()
         .map(|(order, r)| PluginDependencyRef {
@@ -1332,12 +1319,10 @@ pub fn list_plugin_dependencies(
 /// `removeDependencyFromPlugin`.
 pub fn remove_dependency_from_plugin(
     ctx: &Ctx,
-    composition: &dyn PluginComposition,
     plugin_id: &str,
     dependency_name: &str,
 ) -> Result<bool> {
-    let attached: Vec<PluginRefView> = composition
-        .attached_plugin_refs(ctx, plugin_id)?
+    let attached: Vec<PluginRefView> = composition::list_attached_plugin_refs(ctx, plugin_id)?
         .into_iter()
         .filter(|r| r.dependency_name == dependency_name)
         .collect();
