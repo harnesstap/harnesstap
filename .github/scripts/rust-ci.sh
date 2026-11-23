@@ -117,8 +117,19 @@ run_replay() {
   fi
 
   echo "::group::rust-anything app replay"
-  rust-anything app replay . --timeout 30 --build "bash rust/run-sandboxed.sh ${bin}"
+  echo "node $(node --version), rust-anything $(rust-anything --version 2>/dev/null || true)"
+  if rust-anything app replay . --timeout 30 --build "bash rust/run-sandboxed.sh ${bin}"; then
+    echo "::endgroup::"
+    return 0
+  fi
   echo "::endgroup::"
+  # Print the start of the report so a mismatch is visible in the job log.
+  if [ -f rust/app-cases/replay-report.md ]; then
+    echo "::group::replay-report.md (first 200 lines)"
+    sed -n '1,200p' rust/app-cases/replay-report.md
+    echo "::endgroup::"
+  fi
+  return 1
 }
 
 usage() {
