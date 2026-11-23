@@ -1,0 +1,18 @@
+[package]
+name = "yaml-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "The `yaml` package (2.8) as HarnessTap calls it: `parse` to JSON-like values, and `stringify`"
+
+[dependencies]
+emit-rs = { path = "../emit-rs" }
+saphyr-parser = "0.0.6"
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[dev-dependencies]
+emit-rs = { path = "../emit-rs" }
