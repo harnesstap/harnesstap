@@ -19,9 +19,11 @@ import * as composition from "../../../src/services/plugin-composition.ts";
 import * as extendsSvc from "../../../src/services/plugin-extends.ts";
 import * as pins from "../../../src/services/claude-plugin-pins.ts";
 import * as upstream from "../../../src/services/plugin-upstream.ts";
+import * as fork from "../../../src/services/plugin-fork.ts";
 import * as names from "../../../src/services/agent-plugins/name.ts";
 import * as versioning from "../../../src/services/plugin-versioning.ts";
 import * as origin from "../../../src/services/plugin-origin.ts";
+import * as cloudError from "../../../src/services/cloud-api-error.ts";
 import * as dependency from "../../../src/services/plugin-dependency.ts";
 import * as resolveIndex from "../../../src/services/resolve/index.ts";
 import { mkdirSync } from "node:fs";
@@ -42,9 +44,6 @@ const refs = (pluginId: string) =>
       version_constraint: String((r.metadata as Record<string, unknown>).version_constraint ?? "latest"),
       resource: r,
     }));
-spyOn(extendsSvc, "getComposedPluginResources").mockImplementation(((id: string) => model.getPluginResources(id)) as never);
-spyOn(extendsSvc, "listComposedDependencies").mockImplementation(((id: string) =>
-  refs(id).map((r) => ({ ref: r.dependency_name, version_constraint: r.version_constraint, resource: r.resource }))) as never);
 spyOn(composition, "listAttachedPluginRefs").mockImplementation(refs as never);
 spyOn(composition, "ensurePluginResource").mockImplementation(((selector: string, opts?: { versionConstraint?: string }) => {
   const db = getDb();
@@ -76,6 +75,21 @@ spyOn(resolveIndex, "resolveComposition").mockImplementation(((input: { rootSele
 }) as never);
 spyOn(console, "error").mockImplementation(() => {});
 
+type PluginArg = string | Record<string, unknown>;
+const P = (p: PluginArg) => (typeof p === "string" ? model.getPluginById(p) : p) as never;
+// `{ $cloud: [prefix, status, body?, requestIdHeader?] }` is a CloudApiError,
+// `{ $error: message }` an Error; anything else is thrown as is.
+const C = (e: unknown): unknown => {
+  const x = e as { $cloud?: unknown[]; $error?: string };
+  if (x && typeof x === "object" && Array.isArray(x.$cloud)) {
+    const [prefix, status, ...rest] = x.$cloud;
+    const header = rest[1] as string | undefined;
+    return new cloudError.CloudApiError(prefix as string, status as number, rest.length > 0 ? rest[0] : undefined,
+      header === undefined ? undefined : new Headers({ "x-request-id": header }));
+  }
+  if (x && typeof x === "object" && typeof x.$error === "string") return new Error(x.$error);
+  return e;
+};
 const fullResource = (r: Record<string, unknown>) => ({
   description: "", content: "", source: "", namespace: "", origin_kind: "manual", origin_ref: "",
   content_hash: "", content_blob_ref: "", created_at: T, updated_at: T, ...r,
@@ -159,6 +173,29 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   dependenciesFromResources: dependency.dependenciesFromResources,
   listDependencies: dependency.listDependencies,
   removeDependency: dependency.removeDependency,
+  parseExcludeEntry: extendsSvc.parseExcludeEntry,
+  normalizeExcludeEntries: extendsSvc.normalizeExcludeEntries,
+  listPluginExcludes: extendsSvc.listPluginExcludes,
+  writePluginExcludes: extendsSvc.writePluginExcludes,
+  setPluginExcludes: extendsSvc.setPluginExcludes,
+  resolveUpstreamParent: ((p: PluginArg, opts?: { includeSelf?: boolean }) => extendsSvc.resolveUpstreamParent(P(p), opts)) as never,
+  parentMissingError: ((p: PluginArg) => extendsSvc.parentMissingError(P(p)).message) as never,
+  listInheritedItems: extendsSvc.listInheritedItems,
+  listComposedItems: extendsSvc.listComposedItems,
+  getComposedPluginResources: extendsSvc.getComposedPluginResources,
+  listComposedDependencies: extendsSvc.listComposedDependencies,
+  catalogUpstreamBase: ((p: PluginArg) => fork.catalogUpstreamBase(P(p))) as never,
+  portableUpstream: ((p: PluginArg) => extendsSvc.portableUpstream(P(p))) as never,
+  parseExcludeList: extendsSvc.parseExcludeList,
+  assertNoExtendsCycle: ((p: PluginArg, u: never, id?: string) => extendsSvc.assertNoExtendsCycle(P(p), u, id)) as never,
+  assertParentPublished: ((p: PluginArg) => extendsSvc.assertParentPublished(P(p))) as never,
+  cloudPublishErrorMessage: ((p: PluginArg, e: unknown) => extendsSvc.cloudPublishErrorMessage(P(p), C(e))) as never,
+  upstreamUnpublishedFromCloud: ((p: PluginArg, m: string) => extendsSvc.upstreamUnpublishedFromCloud(P(p), m)?.message) as never,
+  parseCloudErrorBody: ((body: unknown, header?: string) =>
+    cloudError.parseCloudErrorBody(body, header === undefined ? undefined : new Headers({ "x-request-id": header }))) as never,
+  parseCloudErrorText: cloudError.parseCloudErrorText,
+  cloudApiError: ((e: unknown) => { const x = C(e) as InstanceType<typeof cloudError.CloudApiError>; return { message: x.message, status: x.status, detail: x.detail }; }) as never,
+  cloudErrorDetail: ((e: unknown) => cloudError.cloudErrorDetail(C(e))) as never,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
   __query: ((sql: string) => (getDb().prepare(sql).all() as Record<string, unknown>[]).map((row) => Object.values(row))) as never,
   __writeConfig: ((text: string) => {
@@ -217,6 +254,10 @@ const insertResource = (id: string, type: string, name: string, metadata = "{}")
 
 // Every scenario starts with these rows, outside the recorded calls.
 const SETUP = `INSERT INTO environments (id, name, created_at, updated_at) VALUES ('env1', 'one', '${T}', '${T}'), ('e1', 'e-one', '${T}', '${T}'), ('e2', 'e-two', '${T}', '${T}')`;
+
+const PURE_EXTENDS = JSON.parse(String.raw`[{"fn": "parseExcludeEntry", "args": ["skill:a"]}, {"fn": "parseExcludeEntry", "args": [" rule : b "]}, {"fn": "parseExcludeEntry", "args": ["skill:"]}, {"fn": "parseExcludeEntry", "args": ["nope:x"]}, {"fn": "parseExcludeEntry", "args": [":x"]}, {"fn": "parseExcludeEntry", "args": ["skill:a*"]}, {"fn": "parseExcludeEntry", "args": ["skill:[x]"]}, {"fn": "parseExcludeEntry", "args": ["plugin:p"]}, {"fn": "parseExcludeEntry", "args": ["mcp_server:m?"]}, {"fn": "parseExcludeEntry", "args": ["skill:a:b"]}, {"fn": "parseExcludeEntry", "args": ["instruction:x\u00a0"]}, {"fn": "parseExcludeEntry", "args": ["\u00a0skill:y"]}, {"fn": "normalizeExcludeEntries", "args": [["skill:b", "skill:a", " skill:a", "rule:Z", "rule:z", "rule:\u00e9", "rule:\ud83d\ude00", "rule:\uff5e"]]}, {"fn": "normalizeExcludeEntries", "args": [["skill:a", "bad"]]}, {"fn": "normalizeExcludeEntries", "args": [["skill:s0", "skill:s1", "skill:s2", "skill:s3", "skill:s4", "skill:s5", "skill:s6", "skill:s7", "skill:s8", "skill:s9", "skill:s10", "skill:s11", "skill:s12", "skill:s13", "skill:s14", "skill:s15", "skill:s16", "skill:s17", "skill:s18", "skill:s19", "skill:s20", "skill:s21", "skill:s22", "skill:s23", "skill:s24", "skill:s25", "skill:s26", "skill:s27", "skill:s28", "skill:s29", "skill:s30", "skill:s31", "skill:s32", "skill:s33", "skill:s34", "skill:s35", "skill:s36", "skill:s37", "skill:s38", "skill:s39", "skill:s40", "skill:s41", "skill:s42", "skill:s43", "skill:s44", "skill:s45", "skill:s46", "skill:s47", "skill:s48", "skill:s49", "skill:s50", "skill:s51", "skill:s52", "skill:s53", "skill:s54", "skill:s55", "skill:s56", "skill:s57", "skill:s58", "skill:s59", "skill:s60", "skill:s61", "skill:s62", "skill:s63", "skill:s64", "skill:s65", "skill:s66", "skill:s67", "skill:s68", "skill:s69", "skill:s70", "skill:s71", "skill:s72", "skill:s73", "skill:s74", "skill:s75", "skill:s76", "skill:s77", "skill:s78", "skill:s79", "skill:s80", "skill:s81", "skill:s82", "skill:s83", "skill:s84", "skill:s85", "skill:s86", "skill:s87", "skill:s88", "skill:s89", "skill:s90", "skill:s91", "skill:s92", "skill:s93", "skill:s94", "skill:s95", "skill:s96", "skill:s97", "skill:s98", "skill:s99", "skill:s100", "skill:s101", "skill:s102", "skill:s103", "skill:s104", "skill:s105", "skill:s106", "skill:s107", "skill:s108", "skill:s109", "skill:s110", "skill:s111", "skill:s112", "skill:s113", "skill:s114", "skill:s115", "skill:s116", "skill:s117", "skill:s118", "skill:s119", "skill:s120", "skill:s121", "skill:s122", "skill:s123", "skill:s124", "skill:s125", "skill:s126", "skill:s127", "skill:s128", "skill:s129", "skill:s130", "skill:s131", "skill:s132", "skill:s133", "skill:s134", "skill:s135", "skill:s136", "skill:s137", "skill:s138", "skill:s139", "skill:s140", "skill:s141", "skill:s142", "skill:s143", "skill:s144", "skill:s145", "skill:s146", "skill:s147", "skill:s148", "skill:s149", "skill:s150", "skill:s151", "skill:s152", "skill:s153", "skill:s154", "skill:s155", "skill:s156", "skill:s157", "skill:s158", "skill:s159", "skill:s160", "skill:s161", "skill:s162", "skill:s163", "skill:s164", "skill:s165", "skill:s166", "skill:s167", "skill:s168", "skill:s169", "skill:s170", "skill:s171", "skill:s172", "skill:s173", "skill:s174", "skill:s175", "skill:s176", "skill:s177", "skill:s178", "skill:s179", "skill:s180", "skill:s181", "skill:s182", "skill:s183", "skill:s184", "skill:s185", "skill:s186", "skill:s187", "skill:s188", "skill:s189", "skill:s190", "skill:s191", "skill:s192", "skill:s193", "skill:s194", "skill:s195", "skill:s196", "skill:s197", "skill:s198", "skill:s199", "skill:s200"]]}, {"fn": "normalizeExcludeEntries", "args": [["skill:s0", "skill:s1", "skill:s2", "skill:s3", "skill:s4", "skill:s5", "skill:s6", "skill:s7", "skill:s8", "skill:s9", "skill:s10", "skill:s11", "skill:s12", "skill:s13", "skill:s14", "skill:s15", "skill:s16", "skill:s17", "skill:s18", "skill:s19", "skill:s20", "skill:s21", "skill:s22", "skill:s23", "skill:s24", "skill:s25", "skill:s26", "skill:s27", "skill:s28", "skill:s29", "skill:s30", "skill:s31", "skill:s32", "skill:s33", "skill:s34", "skill:s35", "skill:s36", "skill:s37", "skill:s38", "skill:s39", "skill:s40", "skill:s41", "skill:s42", "skill:s43", "skill:s44", "skill:s45", "skill:s46", "skill:s47", "skill:s48", "skill:s49", "skill:s50", "skill:s51", "skill:s52", "skill:s53", "skill:s54", "skill:s55", "skill:s56", "skill:s57", "skill:s58", "skill:s59", "skill:s60", "skill:s61", "skill:s62", "skill:s63", "skill:s64", "skill:s65", "skill:s66", "skill:s67", "skill:s68", "skill:s69", "skill:s70", "skill:s71", "skill:s72", "skill:s73", "skill:s74", "skill:s75", "skill:s76", "skill:s77", "skill:s78", "skill:s79", "skill:s80", "skill:s81", "skill:s82", "skill:s83", "skill:s84", "skill:s85", "skill:s86", "skill:s87", "skill:s88", "skill:s89", "skill:s90", "skill:s91", "skill:s92", "skill:s93", "skill:s94", "skill:s95", "skill:s96", "skill:s97", "skill:s98", "skill:s99", "skill:s100", "skill:s101", "skill:s102", "skill:s103", "skill:s104", "skill:s105", "skill:s106", "skill:s107", "skill:s108", "skill:s109", "skill:s110", "skill:s111", "skill:s112", "skill:s113", "skill:s114", "skill:s115", "skill:s116", "skill:s117", "skill:s118", "skill:s119", "skill:s120", "skill:s121", "skill:s122", "skill:s123", "skill:s124", "skill:s125", "skill:s126", "skill:s127", "skill:s128", "skill:s129", "skill:s130", "skill:s131", "skill:s132", "skill:s133", "skill:s134", "skill:s135", "skill:s136", "skill:s137", "skill:s138", "skill:s139", "skill:s140", "skill:s141", "skill:s142", "skill:s143", "skill:s144", "skill:s145", "skill:s146", "skill:s147", "skill:s148", "skill:s149", "skill:s150", "skill:s151", "skill:s152", "skill:s153", "skill:s154", "skill:s155", "skill:s156", "skill:s157", "skill:s158", "skill:s159", "skill:s160", "skill:s161", "skill:s162", "skill:s163", "skill:s164", "skill:s165", "skill:s166", "skill:s167", "skill:s168", "skill:s169", "skill:s170", "skill:s171", "skill:s172", "skill:s173", "skill:s174", "skill:s175", "skill:s176", "skill:s177", "skill:s178", "skill:s179", "skill:s180", "skill:s181", "skill:s182", "skill:s183", "skill:s184", "skill:s185", "skill:s186", "skill:s187", "skill:s188", "skill:s189", "skill:s190", "skill:s191", "skill:s192", "skill:s193", "skill:s194", "skill:s195", "skill:s196", "skill:s197", "skill:s198", "skill:s199", "skill:s0", "skill:s1", "skill:s2", "skill:s3", "skill:s4", "skill:s5", "skill:s6", "skill:s7", "skill:s8", "skill:s9", "skill:s10", "skill:s11", "skill:s12", "skill:s13", "skill:s14", "skill:s15", "skill:s16", "skill:s17", "skill:s18", "skill:s19", "skill:s20", "skill:s21", "skill:s22", "skill:s23", "skill:s24", "skill:s25", "skill:s26", "skill:s27", "skill:s28", "skill:s29", "skill:s30", "skill:s31", "skill:s32", "skill:s33", "skill:s34", "skill:s35", "skill:s36", "skill:s37", "skill:s38", "skill:s39", "skill:s40", "skill:s41", "skill:s42", "skill:s43", "skill:s44", "skill:s45", "skill:s46", "skill:s47", "skill:s48", "skill:s49"]]}, {"fn": "parseExcludeList", "args": [["skill:b", "skill:a", 3, null, "bad", "skill:a", "skill:*"]]}, {"fn": "parseExcludeList", "args": ["skill:a"]}, {"fn": "parseExcludeList", "args": [null]}, {"fn": "parseCloudErrorBody", "args": [null]}, {"fn": "parseCloudErrorBody", "args": ["str"]}, {"fn": "parseCloudErrorBody", "args": [0]}, {"fn": "parseCloudErrorBody", "args": [[]]}, {"fn": "parseCloudErrorBody", "args": [["x"]]}, {"fn": "parseCloudErrorBody", "args": [{"error": "code_only"}]}, {"fn": "parseCloudErrorBody", "args": [{"error": {"code": "c", "message": "m", "requestId": "r", "entry": "e", "ref": "o/c/p@1", "fields": {"a": 1}, "details": null}}]}, {"fn": "parseCloudErrorBody", "args": [{"error": {"code": ""}, "code": "top", "message": "tm", "request_id": "rid"}]}, {"fn": "parseCloudErrorBody", "args": [{"error": {"fields": [1], "details": [1]}, "requestId": ""}]}, {"fn": "parseCloudErrorBody", "args": [{"error": [1], "message": "m"}]}, {"fn": "parseCloudErrorBody", "args": [{"error": {"message": 5, "entry": ""}}]}, {"fn": "parseCloudErrorBody", "args": [null, "hdr"]}, {"fn": "parseCloudErrorBody", "args": [{"requestId": "body"}, "hdr"]}, {"fn": "parseCloudErrorBody", "args": [{}, ""]}, {"fn": "parseCloudErrorText", "args": [""]}, {"fn": "parseCloudErrorText", "args": ["no json"]}, {"fn": "parseCloudErrorText", "args": ["HTTP 400: {\"error\":{\"code\":\"invalid_exclude\",\"entry\":\"skill:x\",\"message\":\"Bad entry.\"}}"]}, {"fn": "parseCloudErrorText", "args": ["x {broken"]}, {"fn": "parseCloudErrorText", "args": ["a {\"error\":\"e\"} trailing"]}, {"fn": "parseCloudErrorText", "args": ["{}"]}, {"fn": "parseCloudErrorText", "args": ["{\"error\":\"upstream_unpublished\",\"ref\":\"o/c/p@^1\"}"]}, {"fn": "cloudApiError", "args": [{"$cloud": ["Publish failed", 400, {"error": {"code": "x", "message": "msg"}}]}]}, {"fn": "cloudApiError", "args": [{"$cloud": ["P", 500]}]}, {"fn": "cloudApiError", "args": [{"$cloud": ["P", 500, null]}]}, {"fn": "cloudApiError", "args": [{"$cloud": ["P", 400, "text body"]}]}, {"fn": "cloudApiError", "args": [{"$cloud": ["P", 400, {"error": "code"}]}]}, {"fn": "cloudApiError", "args": [{"$cloud": ["P", 401, {"a": 1}, "req-9"]}]}, {"fn": "cloudApiError", "args": [{"$cloud": ["P", 400, {"error": {"code": "c"}}, "req-1"]}]}, {"fn": "cloudErrorDetail", "args": [{"$error": "HTTP 400: {\"error\":{\"code\":\"c\"}}"}]}, {"fn": "cloudErrorDetail", "args": ["plain {\"code\":\"k\"}"]}, {"fn": "cloudErrorDetail", "args": [{"$cloud": ["P", 400, {"error": {"code": "z", "requestId": "q"}}]}]}]`);
+const B = PURE_EXTENDS.length;
+const KID = { id: "kid-literal", name: "kid", version: "0.1.0", org_slug: "", catalog_slug: "" };
 
 const scenarios: Array<{ name: string; ops: Op[] }> = [
   {
@@ -584,6 +625,138 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
       { fn: "removeDependency", args: [ref(26), "host@mk"] },
       { fn: "listDependencies", args: [ref(25)] },
       { fn: "getPluginById", args: [ref(25)] },
+    ],
+  },
+  {
+    name: "extends",
+    ops: [
+      ...(PURE_EXTENDS as Op[]),
+      { fn: "createPlugin", args: [{ name: "base", version: "1.0.0" }] },
+      insertResource("S1", "skill", "s1"),
+      insertResource("S2", "skill", "s2"),
+      insertResource("R1", "rule", "r1"),
+      insertResource("HP", "plugin", "base", '{"source_kind":"marketplace"}'),
+      insertResource("DP", "plugin", "dep", '{"source_kind":"marketplace","version_constraint":"^2"}'),
+      { fn: "addResourceToPlugin", args: [ref(B), "S1"] },
+      { fn: "addResourceToPlugin", args: [ref(B), "S2"] },
+      { fn: "addResourceToPlugin", args: [ref(B), "R1"] },
+      { fn: "addResourceToPlugin", args: [ref(B), "HP"] },
+      { fn: "addResourceToPlugin", args: [ref(B), "DP"] },
+      { fn: "createPlugin", args: [{ name: "kid", version: "0.1.0" }] },
+      { fn: "__exec", args: [`INSERT INTO resources (id, type, name, namespace, metadata, content, created_at, updated_at) VALUES ('S1K', 'skill', 's1', 'k', '{}', 'own s1', '${T}', '${T}')`] },
+      { fn: "addResourceToPlugin", args: [ref(B + 11), "S1K"] },
+      insertResource("KP", "plugin", "kid", '{"source_kind":"local"}'),
+      { fn: "addResourceToPlugin", args: [ref(B + 11), "KP"] },
+      { fn: "getComposedPluginResources", args: [ref(B + 11)] },
+      { fn: "listComposedItems", args: [ref(B + 11)] },
+      { fn: "listInheritedItems", args: [ref(B + 11)] },
+      { fn: "setPluginExcludes", args: [ref(B + 11), ["skill:s2"]] },
+      { fn: "setPluginUpstream", args: [ref(B + 11), { kind: "extends", ref: "base@^1.0.0", version_at_link: "1.0.0" }] },
+      { fn: "getComposedPluginResources", args: [ref(B + 11)] },
+      { fn: "listComposedItems", args: [ref(B + 11)] },
+      { fn: "listInheritedItems", args: [ref(B + 11)] },
+      { fn: "listComposedDependencies", args: [ref(B + 11)] },
+      { fn: "listComposedDependencies", args: [ref(B)] },
+      { fn: "listComposedDependencies", args: ["missing"] },
+      { fn: "getComposedPluginResources", args: ["missing"] },
+      { fn: "listComposedItems", args: ["missing"] },
+      { fn: "listInheritedItems", args: ["missing"] },
+      { fn: "listInheritedItems", args: [ref(B)] },
+      { fn: "setPluginExcludes", args: [ref(B + 11), ["skill:s2", "rule:r1", "skill:nothing"]] },
+      { fn: "getPluginById", args: [ref(B + 11)] },
+      { fn: "markPluginClean", args: [ref(B + 11)] },
+      { fn: "setPluginExcludes", args: [ref(B + 11), [" rule:r1", "skill:nothing", "skill:s2"]] },
+      { fn: "getPluginById", args: [ref(B + 11)] },
+      { fn: "setPluginExcludes", args: [ref(B + 11), ["bad"]] },
+      { fn: "setPluginExcludes", args: [ref(B), ["skill:s1"]] },
+      { fn: "setPluginExcludes", args: ["missing", []] },
+      { fn: "listPluginExcludes", args: [ref(B + 11)] },
+      { fn: "getComposedPluginResources", args: [ref(B + 11)] },
+      { fn: "listInheritedItems", args: [ref(B + 11)] },
+      { fn: "mergePluginsById", args: [[ref(B + 11)]] },
+      { fn: "mergePluginsById", args: [[ref(B), ref(B + 11)]] },
+      { fn: "writePluginExcludes", args: [ref(B), ["skill:s1"]] },
+      { fn: "writePluginExcludes", args: [ref(B), ["skill:s1*"]] },
+      { fn: "listPluginExcludes", args: [ref(B)] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "resolveUpstreamParent", args: [ref(B)] },
+      { fn: "parentMissingError", args: [ref(B + 11)] },
+      { fn: "portableUpstream", args: [ref(B + 11)] },
+      { fn: "assertParentPublished", args: [ref(B + 11)] },
+      { fn: "assertParentPublished", args: [ref(B)] },
+      { fn: "catalogUpstreamBase", args: [ref(B)] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(B), newVersion: "1.1.0" }] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      insertPlugin("B2", "base", "1.2.0", { frozen_at: T }),
+      insertPlugin("B3", "base", "2.0.0"),
+      insertPlugin("B4", "base", "not-semver"),
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "__exec", args: ["UPDATE plugins SET frozen_at = NULL WHERE id = 'B2'"] },
+      { fn: "__exec", args: ["UPDATE plugins SET version = '1.2.0', org_slug = 'x', frozen_at = '2026-01-01T00:00:00.000Z' WHERE id = 'B3'"] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "__exec", args: ["UPDATE plugins SET frozen_at = '2026-01-01T00:00:00.000Z' WHERE id = 'B2'"] },
+      { fn: "__exec", args: ["UPDATE plugins SET frozen_at = NULL WHERE id = 'B3'"] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "__exec", args: ["UPDATE plugins SET version = '9.0.0' WHERE id = 'B2'"] },
+      { fn: "__exec", args: ["UPDATE plugins SET version = '9.0.1' WHERE id = 'B3'"] },
+      { fn: "__exec", args: [`UPDATE plugins SET org_slug = 'o', catalog_slug = 'c', origin_locator = 'o/c/base-slug@1.1.0' WHERE name = 'base'`] },
+      { fn: "catalogUpstreamBase", args: [ref(B)] },
+      { fn: "catalogUpstreamBase", args: [{ name: "My Thing", org_slug: "o", catalog_slug: "c" }] },
+      { fn: "catalogUpstreamBase", args: [{ name: "n", org_slug: "o", catalog_slug: "c", ap_name: "ap", origin_locator: "o/c/" }] },
+      { fn: "catalogUpstreamBase", args: [{ name: "n", org_slug: "o", catalog_slug: "c", origin_locator: "x/c/n@1" }] },
+      { fn: "catalogUpstreamBase", args: [{ name: "n", org_slug: "", catalog_slug: "c" }] },
+      { fn: "portableUpstream", args: [ref(B + 11)] },
+      { fn: "assertParentPublished", args: [ref(B + 11)] },
+      { fn: "portableUpstream", args: [{ ...KID, upstream: { kind: "extends", ref: "base@^1.0.0", version_at_link: "junk" } }] },
+      { fn: "portableUpstream", args: [{ ...KID, upstream: { kind: "fork", ref: "base@^1.0.0", version_at_link: "1.0.0" } }] },
+      { fn: "portableUpstream", args: [{ ...KID, upstream: { kind: "extends", ref: "o/c/base-slug@^1.0.0", version_at_link: "1.0.0" } }] },
+      { fn: "portableUpstream", args: [{ ...KID, upstream: { kind: "extends", ref: "base@not a range!!", version_at_link: "" } }] },
+      { fn: "portableUpstream", args: [{ ...KID }] },
+      { fn: "setPluginUpstream", args: [ref(B + 11), { kind: "extends", ref: "o/c/base-slug@^1.0.0", version_at_link: "1.0.0" }] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "getComposedPluginResources", args: [ref(B + 11)] },
+      { fn: "setPluginUpstream", args: [ref(B + 11), { kind: "extends", ref: "o/c/zzz@^1.0.0", version_at_link: "" }] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "parentMissingError", args: [ref(B + 11)] },
+      { fn: "getComposedPluginResources", args: [ref(B + 11)] },
+      { fn: "listInheritedItems", args: [ref(B + 11)] },
+      { fn: "listComposedItems", args: [ref(B + 11)] },
+      { fn: "setPluginUpstream", args: [ref(B + 11), { kind: "extends", ref: "o/c/zzz@^1.0.0", version_at_link: "1.0.0" }, ref(B)] },
+      { fn: "resolveUpstreamParent", args: [ref(B + 11)] },
+      { fn: "parentMissingError", args: [ref(B + 11)] },
+      { fn: "setPluginUpstream", args: [ref(B + 11), { kind: "extends", ref: "base@^1.0.0", version_at_link: "1.0.0" }] },
+      { fn: "createPlugin", args: [{ name: "gkid", version: "1.0.0" }] },
+      { fn: "setPluginUpstream", args: [ref(B + 94), { kind: "extends", ref: "kid@*", version_at_link: "" }] },
+      { fn: "listComposedItems", args: [ref(B + 94)] },
+      { fn: "listInheritedItems", args: [ref(B + 94)] },
+      { fn: "assertNoExtendsCycle", args: [ref(B), { kind: "extends", ref: "gkid@*", version_at_link: "" }] },
+      { fn: "assertNoExtendsCycle", args: [ref(B), { kind: "extends", ref: "base@*", version_at_link: "" }] },
+      { fn: "assertNoExtendsCycle", args: [ref(B), { kind: "fork", ref: "gkid@*", version_at_link: "" }] },
+      { fn: "assertNoExtendsCycle", args: [ref(B), { kind: "extends", ref: "o/c/base-slug@*", version_at_link: "" }] },
+      { fn: "assertNoExtendsCycle", args: [ref(B + 94), { kind: "extends", ref: "kid@*", version_at_link: "" }] },
+      { fn: "assertNoExtendsCycle", args: [ref(B + 94), { kind: "extends", ref: "nothing@*", version_at_link: "" }, ref(B)] },
+      { fn: "assertNoExtendsCycle", args: [{ name: "solo", ap_name: "slug" }, { kind: "extends", ref: "o/c/slug@1", version_at_link: "" }] },
+      { fn: "setPluginUpstream", args: [ref(B), { kind: "extends", ref: "gkid@*", version_at_link: "" }] },
+      { fn: "listComposedItems", args: [ref(B + 94)] },
+      { fn: "listComposedItems", args: [ref(B)] },
+      { fn: "getComposedPluginResources", args: [ref(B + 11)] },
+      { fn: "listInheritedItems", args: [ref(B + 94)] },
+      { fn: "assertNoExtendsCycle", args: [{ name: "fresh" }, { kind: "extends", ref: "gkid@*", version_at_link: "" }] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $error: "HTTP 400: upstream_unpublished" }] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $cloud: ["Publish", 400, { error: { code: "upstream_unpublished", ref: "o/c/p@^1", requestId: "r1" } }] }] },
+      { fn: "cloudPublishErrorMessage", args: [{ name: "plain" }, "upstream_unpublished"] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $cloud: ["Publish", 400, { error: { code: "invalid_exclude", entry: "skill:x", message: "Unknown item." } }, "rq"] }] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $cloud: ["Publish", 400, { error: { code: "invalid_exclude" } }] }] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $error: "Publish: 400 {\"error\":{\"code\":\"invalid_exclude\",\"message\":\"x..\"}}" }] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $error: "boom" }] },
+      { fn: "cloudPublishErrorMessage", args: [ref(B + 94), { $cloud: ["Publish", 500, { error: { code: "server" } }] }] },
+      { fn: "upstreamUnpublishedFromCloud", args: [ref(B + 94), "HTTP 400: upstream_unpublished"] },
+      { fn: "upstreamUnpublishedFromCloud", args: [ref(B + 94), "HTTP 400: {\"error\":{\"code\":\"upstream_unpublished\",\"ref\":\"o/c/r@1\"}}"] },
+      { fn: "upstreamUnpublishedFromCloud", args: [{ name: "plain" }, "x upstream_unpublished"] },
+      { fn: "upstreamUnpublishedFromCloud", args: [ref(B + 94), "other"] },
+      { fn: "resolveUpstreamParent", args: [{ ...KID, id: "other", name: "base", upstream: { kind: "extends", ref: "base@*", version_at_link: "" } }] },
+      { fn: "resolveUpstreamParent", args: [{ ...KID, id: "other", name: "base", upstream: { kind: "extends", ref: "base@*", version_at_link: "" } }, { includeSelf: true }] },
+      { fn: "resolveUpstreamParent", args: [{ ...KID, upstream: { kind: "extends", ref: "kid@*", version_at_link: "" } }] },
     ],
   },
   {
