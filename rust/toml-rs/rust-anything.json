@@ -1,0 +1,193 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "src/services/toml/",
+  "language": "ts",
+  "kind": "napi",
+  "crate_name": "toml-rs",
+  "exports": [
+    {
+      "name": "environmentsToTomlRecord",
+      "file": "src/services/toml/environment-document.ts",
+      "line": 11,
+      "params": [
+        {
+          "name": "environments",
+          "ts_type": "DeckJsonEnvironment[]",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "Record<string, Record<string, unknown>>",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "environmentsFromTomlRecord",
+      "file": "src/services/toml/environment-document.ts",
+      "line": 30,
+      "params": [
+        {
+          "name": "record",
+          "ts_type": "unknown",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "DeckJsonEnvironment[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "environmentToTomlDocument",
+      "file": "src/services/toml/environment-document.ts",
+      "line": 71,
+      "params": [
+        {
+          "name": "environment",
+          "ts_type": "DeckJsonEnvironment",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "Record<string, unknown>",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "readTransportFile",
+      "file": "src/services/toml/read.ts",
+      "line": 23,
+      "params": [
+        {
+          "name": "filePath",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "sortStringRecord",
+      "file": "src/services/toml/sort.ts",
+      "line": 17,
+      "params": [
+        {
+          "name": "record",
+          "ts_type": "Record<string, string>",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "Record<string, string>",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "assertTomlExtension",
+      "file": "src/services/toml/validate.ts",
+      "line": 5,
+      "params": [
+        {
+          "name": "filePath",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "void",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "readSchemaHeader",
+      "file": "src/services/toml/validate.ts",
+      "line": 17,
+      "params": [
+        {
+          "name": "document",
+          "ts_type": "Record<string, unknown>",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "{ schema: string; version: number }",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "formatTransportToml",
+      "file": "src/services/toml/write.ts",
+      "line": 5,
+      "params": [
+        {
+          "name": "document",
+          "ts_type": "Record<string, unknown>",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "writeTransportToml",
+      "file": "src/services/toml/write.ts",
+      "line": 9,
+      "params": [
+        {
+          "name": "filePath",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "document",
+          "ts_type": "Record<string, unknown>",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "void",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": [
+    {
+      "name": "parseTransportToml",
+      "file": "src/services/toml/read.ts",
+      "line": 5,
+      "reason": "needs a TOML parser matching smol-toml values and error text; researched before porting"
+    },
+    {
+      "name": "sortKeysDeep",
+      "file": "src/services/toml/sort.ts",
+      "line": 2,
+      "reason": "generic over `T`: values of any shape, functions included"
+    }
+  ]
+}

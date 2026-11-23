@@ -64,8 +64,8 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | front door (`app/`) | done | 564/564, fallback 100% |
 | `src/version.ts` | done | `rust/version-rs`, gate passed, 90/90 cases |
 | `src/node-version.ts` | done | `rust/node-version-rs`, gate passed, 58/58 cases |
-| `src/constants/` | open | in the wave 2 cycle per `analyze`, but no imports of its own that need Rust first |
-| `src/services/toml/` | open | `smol-toml` emit rules (ADR-010) |
+| `src/constants/` | open | `record` never finishes: its import graph (via `src/models`) pulls in the tangled core and the tool spins after the node run; see open question 4 |
+| `src/services/toml/` | done | `rust/toml-rs`, gate passed, 1709/1709 cases; `parseTransportToml` (needs a smol-toml compatible parser) and `sortKeysDeep` (generic) stay in the original for now |
 | `src/types.ts` | open | types only (0 exports): ported as Rust types with their first user |
 | `src/generated/` | open | data only (0 exports): ported as Rust data with its first user |
 | YAML emitter | open | ADR-008, no TS unit of its own (lives in `src/services/`) |
@@ -103,6 +103,11 @@ Lift, per-platform npm packages, Homebrew formula and cask, installers
    unless the original is fixed first.
 3. Rust CI (build, clippy, replay) is not added: no workflow change without
    approval.
+4. `rust-anything record` on `src/constants/` finishes the node run in seconds,
+   then spins at full CPU for over 20 minutes (rust-anything 3.3.0). Recording
+   TS units also needs `--node-arg=--experimental-transform-types`, because
+   `src/services/cli-errors.ts` uses parameter properties that strip-only mode
+   rejects; without it `record` hangs instead of reporting the error.
 
 ## Out of scope
 
