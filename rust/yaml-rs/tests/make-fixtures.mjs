@@ -2,7 +2,8 @@
 // tests/fixtures.rs. Run from the repository root:
 //   node rust/yaml-rs/tests/make-fixtures.mjs [path/to/yaml-test-suite]
 // The yaml-test-suite checkout (tag data-2022-01-17) is optional; its inputs are copied into
-// the fixture, so the test does not need it.
+// the fixture, so the test does not need it. The suite is MIT licensed; its notice is
+// tests/fixtures/yaml-test-suite-LICENSE.
 import { createRequire } from "node:module";
 import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
