@@ -118,6 +118,10 @@ run_replay() {
 
   echo "::group::rust-anything app replay"
   echo "node $(node --version), rust-anything $(rust-anything --version 2>/dev/null || true)"
+  # rust-anything inherits the process environment. `ht init` reads SHELL
+  # for the tab-completion hint. Recordings used the generic form, so drop
+  # the runner's SHELL=/bin/bash.
+  unset SHELL
   if rust-anything app replay . --timeout 30 --build "bash rust/run-sandboxed.sh ${bin}"; then
     echo "::endgroup::"
     return 0
