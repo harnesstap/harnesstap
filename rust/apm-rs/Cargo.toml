@@ -1,0 +1,15 @@
+[package]
+name = "apm-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "Rust port of the apm services in src/services/apm-*.ts"
+
+[dependencies]
+emit-rs = { path = "../emit-rs" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
