@@ -1,0 +1,1275 @@
+{"fn": "parseHarnessScope", "args": [null]}
+{"fn": "parseHarnessScope", "args": [""]}
+{"fn": "parseHarnessScope", "args": ["all"]}
+{"fn": "parseHarnessScope", "args": ["[]"]}
+{"fn": "parseHarnessScope", "args": ["[\"cursor\",\"claude-code\",\"cursor\"]"]}
+{"fn": "parseHarnessScope", "args": ["[\"b\",1,\"\",null,\"a\"]"]}
+{"fn": "parseHarnessScope", "args": ["{\"a\":1}"]}
+{"fn": "parseHarnessScope", "args": ["not json"]}
+{"fn": "parseHarnessScope", "args": ["\"all\""]}
+{"fn": "parseHarnessScope", "args": ["[]"]}
+{"fn": "parseHarnessScope", "args": ["[\"\"]"]}
+{"fn": "parseHarnessScope", "args": [[]]}
+{"fn": "parseHarnessScope", "args": [["z", "a", "a", ""]]}
+{"fn": "parseHarnessScope", "args": [["Z", "a", "B", "b", "claude-code", "claudecode", "claude"]]}
+{"fn": "parseHarnessScope", "args": [[1, 2]]}
+{"fn": "parseHarnessScope", "args": [{"kind": "subset"}]}
+{"fn": "parseHarnessScope", "args": [5]}
+{"fn": "parseHarnessScope", "args": [true]}
+{"fn": "parseHarnessScope", "args": ["null"]}
+{"fn": "parseHarnessScope", "args": ["\"x\""]}
+{"fn": "parseHarnessScope", "args": []}
+{"fn": "serializeHarnessScope", "args": [{"kind": "all"}]}
+{"fn": "harnessScopeWire", "args": [{"kind": "all"}]}
+{"fn": "serializeHarnessScope", "args": [{"kind": "subset", "harnesses": []}]}
+{"fn": "harnessScopeWire", "args": [{"kind": "subset", "harnesses": []}]}
+{"fn": "serializeHarnessScope", "args": [{"kind": "subset", "harnesses": ["b", "a", "b"]}]}
+{"fn": "harnessScopeWire", "args": [{"kind": "subset", "harnesses": ["b", "a", "b"]}]}
+{"fn": "serializeHarnessScope", "args": [{"kind": "subset", "harnesses": ["cursor", "Cursor", "_x", "-y", "1z", "a.b", "a/b", "~c"]}]}
+{"fn": "harnessScopeWire", "args": [{"kind": "subset", "harnesses": ["cursor", "Cursor", "_x", "-y", "1z", "a.b", "a/b", "~c"]}]}
+{"fn": "resourceHarnessScope", "args": [{}]}
+{"fn": "resourceAppliesToHarness", "args": [{}, "x"]}
+{"fn": "resourceAppliesToHarness", "args": [{}, "y"]}
+{"fn": "resourceHarnessScope", "args": [{"harness_scope": {"kind": "subset", "harnesses": ["x"]}}]}
+{"fn": "resourceAppliesToHarness", "args": [{"harness_scope": {"kind": "subset", "harnesses": ["x"]}}, "x"]}
+{"fn": "resourceAppliesToHarness", "args": [{"harness_scope": {"kind": "subset", "harnesses": ["x"]}}, "y"]}
+{"fn": "resourceHarnessScope", "args": [{"harness_scope": null}]}
+{"fn": "resourceAppliesToHarness", "args": [{"harness_scope": null}, "x"]}
+{"fn": "resourceAppliesToHarness", "args": [{"harness_scope": null}, "y"]}
+{"fn": "resourceHarnessScope", "args": [{"harness_scope": {"kind": "all"}}]}
+{"fn": "resourceAppliesToHarness", "args": [{"harness_scope": {"kind": "all"}}, "x"]}
+{"fn": "resourceAppliesToHarness", "args": [{"harness_scope": {"kind": "all"}}, "y"]}
+{"fn": "uniqueSorted", "args": [[]]}
+{"fn": "uniqueSorted", "args": [["b", "a", "b"]]}
+{"fn": "uniqueSorted", "args": [["claude-code", "claude", "claudecode", "claude_code", "Claude", "CLAUDE", "claude2", "claude-2", "claude.code", "claude/code", "~x", "\u00e9", "e", "f", "E", "10", "9", "a b", "a-b", "ab", "a_b", "a.b", "a~b"]]}
+{"fn": "uniqueSorted", "args": [["opencode", "open-code", "OpenCode", "gemini-cli", "geminicli", "gemini"]]}
+{"fn": "intersectHarnessScopes", "args": [{"kind": "all"}, {"kind": "all"}]}
+{"fn": "unionHarnessScopes", "args": [{"kind": "all"}, {"kind": "all"}]}
+{"fn": "intersectHarnessScopes", "args": [{"kind": "all"}, {"kind": "subset", "harnesses": ["a"]}]}
+{"fn": "unionHarnessScopes", "args": [{"kind": "all"}, {"kind": "subset", "harnesses": ["a"]}]}
+{"fn": "intersectHarnessScopes", "args": [{"kind": "subset", "harnesses": ["a", "b"]}, {"kind": "all"}]}
+{"fn": "unionHarnessScopes", "args": [{"kind": "subset", "harnesses": ["a", "b"]}, {"kind": "all"}]}
+{"fn": "intersectHarnessScopes", "args": [{"kind": "subset", "harnesses": ["b", "a", "c"]}, {"kind": "subset", "harnesses": ["c", "a"]}]}
+{"fn": "unionHarnessScopes", "args": [{"kind": "subset", "harnesses": ["b", "a", "c"]}, {"kind": "subset", "harnesses": ["c", "a"]}]}
+{"fn": "intersectHarnessScopes", "args": [{"kind": "subset", "harnesses": ["a"]}, {"kind": "subset", "harnesses": ["b"]}]}
+{"fn": "unionHarnessScopes", "args": [{"kind": "subset", "harnesses": ["a"]}, {"kind": "subset", "harnesses": ["b"]}]}
+{"fn": "intersectHarnessScopes", "args": [{"kind": "subset", "harnesses": []}, {"kind": "subset", "harnesses": ["a"]}]}
+{"fn": "unionHarnessScopes", "args": [{"kind": "subset", "harnesses": []}, {"kind": "subset", "harnesses": ["a"]}]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "all"}, ["a"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "all"}, ["a"]]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": ["a", "b"]}, ["a", "b"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": ["a", "b"]}, ["a", "b"]]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": ["a"]}, ["a", "b"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": ["a"]}, ["a", "b"]]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": ["x", "y"]}, ["a"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": ["x", "y"]}, ["a"]]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": ["b", "a", "zz"]}, ["a", "b", "c"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": ["b", "a", "zz"]}, ["a", "b", "c"]]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": ["a"]}, []]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": ["a"]}, []]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": []}, ["a"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": []}, ["a"]]}
+{"fn": "normalizeScopeToRegistered", "args": [{"kind": "subset", "harnesses": ["c", "b"]}, ["b", "c"]]}
+{"fn": "isOrphanedHarnessScope", "args": [{"kind": "subset", "harnesses": ["c", "b"]}, ["b", "c"]]}
+{"fn": "coversRegistered", "args": [[], []]}
+{"fn": "coversRegistered", "args": [["a"], []]}
+{"fn": "coversRegistered", "args": [["a", "b"], ["b"]]}
+{"fn": "coversRegistered", "args": [["a"], ["a", "b"]]}
+{"fn": "coversRegistered", "args": [[], ["a"]]}
+{"fn": "pathSurfaceForResourceType", "args": ["instruction"]}
+{"fn": "pathSurfaceForResourceType", "args": ["skill"]}
+{"fn": "pathSurfaceForResourceType", "args": ["rule"]}
+{"fn": "pathSurfaceForResourceType", "args": ["mcp_server"]}
+{"fn": "pathSurfaceForResourceType", "args": ["permission"]}
+{"fn": "pathSurfaceForResourceType", "args": ["hook"]}
+{"fn": "pathSurfaceForResourceType", "args": ["agent"]}
+{"fn": "pathSurfaceForResourceType", "args": ["command"]}
+{"fn": "pathSurfaceForResourceType", "args": ["env_var"]}
+{"fn": "pathSurfaceForResourceType", "args": ["model_config"]}
+{"fn": "pathSurfaceForResourceType", "args": ["plugin"]}
+{"fn": "pathSurfaceForResourceType", "args": ["plugin_pin"]}
+{"fn": "pathSurfaceForResourceType", "args": ["layer"]}
+{"fn": "pathSurfaceForResourceType", "args": [""]}
+{"fn": "pathSurfaceForResourceType", "args": ["constructor"]}
+{"fn": "pathSurfaceForResourceType", "args": ["toString"]}
+{"fn": "pathSurfaceForResourceType", "args": ["__proto__"]}
+{"fn": "pathSurfaceForResourceType", "args": ["hasOwnProperty"]}
+{"fn": "normalizeEmitPath", "args": [null]}
+{"fn": "normalizeEmitPath", "args": [""]}
+{"fn": "normalizeEmitPath", "args": ["/"]}
+{"fn": "normalizeEmitPath", "args": ["//"]}
+{"fn": "normalizeEmitPath", "args": [".claude/skills/"]}
+{"fn": "normalizeEmitPath", "args": ["a\\b\\"]}
+{"fn": "normalizeEmitPath", "args": ["~/.codex///"]}
+{"fn": "normalizeEmitPath", "args": ["x"]}
+{"fn": "originHarnessesFromSourcePath", "args": [null]}
+{"fn": "originHarnessFromSourcePath", "args": [null]}
+{"fn": "originHarnessesFromSourcePath", "args": [""]}
+{"fn": "originHarnessFromSourcePath", "args": [""]}
+{"fn": "originHarnessesFromSourcePath", "args": ["CLAUDE.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["CLAUDE.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["AGENTS.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["AGENTS.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".claude/skills/foo/SKILL.md"]}
+{"fn": "originHarnessFromSourcePath", "args": [".claude/skills/foo/SKILL.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["~/.claude/skills/foo"]}
+{"fn": "originHarnessFromSourcePath", "args": ["~/.claude/skills/foo"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["/home/u/.claude/skills/foo/SKILL.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["/home/u/.claude/skills/foo/SKILL.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["C:\\Users\\u\\.cursor\\rules\\a.mdc"]}
+{"fn": "originHarnessFromSourcePath", "args": ["C:\\Users\\u\\.cursor\\rules\\a.mdc"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".cursor/rules/a.mdc"]}
+{"fn": "originHarnessFromSourcePath", "args": [".cursor/rules/a.mdc"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["~/.codex/AGENTS.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["~/.codex/AGENTS.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["/x/.config/opencode/agent/a.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["/x/.config/opencode/agent/a.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".github/copilot-instructions.md"]}
+{"fn": "originHarnessFromSourcePath", "args": [".github/copilot-instructions.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".agents/skills/x"]}
+{"fn": "originHarnessFromSourcePath", "args": [".agents/skills/x"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["~/.agents/skills/x"]}
+{"fn": "originHarnessFromSourcePath", "args": ["~/.agents/skills/x"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["/p/.gemini/settings.json"]}
+{"fn": "originHarnessFromSourcePath", "args": ["/p/.gemini/settings.json"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".mcp.json"]}
+{"fn": "originHarnessFromSourcePath", "args": [".mcp.json"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["random/file.txt"]}
+{"fn": "originHarnessFromSourcePath", "args": ["random/file.txt"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["~/.factory/mcp.json"]}
+{"fn": "originHarnessFromSourcePath", "args": ["~/.factory/mcp.json"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".kilocode/skills/a"]}
+{"fn": "originHarnessFromSourcePath", "args": [".kilocode/skills/a"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["~/.dsh/settings.yaml"]}
+{"fn": "originHarnessFromSourcePath", "args": ["~/.dsh/settings.yaml"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["/abs/.windsurf/rules/x.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["/abs/.windsurf/rules/x.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["GEMINI.md"]}
+{"fn": "originHarnessFromSourcePath", "args": ["GEMINI.md"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".goose/x"]}
+{"fn": "originHarnessFromSourcePath", "args": [".goose/x"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["~/.config/goose/config.yaml"]}
+{"fn": "originHarnessFromSourcePath", "args": ["~/.config/goose/config.yaml"]}
+{"fn": "originHarnessesFromSourcePath", "args": [".vscode/mcp.json"]}
+{"fn": "originHarnessFromSourcePath", "args": [".vscode/mcp.json"]}
+{"fn": "originHarnessesFromSourcePath", "args": ["opencode.json"]}
+{"fn": "originHarnessFromSourcePath", "args": ["opencode.json"]}
+{"fn": "diskCaptureHarnessScope", "args": [{"source": ".claude/skills/a", "origin_ref": ".cursor/rules/x"}]}
+{"fn": "diskCaptureHarnessScope", "args": [{"source": "", "origin_ref": ""}]}
+{"fn": "diskCaptureHarnessScope", "args": [{}]}
+{"fn": "diskCaptureHarnessScope", "args": [{"source": "x", "origin_ref": "~/.codex/prompts/a"}]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["claude-code", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codex", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cursor", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["warp", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["opencode", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["github-copilot", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["copilot-cli", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["gemini-cli", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["windsurf", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cline", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["roo", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["continue", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["goose", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["trae", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["openhands", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kiro", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["pi", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["antigravity", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amazon-q", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["aider", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zed", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["devin", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["jules", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cody", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["grok-build", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepseek-harness", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["muse-code", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["minimax-code", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["amp", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kilo", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["augment", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["firebender", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["junie", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["zencoder", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["deepagents", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["qwen-code", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["crush", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["droid", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["codebuddy", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["mux", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["kode", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["command-code", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["cortex", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["neovate", "layer", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "instruction", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "instruction", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "skill", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "skill", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "rule", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "rule", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "mcp_server", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "mcp_server", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "permission", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "permission", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "hook", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "hook", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "agent", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "agent", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "command", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "command", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "env_var", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "env_var", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "model_config", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "model_config", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "plugin", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "plugin", "global"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "layer", "project"]}
+{"fn": "emitPathForResourceType", "args": ["nope", "layer", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "instruction", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "instruction", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "skill", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "skill", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "rule", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "rule", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "mcp_server", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "mcp_server", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "permission", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "permission", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "hook", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "hook", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "agent", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "agent", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "command", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "command", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "env_var", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "env_var", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "model_config", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "model_config", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "plugin", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "plugin", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "layer", "project"]}
+{"fn": "linkedHarnessGroups", "args": [["claude-code", "codex", "cursor", "warp", "opencode", "github-copilot", "copilot-cli", "gemini-cli", "windsurf", "cline", "roo", "continue", "goose", "trae", "openhands", "kiro", "pi", "antigravity", "amazon-q", "aider", "zed", "devin", "jules", "cody", "grok-build", "deepseek-harness", "muse-code", "minimax-code", "amp", "kilo", "augment", "firebender", "junie", "zencoder", "deepagents", "qwen-code", "crush", "droid", "codebuddy", "mux", "kode", "command-code", "cortex", "neovate"], "layer", "global"]}
+{"fn": "linkedHarnessGroups", "args": [["nope", "cursor", "claude-code", "codex", "amp", "nope2"], "skill", "project"]}
+{"fn": "linkedHarnessGroups", "args": [[], "skill", "project"]}
+{"fn": "expandLinkedSelection", "args": [[], ["a"], true]}
+{"fn": "expandLinkedSelection", "args": [["b", "a"], ["a"], false]}
+{"fn": "expandLinkedSelection", "args": [["c"], ["b", "a", "b"], true]}
+{"fn": "expandLinkedSelection", "args": [["a"], [], false]}
+{"fn": "selectionFromGroups", "args": [[], {"key": "k", "harnessIds": [], "linked": false}]}
+{"fn": "selectionFromGroups", "args": [["a"], {"key": "k", "harnessIds": ["a"], "linked": false}]}
+{"fn": "selectionFromGroups", "args": [{}, {"key": "k", "harnessIds": ["a"], "linked": false}]}
+{"fn": "withHarnessScope", "args": [{"id": "r", "name": "n"}, {"kind": "all"}]}
+{"fn": "withHarnessScope", "args": [{"id": "r", "harness_scope": {"kind": "all"}, "z": 1}, {"kind": "subset", "harnesses": ["a"]}]}

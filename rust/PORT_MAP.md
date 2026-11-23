@@ -1,6 +1,6 @@
 # Port map: rust-port-w0
 
-5 of 54 units have a Rust port; no original changed since it was recorded.
+6 of 55 units have a Rust port; no original changed since it was recorded.
 
 ## Ports
 
@@ -8,6 +8,7 @@
 | --- | --- | --- | --- | ---: | ---: | --- |
 | `src/constants/` | `rust/constants-rs` | `isEmptyBuiltinProfile`, `isReservedProfileName`, `isProfilePlugin`, `isProjectProfilePlugin`, `isAutoSeededDefaultProfileName` | `listProfilePlugins` | 668 | 668/668 | unchanged |
 | `src/node-version.ts` | `rust/node-version-rs` | `parseNodeVersion`, `isSupportedNodeVersion`, `launchedByBun`, `nodeVersionRefusalMessage`, `isBunRuntime`, `assertSupportedRuntime` | - | 58 | 58/58 | unchanged |
+| `src/services/harness-scope.ts` | `rust/harness-scope-rs` | `parseHarnessScope`, `serializeHarnessScope`, `harnessScopeWire`, `resourceHarnessScope`, `uniqueSorted`, `intersectHarnessScopes`, `unionHarnessScopes`, `resourceAppliesToHarness`, `normalizeScopeToRegistered`, `coversRegistered`, `isOrphanedHarnessScope`, `pathSurfaceForResourceType`, `normalizeEmitPath`, `originHarnessesFromSourcePath`, `originHarnessFromSourcePath`, `diskCaptureHarnessScope`, `emitPathForResourceType`, `linkedHarnessGroups`, `expandLinkedSelection`, `selectionFromGroups`, `withHarnessScope` | - | 5132 | 5132/5132 | unchanged |
 | `src/services/plugin-semver.ts` | `rust/plugin-semver-rs` | `semverSafePluginVersion`, `pluginDescriptionFromManifest` | - | 1019 | 1019/1019 | unchanged |
 | `src/services/toml/` | `rust/toml-rs` | `environmentsToTomlRecord`, `environmentsFromTomlRecord`, `environmentToTomlDocument`, `readTransportFile`, `sortStringRecord`, `assertTomlExtension`, `readSchemaHeader`, `formatTransportToml`, `writeTransportToml` | `parseTransportToml`, `sortKeysDeep` | 1709 | 1709/1709 | unchanged |
 | `src/version.ts` | `rust/version-rs` | `isReleaseBuild`, `readGitSha`, `formatDevBuildVersion`, `resolveBuildVersion` | - | 90 | 90/90 | unchanged |

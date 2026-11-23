@@ -111,6 +111,15 @@ compares results, errors and tables with ids renamed in order of appearance.
 | `src/models/environment.ts` | done | `models-rs/src/environment.rs`; `getEnvironmentResources` rows keep the link's `order` field, like the original's `r.*, er."order"` spread |
 | `src/models/plugin-model.ts` | open, deferred | 1203 lines, 81 exports, and the hub of the plugin services: it needs `services/harness-scope.ts` (the platform registry), `plugin-composition.ts` (marketplace pin cache, resource sync, upstream plugins), `plugin-extends.ts` (cloud API errors, forks, dependency views, and a cycle back into `plugin-model.ts`), `plugin-upstream.ts`, `plugin-constraints.ts` (semver ranges), `claude-plugin-pins.ts` and `agent-plugins/name.ts`. Porting it now means porting most of the plugin services with it, so it waits for the platforms registry and is then done as one unit with those services |
 
+Platforms, wave 1 (harness writers come after their services):
+
+| Unit | State | Notes |
+| --- | --- | --- |
+| `src/platforms/registry.ts` | done | `rust/platforms-rs`, a plain crate. The 44 platform definitions are `src/data.rs`, written by `tests/gen-data.py` from the original's `getAllPlatforms()` (recorded by `tests/make-fixtures.ts`); the test compares every platform, `getPlatformIds`, lookups (including `constructor`, which the original's `Map` does not find) and `RESOURCE_CLASSES`. Re-record and regenerate whenever `registry.ts` changes |
+| `localeCompare` | done | `rust/collate-rs` on ICU4X (`icu_collator` 2, compiled CLDR data): matches Node's `localeCompare` on 12400 recorded pairs and a 1500-string sort (ASCII punctuation order, case and accent levels, ignorable controls, BOM, Greek, CJK, emoji). Every port that sorts with `localeCompare` uses it |
+| `src/services/harness-scope.ts` | done | `rust/harness-scope-rs`, gate passed, 5132/5132 cases, on `platforms-rs` and `collate-rs`. Keeps the original's errors on malformed scopes. `selectionFromGroups` takes a `Set`, which recordings cannot carry, so only its error paths and the empty group are recorded |
+| `src/platforms/*.ts` serializers (harness writers) | open, blocked | each serializer extends `base-serializer.ts`, which needs gray-matter (js-yaml 3 dump, `research/gray-matter.md`), YAML and smol-toml parsing, `format-preserving-config.ts` (JSONC edits that keep layout), `agent-bridge`, `merge-skill-markdown`, `skill-auxiliary`, `skill-command-metadata`, `mcp-target`, `hook-serialization` and the host plugin inventories. Those services and the two parsers come first |
+
 Read-through note: the original memoizes some reads while a status computation
 runs (`computationSlot`, `inStatusComputation`). The Rust ports always take the
 uncached path, which returns the same rows; the cache comes with the status

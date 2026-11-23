@@ -1,0 +1,16 @@
+[package]
+name = "platforms-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "The port of src/platforms/registry.ts: every harness, its features and where its files live"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
