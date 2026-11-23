@@ -1,0 +1,27 @@
+{
+  "schema": "rust-anything/front-door@1",
+  "name": "ht",
+  "commands": [
+    "apply",
+    "approve",
+    "audit",
+    "auth",
+    "compile",
+    "deny",
+    "environment",
+    "harness",
+    "help",
+    "history",
+    "init",
+    "install",
+    "migrate",
+    "pack",
+    "plugin",
+    "policy",
+    "profile",
+    "resource",
+    "scan",
+    "status"
+  ],
+  "units": []
+}
