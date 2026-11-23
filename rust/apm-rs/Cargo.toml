@@ -9,9 +9,12 @@ description = "Rust port of the apm services in src/services/apm-*.ts"
 [dependencies]
 db-rs = { path = "../db-rs" }
 emit-rs = { path = "../emit-rs" }
+lockfile-rs = { path = "../lockfile-rs" }
+node-semver-rs = { path = "../node-semver-rs" }
 platforms-rs = { path = "../platforms-rs" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+url = "2"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }

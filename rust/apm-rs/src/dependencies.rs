@@ -2,11 +2,11 @@
 //! `apm.yml`, parsed into what to install.
 
 use emit_rs::js::{ordered_entries, to_string, trim, truthy};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 /// `ApmDependencySourceKind`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceKind {
     Git,
@@ -16,7 +16,7 @@ pub enum SourceKind {
 }
 
 /// `ParsedApmDependency`.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParsedApmDependency {
     pub raw: String,

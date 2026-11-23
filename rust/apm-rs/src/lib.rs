@@ -4,4 +4,5 @@
 #![forbid(unsafe_code)]
 
 pub mod dependencies;
+pub mod git_resolve;
 pub mod targets;
