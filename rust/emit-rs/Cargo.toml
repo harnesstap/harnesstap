@@ -1,0 +1,15 @@
+[package]
+name = "emit-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "JSON.stringify and yaml (2.x) stringify output, byte for byte, for JSON-like values (ADR-008, ADR-010)"
+
+[dependencies]
+regex = "1"
+ryu-js = "1"
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip", "unbounded_depth"] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
