@@ -65,7 +65,15 @@ function isConnectionRefusedError(error: unknown): boolean {
     return true;
   }
   const text = codesAndMessages(error);
-  return text.includes("econnrefused") || text.includes("connection refused");
+  // Node's fetch (undici) refuses WHATWG "bad ports" such as 9 before
+  // any TCP connect, so the error is TypeError "fetch failed" with
+  // cause "bad port" and no ECONNREFUSED. rust/run-sandboxed.sh points
+  // service URLs at 127.0.0.1:9.
+  return (
+    text.includes("econnrefused")
+    || text.includes("connection refused")
+    || /\bbad port\b/.test(text)
+  );
 }
 
 const UNREACHABLE_CODES = new Set([
