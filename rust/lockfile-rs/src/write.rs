@@ -114,15 +114,43 @@ pub fn lockfile_document(lock: &Lockfile, apm_version: &str) -> String {
     yaml_rs::stringify(&Value::Object(doc))
 }
 
-/// `writeLockfile`.
+/// `writeLockfile`. Leaves the file alone when only its `generated_at:` line differs (#658).
 pub fn write_lockfile(
     project_root: &str,
     lock: &Lockfile,
     apm_version: &str,
 ) -> Result<(), LockError> {
-    std::fs::write(
-        lockfile_path(project_root),
-        lockfile_document(lock, apm_version),
-    )
-    .map_err(LockError::Io)
+    let path = lockfile_path(project_root);
+    let rendered = lockfile_document(lock, apm_version);
+    if std::fs::metadata(&path).is_ok() {
+        let existing = std::fs::read(&path).map_err(LockError::Io)?;
+        if without_generated_at(&String::from_utf8_lossy(&existing))
+            == without_generated_at(&rendered)
+        {
+            return Ok(());
+        }
+    }
+    std::fs::write(path, rendered).map_err(LockError::Io)
+}
+
+/// `text.replace(/^generated_at:.*$/m, "generated_at:")`: the first such line only, where a
+/// line ends at any JavaScript line terminator.
+fn without_generated_at(text: &str) -> String {
+    const KEY: &str = "generated_at:";
+    let is_terminator = |c: char| matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}');
+    let mut line_start = 0;
+    loop {
+        if text[line_start..].starts_with(KEY) {
+            let rest = &text[line_start..];
+            let end = line_start + rest.find(is_terminator).unwrap_or(rest.len());
+            return format!("{}{KEY}{}", &text[..line_start], &text[end..]);
+        }
+        match text[line_start..].find(is_terminator) {
+            Some(i) => {
+                let c = text[line_start + i..].chars().next().unwrap_or('\n');
+                line_start += i + c.len_utf8();
+            }
+            None => return text.to_owned(),
+        }
+    }
 }
