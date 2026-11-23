@@ -167,18 +167,18 @@ State of each unit it touches:
 ### Re-record after #669 and #680 (refused connections)
 
 PR #669 changes the text `fetchWithTimeout` (`src/utils/fetch-with-timeout.ts`)
-prints for refused connections. It merged to `main` on 2026-11-22 at 15:19
-Tahiti time (`8cd5a11b`), and the `app-cases/` were re-recorded with it before W0
-merged (`91100372`): none shows `Request timed out` any more
-(`rerecord/timeout-fix.txt` lists the 94 that did). 108 cases now show
-`fetch failed` instead of `Connection refused`, because Node reports the
-sandbox's refused port as a bad port. PR #680 (open) treats that as a refused
-connection. After #680 merges and the stack takes in that `main` (by a merge),
-re-record the `app-cases/` that show `fetch failed`, and re-check the ports of
+prints for refused connections (merged 2026-11-22 at 15:19 Tahiti time,
+`8cd5a11b`), and PR #680 treats Node's "bad port" fetch error as a refused
+connection too (`08dd6c78`). Both re-recorded the `app-cases/` on `main`
+(#669's in `91100372`, before W0 merged; #680's in its own commit), and the stack
+took in that `main` by a merge on 2026-11-22: no case shows `Request timed out`
+or `fetch failed` any more, 109 show `Connection refused`, and the replay passes
+564/564. `rerecord/timeout-fix.txt` keeps the list of the 94 cases #669 changed.
+Still to do when they are ported: check the ports of
 `src/utils/fetch-with-timeout.ts` and its callers (`catalog-client`,
 `catalog-list-stream`, `plugin-source`, `plugin-origin-update`,
-`upstream-check`, `mcp-registry`, `cloud-api-version`, `self-update`) when they
-are ported.
+`upstream-check`, `mcp-registry`, `cloud-api-version`, `self-update`) against
+current `main`.
 
 ### Wave 2: CLI surface
 
@@ -206,11 +206,10 @@ Lift, per-platform npm packages, Homebrew formula and cask, installers
 1. `example-229-migrate` writes `harnesstap-state.tar.gz`, whose bytes change on
    every run (gzip and tar timestamps). The case keeps its stdout and exit code
    but no longer compares the archive. Compare the archive's content instead?
-2. Network calls to a refused port print `fetch failed` on current `main` (the
-   sandbox's port is a bad port to Node). #680 fixes that in the original; the
-   cases are re-recorded once it merges (see "Re-record after #669 and #680").
-3. Rust CI (build, clippy, replay) is not added: no workflow change without
-   approval.
+2. (Settled by #669 and #680.) Network calls to a refused port print
+   `Connection refused` on current `main`, and the cases are re-recorded.
+3. (Settled by #670.) The Rust workflow runs `cargo fmt`, clippy on the 1.90
+   toolchain, the tests and the front-door replay on every pull request.
 4. rust-anything 3.3.0 loops forever in `with_local_imports` (`src/gate.rs`) for any
    unit whose imports form a cycle through `../` paths: resolved paths are not
    normalized, so `a/../b/../a/...` keeps growing. `record`, `gate` and `map` on
