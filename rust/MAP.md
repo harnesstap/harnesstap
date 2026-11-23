@@ -130,7 +130,7 @@ Resolve and package-cache, wave 1:
 | `src/services/resolve/version-mediation.ts` | done | `rust/resolve-rs/src/version_mediation.rs`, with `UnsatisfiableConstraintError` (message, reason, actions, hints) and `displayConstraint` from `resolve/types.ts`; `tests/make-fixtures.ts` records 2600 calls under bun, including every error reason and source kind. `SingletonConflictError` and the conflict-side labels wait for `dependency-graph.ts` |
 | `src/services/package-cache/paths.ts` | done | `rust/package-cache-paths-rs`, gate passed, 2466/2466 cases. Carries its own copy of `posix_join`: a rust-anything unit cannot depend on `db-rs`, because `db-rs` links `plugin-semver-rs`, whose `#[napi]` exports (the wire buffer registration among them) replace the unit's own and every call then fails with "the wire buffers are not registered". Units share code through plain crates only |
 | `src/services/resolve/dependency-graph.ts`, `resolve/index.ts` | open | need `plugin-model.ts` |
-| `src/services/lockfile.ts` | open | needs `plugin-model.ts`, a YAML parser and `apm-git-resolve.ts`; re-record after #658 (below) |
+| `src/services/lockfile.ts` | done (pre-#658) | `rust/lockfile-rs`, a plain crate on `yaml-rs`, `resolve-rs` and `models-rs`. The plugin model and the two origin helpers (`recoverOriginLocator`, `canonicalApmRepoUrl`) are not ported yet, so they come in through the `PluginLookup` trait; the clock and `PACKAGE_VERSION` are parameters. `resolve-rs` gained the resolution types (`SelectedPlugin`, `ResolutionResult`, ...) and `resolutionKey`/`resourceFingerprint`; `emit-rs` gained JavaScript `String()`, `Number()`, `trim` and truthiness. `tests/make-fixtures.ts` (bun, `spyOn` on `getPluginById` and `getPluginResources`, `setSystemTime`) records 250 resolutions (built lock, written YAML byte for byte, read back, `lockfileMatchesResolution`, `lockIsUsable`, `compareLockToResolution`, `lockedVersionsFrom`, also against a changed resolution), 24 hand-written lockfiles for `readLockfile` (coercions, legacy `dependencies`, bad versions, YAML errors) and 150 `diffDeployedFileHashes`/`verifyDeployedFileHashes` calls against a temporary tree. Kept as in the original: `compareLockToResolution` never reports `removed` (it filters the locked names by `lockedByName.has`); a lock path named like an `Object.prototype` member (`toString`, ...) makes the diff throw a `TypeError`, and `null` metadata on an `env_var` or `mcp_server` resource throws one too; `__proto__` is dropped from the planned hashes but kept when read from a file. Differs: a plugin named like an `Object.prototype` member is not looked up through the prototype in `execStatuses` and `declaredLicenses`; `TypeError` and YAML parse messages are compared by error name only (the engine and saphyr word them differently). Re-record after #658 (below) |
 | `src/services/snapshot-capture.ts`, `snapshot-revert.ts` | open | need the file system layer and most apply services |
 
 Read-through note: the original memoizes some reads while a status computation
@@ -148,16 +148,18 @@ rewriting the lockfile when only `generated_at` differs. It merged to `main` on
 records the earlier behavior. After the stack takes in that `main` (by a merge),
 re-record these and re-check their ports:
 
-- `src/services/lockfile.ts`
+- `src/services/lockfile.ts` (`rust/lockfile-rs`): #658 makes `writeLockfile` leave the file alone when the
+  existing text equals the new one with every `generated_at:` line blanked; port that check in `write_lockfile`
 - `src/services/shared-emit-paths.ts` and `src/services/applier.ts`
 - `src/agent/parity-handlers/apply.ts` and `src/cli/commands/plugin.ts`
 - the `app-cases/` apply cases that write a shared `AGENTS.md` or the lockfile
 
-### Re-record after the "Request timed out" fix
+### Re-record after #669 (the "Request timed out" fix)
 
-A TypeScript fix in progress changes the text `fetchWithTimeout`
-(`src/utils/fetch-with-timeout.ts`) prints for refused connections. Once it
-lands, re-record the 94 `app-cases/` that show `Request timed out` (listed in
+PR #669 changes the text `fetchWithTimeout` (`src/utils/fetch-with-timeout.ts`)
+prints for refused connections. It merged to `main` on 2026-11-22 at 15:19
+Tahiti time (`8cd5a11b`), after these recordings. After the stack takes in that
+`main` (by a merge), re-record the 94 `app-cases/` that show `Request timed out` (listed in
 `rerecord/timeout-fix.txt`), and re-check the ports of
 `src/utils/fetch-with-timeout.ts` and its callers (`catalog-client`,
 `catalog-list-stream`, `plugin-source`, `plugin-origin-update`,

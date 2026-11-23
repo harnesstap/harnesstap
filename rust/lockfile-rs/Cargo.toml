@@ -1,0 +1,21 @@
+[package]
+name = "lockfile-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "Rust port of src/services/lockfile.ts: apm.lock.yaml, built from a resolution, written, read and checked"
+
+[dependencies]
+collate-rs = { path = "../collate-rs" }
+db-rs = { path = "../db-rs" }
+emit-rs = { path = "../emit-rs" }
+models-rs = { path = "../models-rs" }
+resolve-rs = { path = "../resolve-rs" }
+yaml-rs = { path = "../yaml-rs" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+sha2 = "0.10"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

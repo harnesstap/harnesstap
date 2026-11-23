@@ -11,7 +11,7 @@ use crate::{Ctx, Result, all, get, js_trim};
 use db_rs::paths::harnesstap_dir;
 use rusqlite::types::Value as Sql;
 use rusqlite::{Row, params, params_from_iter};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const INLINE_CONTENT_THRESHOLD: usize = 4096;
@@ -32,7 +32,7 @@ pub const LISTABLE_RESOURCE_TYPES: [&str; 11] = [
 ];
 
 /// `Resource`, in the column order of the `resources` table.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Resource {
     pub id: String,
     #[serde(rename = "type")]
