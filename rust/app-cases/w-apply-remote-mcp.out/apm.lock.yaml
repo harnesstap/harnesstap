@@ -29,7 +29,7 @@ local_deployed_file_hashes:
   .opencode/skills/skill-1/SKILL.md: sha256:a1214224937515ac0c86318659772fec7351388c89380d64715ec337321fb6f0
   .opencode/skills/skill-2/SKILL.md: sha256:16900e12e0fce22939411d9abaec83a7437d57e1e4178dea2690971effcd3561
   .opencode/skills/skill-3/SKILL.md: sha256:c563899ea44481297d9c133940b16e511506db0a071e28a0518321fb41bb1d8c
-  AGENTS.md: sha256:0354b00f085c17b2480a1d00a09d091c03a0a3e2b3b4939af2e1072c10121ed3
+  AGENTS.md: sha256:a08f69d919d83cc0a5217cafa69c1cbe4d70e2aacb921c325276825282e607b8
   gemini-extension.json: sha256:c1fe512587823e0efc136f4da1d283d60f20a8602aa833c1d3f3a7ec4066e9d7
   opencode.json: sha256:b1ff96e7617ebc63c5e255a1960105ebdc70303f7cd1c900718c7e6879d6bdd0
 root: demo
