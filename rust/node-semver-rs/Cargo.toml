@@ -1,0 +1,16 @@
+[package]
+name = "node-semver-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "The npm `semver` package (7.8.0) as HarnessTap calls it: versions, ranges, satisfies, coerce"
+
+[dependencies]
+regex = "1"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
