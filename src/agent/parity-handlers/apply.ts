@@ -11,6 +11,7 @@ import { createSnapshot } from "../../models/snapshot.js";
 import {
   generateFiles,
   materializeFiles,
+  planMaterializationAcrossHarnesses,
   planMaterializationConflicts,
   removeStaleProjectDeployedFiles,
 } from "../../services/applier.js";
@@ -520,6 +521,31 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
         });
       })();
 
+  // Settle every conflict across all harnesses before the first write: a
+  // cancelled apply leaves files, lock, ownership records and project
+  // binding exactly as they were.
+  const plan = await planMaterializationAcrossHarnesses(generated, projectRoot, {
+    conflictPolicy: parsed.onConflict,
+  });
+  if (plan.cancelled) {
+    return jsonResponse({
+      scope: "project",
+      plugin: primaryPlugin.name,
+      plugins: parsed.plugins,
+      project_root: projectRoot,
+      platforms: generated.map((result) => ({
+        platform: result.platformId,
+        written_files: [],
+        skipped_files: [],
+      })),
+      removed_files: [],
+      snapshot_id: undefined,
+      cancelled: true,
+      conflicts: plan.conflicts.map((conflict) => conflict.path),
+      ...executableTrustResponseFields(executableTrust),
+    });
+  }
+
   const capturedState = captureManagedSnapshotState({
     rootPath: projectRoot,
     plugins,
@@ -542,25 +568,18 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
   }
 
   const platformResults = [];
-  let cancelled = false;
   for (const result of generated) {
-    const materialized = await materializeFiles(result.files, projectRoot, {
-      conflictPolicy: parsed.onConflict,
+    const materialized = await materializeFiles(result.files, projectRoot, { plan });
+    persistWrittenMaterializations({
+      scope: "project",
+      project_id: trackedProjectId ?? null,
+      root_path: projectRoot,
+      platformResults: [{
+        platformId: result.platformId,
+        files: result.files,
+        writtenPaths: materialized.writtenFiles,
+      }],
     });
-    if (materialized.cancelled) {
-      cancelled = true;
-    } else {
-      persistWrittenMaterializations({
-        scope: "project",
-        project_id: trackedProjectId ?? null,
-        root_path: projectRoot,
-        platformResults: [{
-          platformId: result.platformId,
-          files: result.files,
-          writtenPaths: materialized.writtenFiles,
-        }],
-      });
-    }
     platformResults.push({
       platform: result.platformId,
       written_files: materialized.writtenFiles,
@@ -574,7 +593,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     desiredPaths,
     { forceRemove: parsed.forceRemove },
   );
-  if (pendingLock && !cancelled) {
+  if (pendingLock) {
     writeLockfile(projectRoot, pendingLock);
   }
 
@@ -613,7 +632,7 @@ async function executeProjectApply(parsed: ParsedApplyBody): Promise<Response> {
     platforms: platformResults,
     removed_files: staleRemoved.removed,
     snapshot_id: snapshotId,
-    cancelled,
+    cancelled: false,
     ...executableTrustResponseFields(executableTrust),
   });
 }
