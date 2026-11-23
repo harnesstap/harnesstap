@@ -1,1 +1,1 @@
-✗ Request timed out after 30000ms (3 attempts): http://127.0.0.1:9/api/public/plugins?q=%C4%B0stanbul&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud
+✗ fetch failed (3 attempts): http://127.0.0.1:9/api/public/plugins?q=%C4%B0stanbul&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud

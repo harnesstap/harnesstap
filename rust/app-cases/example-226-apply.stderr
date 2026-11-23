@@ -1,1 +1,1 @@
-Error: Request timed out after 60000ms (3 attempts): https://team.example.com/baselines/web.json.
+Error: Connection refused (3 attempts): https://team.example.com/baselines/web.json.
