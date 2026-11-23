@@ -96,8 +96,7 @@ fn repo_name_from_git_ref(value: &str) -> String {
     let without_git = value.strip_suffix(".git").unwrap_or(value);
     let tail = without_git
         .split('/')
-        .filter(|s| !s.is_empty())
-        .next_back()
+        .rfind(|s| !s.is_empty())
         .unwrap_or(without_git);
     tail.rsplit(':').next().unwrap_or(tail).to_owned()
 }
@@ -168,8 +167,7 @@ pub fn parse_apm_dependency_string(entry: &str) -> ParsedApmDependency {
     if LOCAL_PREFIXES.iter().any(|p| body.starts_with(p)) {
         let name = body
             .split(['/', '\\'])
-            .filter(|s| !s.is_empty())
-            .next_back()
+            .rfind(|s| !s.is_empty())
             .unwrap_or(body)
             .to_owned();
         let selector = name.clone();
@@ -354,8 +352,7 @@ pub fn parse_mcp_dependency_entry(entry: &Value) -> Result<ParsedMcpDependency, 
         let trimmed = trim(s);
         let name = trimmed
             .split('/')
-            .filter(|p| !p.is_empty())
-            .next_back()
+            .rfind(|p| !p.is_empty())
             .unwrap_or(trimmed);
         return Ok(ParsedMcpDependency {
             raw: trimmed.to_owned(),
