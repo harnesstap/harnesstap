@@ -109,6 +109,12 @@ route (ADR-011).
 Lift, per-platform npm packages, Homebrew formula and cask, installers
 (ADR-004, ADR-013). v2.0 only on Christophe's go.
 
+## Research
+
+`research/` covers the dependencies with no drop-in crate (ADR-009): `gray-matter`
+(it writes with js-yaml 3, not the `yaml` package, so frontmatter needs its own emitter),
+`ulid`, `@inquirer/*`, `cli-table3` and a smol-toml compatible parser.
+
 ## Open questions
 
 1. `example-229-migrate` writes `harnesstap-state.tar.gz`, whose bytes change on
