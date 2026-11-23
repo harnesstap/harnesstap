@@ -1,5 +1,5 @@
 bin.name = "ht"
 args = ["apply"]
-status.code = 1
+status.code = 0
 fs.sandbox = true
 fs.base = "w-apply-conflict-agents-md.in"
