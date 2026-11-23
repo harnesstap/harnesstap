@@ -1,0 +1,54 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "src/services/plugin-semver.ts",
+  "language": "ts",
+  "kind": "napi",
+  "crate_name": "plugin-semver-rs",
+  "exports": [
+    {
+      "name": "semverSafePluginVersion",
+      "file": "src/services/plugin-semver.ts",
+      "line": 22,
+      "params": [
+        {
+          "name": "version",
+          "ts_type": "string | undefined",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "gitSha",
+          "ts_type": "string",
+          "optional": true,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "pluginDescriptionFromManifest",
+      "file": "src/services/plugin-semver.ts",
+      "line": 37,
+      "params": [
+        {
+          "name": "description",
+          "ts_type": "string | undefined",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

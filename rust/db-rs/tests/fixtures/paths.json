@@ -1,0 +1,75 @@
+[
+ {
+  "env": {
+   "HOME": "/home/u"
+  },
+  "dir": "/home/u/.harnesstap",
+  "db": "/home/u/.harnesstap/harnesstap.db",
+  "configJsonc": "/home/u/.harnesstap/config.jsonc",
+  "legacyConfig": "/home/u/.harnesstap/config.json",
+  "forHomeRoot": "/root/y/.harnesstap"
+ },
+ {
+  "env": {
+   "HOME": "/home/u/",
+   "HARNESSTAP_HOME": "/data/ht"
+  },
+  "dir": "/data/ht",
+  "db": "/data/ht/harnesstap.db",
+  "configJsonc": "/data/ht/config.jsonc",
+  "legacyConfig": "/data/ht/config.json",
+  "forHomeRoot": "/data/ht"
+ },
+ {
+  "env": {
+   "HOME": "/home/u",
+   "HARNESSTAP_HOME": ""
+  },
+  "dir": "/home/u/.harnesstap",
+  "db": "/home/u/.harnesstap/harnesstap.db",
+  "configJsonc": "/home/u/.harnesstap/config.jsonc",
+  "legacyConfig": "/home/u/.harnesstap/config.json",
+  "forHomeRoot": "/root/y/.harnesstap"
+ },
+ {
+  "env": {
+   "HOME": ""
+  },
+  "dir": ".harnesstap",
+  "db": ".harnesstap/harnesstap.db",
+  "configJsonc": ".harnesstap/config.jsonc",
+  "legacyConfig": ".harnesstap/config.json",
+  "forHomeRoot": "/root/y/.harnesstap"
+ },
+ {
+  "env": {
+   "HOME": "rel//a/./b/../c"
+  },
+  "dir": "rel/a/c/.harnesstap",
+  "db": "rel/a/c/.harnesstap/harnesstap.db",
+  "configJsonc": "rel/a/c/.harnesstap/config.jsonc",
+  "legacyConfig": "rel/a/c/.harnesstap/config.json",
+  "forHomeRoot": "/root/y/.harnesstap"
+ },
+ {
+  "env": {
+   "USERPROFILE": "/users/w"
+  },
+  "dir": "/users/w/.harnesstap",
+  "db": "/users/w/.harnesstap/harnesstap.db",
+  "configJsonc": "/users/w/.harnesstap/config.jsonc",
+  "legacyConfig": "/users/w/.harnesstap/config.json",
+  "forHomeRoot": "/root/y/.harnesstap"
+ },
+ {
+  "env": {
+   "HOME": "/a/../../b",
+   "USERPROFILE": "/users/w"
+  },
+  "dir": "/b/.harnesstap",
+  "db": "/b/.harnesstap/harnesstap.db",
+  "configJsonc": "/b/.harnesstap/config.jsonc",
+  "legacyConfig": "/b/.harnesstap/config.json",
+  "forHomeRoot": "/root/y/.harnesstap"
+ }
+]

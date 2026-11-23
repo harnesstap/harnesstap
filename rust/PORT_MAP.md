@@ -1,6 +1,6 @@
 # Port map: rust-port-w0
 
-4 of 54 units have a Rust port; no original changed since it was recorded.
+5 of 54 units have a Rust port; no original changed since it was recorded.
 
 ## Ports
 
@@ -8,6 +8,7 @@
 | --- | --- | --- | --- | ---: | ---: | --- |
 | `src/constants/` | `rust/constants-rs` | `isEmptyBuiltinProfile`, `isReservedProfileName`, `isProfilePlugin`, `isProjectProfilePlugin`, `isAutoSeededDefaultProfileName` | `listProfilePlugins` | 668 | 668/668 | unchanged |
 | `src/node-version.ts` | `rust/node-version-rs` | `parseNodeVersion`, `isSupportedNodeVersion`, `launchedByBun`, `nodeVersionRefusalMessage`, `isBunRuntime`, `assertSupportedRuntime` | - | 58 | 58/58 | unchanged |
+| `src/services/plugin-semver.ts` | `rust/plugin-semver-rs` | `semverSafePluginVersion`, `pluginDescriptionFromManifest` | - | 1019 | 1019/1019 | unchanged |
 | `src/services/toml/` | `rust/toml-rs` | `environmentsToTomlRecord`, `environmentsFromTomlRecord`, `environmentToTomlDocument`, `readTransportFile`, `sortStringRecord`, `assertTomlExtension`, `readSchemaHeader`, `formatTransportToml`, `writeTransportToml` | `parseTransportToml`, `sortKeysDeep` | 1709 | 1709/1709 | unchanged |
 | `src/version.ts` | `rust/version-rs` | `isReleaseBuild`, `readGitSha`, `formatDevBuildVersion`, `resolveBuildVersion` | - | 90 | 90/90 | unchanged |
 
@@ -59,7 +60,6 @@ In the order `analyze` suggests.
 | `src/plugins/` | 1941 | 70 | 0 |
 | `src/services/agent-plugins/` | 3648 | 59 | 0 |
 | `src/cli/handlers/` | 2526 | 47 | 4 |
-| `src/services/` | 65325 | 1373 | 0 |
 | `src/ui/` | 3563 | 121 | 0 |
 | `apps/desktop/src/lib/` | 13386 | 0 | 0 |
 | `src/models/` | 3725 | 144 | 0 |
