@@ -1,0 +1,90 @@
+{"fn":"isReleaseBuild","args":[{}],"ok":false}
+{"fn":"isReleaseBuild","args":[{"HT_RELEASE":"1"}],"ok":true}
+{"fn":"isReleaseBuild","args":[{"HARNESSTAP_RELEASE":"1"}],"ok":true}
+{"fn":"isReleaseBuild","args":[{"HT_RELEASE":"0"}],"ok":false}
+{"fn":"isReleaseBuild","args":[{"HT_RELEASE":"true"}],"ok":false}
+{"fn":"isReleaseBuild","args":[{"HT_RELEASE":" 1"}],"ok":false}
+{"fn":"isReleaseBuild","args":[{"HARNESSTAP_RELEASE":"1","HT_RELEASE":"0"}],"ok":true}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"abcdef1"},"/nonexistent-dir"],"ok":"abcdef1"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"abcdef1","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"ABCDEF1234567890"},"/nonexistent-dir"],"ok":"abcdef1"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"ABCDEF1234567890","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"abc"},"/nonexistent-dir"],"ok":{"$undefined":true}}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"abc","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"  abcdef12  "},"/nonexistent-dir"],"ok":"abcdef1"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"  abcdef12  ","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"g123456"},"/nonexistent-dir"],"ok":{"$undefined":true}}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"g123456","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"0123456789abcdef0123456789abcdef01234567"},"/nonexistent-dir"],"ok":"0123456"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"0123456789abcdef0123456789abcdef01234567","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"0123456789abcdef0123456789abcdef012345678"},"/nonexistent-dir"],"ok":{"$undefined":true}}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"0123456789abcdef0123456789abcdef012345678","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":""},"/nonexistent-dir"],"ok":{"$undefined":true}}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"zz","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"FEEDFACE99"},"/nonexistent-dir"],"ok":"feedfac"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"zz","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"deadbee\n"},"/nonexistent-dir"],"ok":"deadbee"}
+{"fn":"readGitSha","args":[{"GITHUB_SHA":"deadbee\n","HT_GIT_SHA":"1234567"},"/nonexistent-dir"],"ok":"1234567"}
+{"fn":"readGitSha","args":[{},"/nonexistent-dir"],"ok":{"$undefined":true}}
+{"fn":"readGitSha","args":[{"HT_GIT_SHA":"nothex"},"/nonexistent-dir"],"ok":{"$undefined":true}}
+{"fn":"formatDevBuildVersion","args":["1.6.3"],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{"isRelease":true}],"ok":"1.6.3"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"1.6.3-dev+abcdef1"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{"gitSha":"xyz"}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{"gitSha":null}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{"gitSha":" 1234567 "}],"ok":"1.6.3-dev+1234567"}
+{"fn":"formatDevBuildVersion","args":["1.6.3",{"isRelease":true,"gitSha":"abcdef1"}],"ok":"1.6.3"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 "],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{"isRelease":true}],"ok":"1.6.3"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"1.6.3-dev+abcdef1"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{"gitSha":"xyz"}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{"gitSha":null}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{"gitSha":" 1234567 "}],"ok":"1.6.3-dev+1234567"}
+{"fn":"formatDevBuildVersion","args":[" 1.6.3 ",{"isRelease":true,"gitSha":"abcdef1"}],"ok":"1.6.3"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234"],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{"isRelease":true}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{"gitSha":"xyz"}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{"gitSha":null}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{"gitSha":" 1234567 "}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev+abc1234",{"isRelease":true,"gitSha":"abcdef1"}],"ok":"1.6.3-dev+abc1234"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev"],"ok":"1.6.3-dev-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{}],"ok":"1.6.3-dev-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{"isRelease":true}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"1.6.3-dev-dev+abcdef1"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{"gitSha":"xyz"}],"ok":"1.6.3-dev-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{"gitSha":null}],"ok":"1.6.3-dev-dev"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{"gitSha":" 1234567 "}],"ok":"1.6.3-dev-dev+1234567"}
+{"fn":"formatDevBuildVersion","args":["1.6.3-dev",{"isRelease":true,"gitSha":"abcdef1"}],"ok":"1.6.3-dev"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1"],"ok":"2.0.0-beta.1-dev"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{}],"ok":"2.0.0-beta.1-dev"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{"isRelease":true}],"ok":"2.0.0-beta.1"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"2.0.0-beta.1-dev+abcdef1"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{"gitSha":"xyz"}],"ok":"2.0.0-beta.1-dev"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{"gitSha":null}],"ok":"2.0.0-beta.1-dev"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{"gitSha":" 1234567 "}],"ok":"2.0.0-beta.1-dev+1234567"}
+{"fn":"formatDevBuildVersion","args":["2.0.0-beta.1",{"isRelease":true,"gitSha":"abcdef1"}],"ok":"2.0.0-beta.1"}
+{"fn":"formatDevBuildVersion","args":[""],"ok":"-dev"}
+{"fn":"formatDevBuildVersion","args":["",{}],"ok":"-dev"}
+{"fn":"formatDevBuildVersion","args":["",{"isRelease":true}],"ok":""}
+{"fn":"formatDevBuildVersion","args":["",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"-dev+abcdef1"}
+{"fn":"formatDevBuildVersion","args":["",{"gitSha":"xyz"}],"ok":"-dev"}
+{"fn":"formatDevBuildVersion","args":["",{"gitSha":null}],"ok":"-dev"}
+{"fn":"formatDevBuildVersion","args":["",{"gitSha":" 1234567 "}],"ok":"-dev+1234567"}
+{"fn":"formatDevBuildVersion","args":["",{"isRelease":true,"gitSha":"abcdef1"}],"ok":""}
+{"fn":"formatDevBuildVersion","args":["café"],"ok":"café-dev"}
+{"fn":"formatDevBuildVersion","args":["café",{}],"ok":"café-dev"}
+{"fn":"formatDevBuildVersion","args":["café",{"isRelease":true}],"ok":"café"}
+{"fn":"formatDevBuildVersion","args":["café",{"isRelease":false,"gitSha":"ABCDEF1234"}],"ok":"café-dev+abcdef1"}
+{"fn":"formatDevBuildVersion","args":["café",{"gitSha":"xyz"}],"ok":"café-dev"}
+{"fn":"formatDevBuildVersion","args":["café",{"gitSha":null}],"ok":"café-dev"}
+{"fn":"formatDevBuildVersion","args":["café",{"gitSha":" 1234567 "}],"ok":"café-dev+1234567"}
+{"fn":"formatDevBuildVersion","args":["café",{"isRelease":true,"gitSha":"abcdef1"}],"ok":"café"}
+{"fn":"resolveBuildVersion","args":[{"HT_RELEASE":"1"}],"ok":"1.6.3"}
+{"fn":"resolveBuildVersion","args":[{"HARNESSTAP_RELEASE":"1"}],"ok":"1.6.3"}
+{"fn":"resolveBuildVersion","args":[{"HT_GIT_SHA":"abcdef1234"}],"ok":"1.6.3-dev+abcdef1"}
+{"fn":"resolveBuildVersion","args":[{"GITHUB_SHA":"0123456789abcdef"}],"ok":"1.6.3-dev+0123456"}
+{"fn":"resolveBuildVersion","args":[{"HT_RELEASE":"1","HT_GIT_SHA":"abcdef1"}],"ok":"1.6.3"}

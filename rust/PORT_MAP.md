@@ -1,10 +1,13 @@
 # Port map: rust-port-w0
 
-0 of 54 units have a Rust port.
+2 of 54 units have a Rust port; no original changed since it was recorded.
 
 ## Ports
 
-None yet: `rust-anything bridge` starts one.
+| Unit | Crate | In Rust | Kept in the original | Cases | Last diff | Original |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| `src/node-version.ts` | `rust/node-version-rs` | `parseNodeVersion`, `isSupportedNodeVersion`, `launchedByBun`, `nodeVersionRefusalMessage`, `isBunRuntime`, `assertSupportedRuntime` | - | 58 | 58/58 | unchanged |
+| `src/version.ts` | `rust/version-rs` | `isReleaseBuild`, `readGitSha`, `formatDevBuildVersion`, `resolveBuildVersion` | - | 90 | 90/90 | unchanged |
 
 ## Not ported yet
 
@@ -14,8 +17,6 @@ In the order `analyze` suggests.
 | --- | ---: | ---: | ---: |
 | `src/services/toml/` | 169 | 11 | 93 |
 | `src/services/wizards/adapters/` | 138 | 4 | 100 |
-| `src/version.ts` | 77 | 4 | 93 |
-| `src/node-version.ts` | 52 | 6 | 100 |
 | `src/constants/` | 49 | 6 | 95 |
 | `src/services/completion/providers/` | 516 | 22 | 74 |
 | `src/copy/` | 489 | 56 | 74 |
