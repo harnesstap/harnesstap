@@ -6,6 +6,8 @@
 pub mod dependencies;
 pub mod git_resolve;
 pub mod hook_serialization;
+pub mod manifest;
+pub mod mcp_manifest;
 pub mod overlay;
 pub mod policy;
 pub mod skill_auxiliary;
