@@ -1,0 +1,3 @@
+kind: Fixed
+body: '`ht apply` with several harnesses now checks every conflict before it writes anything, so a cancelled apply leaves the project exactly as it was. A repeated identical apply writes nothing: harnesses that share `AGENTS.md` (for example Codex rules and Gemini skills) now agree on one combined file instead of overwriting each other on every run, and an unchanged `apm.lock.yaml` keeps its `generated_at`.'
+time: 2026-11-22T23:00:00.000000Z
