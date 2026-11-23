@@ -6,12 +6,15 @@
 
 pub mod apply_removal_backup;
 pub mod global_apply_snapshot;
+pub mod harness;
 pub mod imported_snapshot;
 pub mod package_cache_entry;
 pub mod plugin_pin_materialization;
 pub mod preexisting_path;
 pub mod project;
+pub mod resource;
 pub mod resource_materialization;
+pub mod services;
 pub mod snapshot;
 
 use db_rs::connection::Db;
@@ -82,6 +85,26 @@ pub struct Ctx<'a> {
     pub env: &'a dyn Env,
     pub clock: &'a dyn Clock,
     pub ids: &'a dyn Ids,
+}
+
+/// JavaScript's `trim`.
+pub fn js_trim(s: &str) -> &str {
+    s.trim_matches(|c: char| {
+        matches!(
+            c,
+            '\u{9}'..='\u{d}'
+                | ' '
+                | '\u{a0}'
+                | '\u{1680}'
+                | '\u{2000}'..='\u{200a}'
+                | '\u{2028}'
+                | '\u{2029}'
+                | '\u{202f}'
+                | '\u{205f}'
+                | '\u{3000}'
+                | '\u{feff}'
+        )
+    })
 }
 
 pub(crate) fn err(e: rusqlite::Error) -> String {

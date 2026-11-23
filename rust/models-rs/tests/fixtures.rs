@@ -46,8 +46,23 @@ fn resolve(v: &Value, results: &[Value]) -> Value {
         Value::Array(items) => Value::Array(items.iter().map(|x| resolve(x, results)).collect()),
         Value::Object(o) if o.contains_key("$ref") => {
             let r = &o["$ref"];
-            results[r[0].as_u64().unwrap() as usize][r[1].as_str().unwrap()].clone()
+            let mut v = &results[r[0].as_u64().unwrap() as usize];
+            for key in r[1].as_str().unwrap().split('.') {
+                v = &v[key];
+            }
+            v.clone()
         }
+        Value::Object(o) if o.contains_key("$concat") => Value::String(
+            o["$concat"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|part| match resolve(part, results) {
+                    Value::String(s) => s,
+                    other => other.to_string(),
+                })
+                .collect(),
+        ),
         Value::Object(o) if o.contains_key("$prefix") => {
             let r = &o["$prefix"];
             let full = results[r[0].as_u64().unwrap() as usize][r[1].as_str().unwrap()]
@@ -62,6 +77,29 @@ fn resolve(v: &Value, results: &[Value]) -> Value {
                 .collect(),
         ),
         other => other.clone(),
+    }
+}
+
+fn mode_of(options: Option<&Value>) -> resource::ResolveMode {
+    match options.and_then(|o| s(o, "mode")) {
+        Some("compose") => resource::ResolveMode::Compose,
+        _ => resource::ResolveMode::Display,
+    }
+}
+
+/// `normalizeResourceInput` defaults, with `origin_kind` defaulting to `kind`.
+fn resource_input(v: &Value, kind: &str) -> resource::UpsertResourceInput {
+    let text = |k: &str, d: &str| s(v, k).unwrap_or(d).to_owned();
+    resource::UpsertResourceInput {
+        resource_type: text("type", ""),
+        name: text("name", ""),
+        namespace: text("namespace", ""),
+        description: text("description", ""),
+        content: text("content", ""),
+        metadata: v["metadata"].clone(),
+        source: text("source", ""),
+        origin_kind: text("origin_kind", kind),
+        origin_ref: text("origin_ref", ""),
     }
 }
 
@@ -381,6 +419,156 @@ fn call(ctx: &Ctx, home: &str, cwd: &str, f: &str, a: &[Value]) -> Result<Value>
         "findImportedSnapshotOwnersByFile" => to_value(
             imported_snapshot::find_imported_snapshot_owners_by_file(ctx, &str_arg(0))?,
         ),
+        "getHarnessPreference" => to_value(harness::get_harness_preference(ctx)?),
+        "setHarnessPreference" => {
+            let list: Vec<String> =
+                serde_json::from_value(a0["registered_harnesses"].clone()).unwrap();
+            to_value(harness::set_harness_preference(ctx, &list)?)
+        }
+        "getProjectHarnessConfig" => {
+            to_value(harness::get_project_harness_config(ctx, &str_arg(0))?)
+        }
+        "setProjectHarnessConfig" => {
+            let list: Vec<String> =
+                serde_json::from_value(a0["registered_harnesses"].clone()).unwrap();
+            to_value(harness::set_project_harness_config(
+                ctx,
+                &harness::ProjectHarnessInput {
+                    project_id: s(&a0, "project_id").unwrap(),
+                    registered_harnesses: &list,
+                    materialization_strategy: s(&a0, "materialization_strategy"),
+                    cursor_skill_mode: s(&a0, "cursor_skill_mode"),
+                },
+            )?)
+        }
+        "deleteProjectHarnessConfig" => {
+            json!(harness::delete_project_harness_config(ctx, &str_arg(0))?)
+        }
+        "createResource" => to_value(resource::create_resource(
+            ctx,
+            &resource_input(&a0, "manual"),
+        )?),
+        "upsertResource" => {
+            let policy = a.get(1).and_then(|o| s(o, "policy")).map(|p| match p {
+                "prompt" => resource::ConflictPolicy::Prompt,
+                "skip" => resource::ConflictPolicy::Skip,
+                "overwrite" => resource::ConflictPolicy::Overwrite,
+                _ => resource::ConflictPolicy::Fail,
+            });
+            to_value(resource::upsert_resource(
+                ctx,
+                &resource_input(&a0, ""),
+                policy,
+                None,
+            )?)
+        }
+        "getResource" => to_value(resource::get_resource(ctx, &str_arg(0), mode_of(a.get(1)))?),
+        "resolveResource" => to_value(resource::resolve_resource(
+            ctx,
+            &str_arg(0),
+            mode_of(a.get(1)),
+        )?),
+        "findResourceByKey" => to_value(resource::find_resource_by_key(
+            ctx,
+            &str_arg(0),
+            &str_arg(1),
+            &str_arg(2),
+        )?),
+        "getResourcesByIds" => {
+            let ids: Vec<String> = serde_json::from_value(a0.clone()).unwrap();
+            to_value(resource::get_resources_by_ids(ctx, &ids)?)
+        }
+        "listResources" => to_value(resource::list_resources(
+            ctx,
+            &resource::ListFilters {
+                resource_type: s(&a0, "type"),
+                search: s(&a0, "search"),
+                origin_kind: s(&a0, "origin_kind"),
+                include_composition: a0["includeComposition"].as_bool().unwrap_or(false),
+            },
+        )?),
+        "listLinkedResources" => to_value(resource::list_linked_resources(ctx, a0.as_str())?),
+        "updateResource" => to_value(resource::update_resource(
+            ctx,
+            &str_arg(0),
+            &resource::ResourceUpdate {
+                name: s(&a[1], "name").map(str::to_owned),
+                description: s(&a[1], "description").map(str::to_owned),
+                content: s(&a[1], "content").map(str::to_owned),
+                metadata: a[1].get("metadata").cloned(),
+            },
+        )?),
+        "renamePluginTypedResources" => json!(resource::rename_plugin_typed_resources(
+            ctx,
+            &str_arg(0),
+            &str_arg(1)
+        )?),
+        "listResourcesByOriginRef" => to_value(resource::list_resources_by_origin_ref(
+            ctx,
+            &str_arg(0),
+            a.get(1).and_then(Value::as_str),
+        )?),
+        "listResourcesMatchingOriginRef" => to_value(resource::list_resources_matching_origin_ref(
+            ctx,
+            &str_arg(0),
+        )?),
+        "listPluginResourcesByOriginRef" => to_value(
+            resource::list_plugin_resources_by_origin_ref(ctx, &str_arg(0))?,
+        ),
+        "deleteResource" => json!(resource::delete_resource(ctx, &str_arg(0))?),
+        "takeSelectorDeprecations" => {
+            json!(services::resource_selector::take_selector_deprecations())
+        }
+        "__listFiles" => {
+            fn walk(dir: &std::path::Path, rel: &str, out: &mut Vec<Value>) {
+                let mut names: Vec<String> = std::fs::read_dir(dir)
+                    .unwrap()
+                    .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                    .collect();
+                names.sort();
+                for name in names {
+                    let full = dir.join(&name);
+                    let r = if rel.is_empty() {
+                        name.clone()
+                    } else {
+                        format!("{rel}/{name}")
+                    };
+                    if full.is_dir() {
+                        walk(&full, &r, out);
+                    } else if ![".db", ".db-wal", ".db-shm", ".db-journal"]
+                        .iter()
+                        .any(|ext| name.ends_with(ext))
+                    {
+                        out.push(json!([r, hex(&std::fs::read(&full).unwrap())]));
+                    }
+                }
+            }
+            let mut out = Vec::new();
+            walk(std::path::Path::new(home), "", &mut out);
+            Value::Array(out)
+        }
+        "__query" => {
+            let mut stmt = ctx.db.conn.prepare(&str_arg(0)).unwrap();
+            let n = stmt.column_count();
+            let rows = stmt
+                .query_map([], |row| {
+                    Ok(Value::Array(
+                        (0..n)
+                            .map(|i| match row.get::<_, Sql>(i).unwrap() {
+                                Sql::Null => Value::Null,
+                                Sql::Integer(x) => json!(x),
+                                Sql::Real(x) => json!(x),
+                                Sql::Text(t) => json!(t),
+                                Sql::Blob(b) => json!({ "$bytes": hex(&b) }),
+                            })
+                            .collect(),
+                    ))
+                })
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap();
+            Value::Array(rows)
+        }
         "__exec" => {
             ctx.db.exec(&str_arg(0))?;
             Value::Null

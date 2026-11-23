@@ -13,6 +13,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip", "unbounded_depth"] }
 ulid = "1"
+sha2 = "0.10"
 
 [dev-dependencies]
 regex = "1"
