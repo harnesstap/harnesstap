@@ -108,8 +108,8 @@ compares results, errors and tables with ids renamed in order of appearance.
 | `src/models/harness.ts` | done | `models-rs/src/harness.rs`, with `normalizeRegisteredHarnesses` from `services/harness-targets.ts` (the rest of that file needs platforms and the scanner) |
 | `src/models/plugin.ts` | not ported (dead code) | nothing imports it, and its `project_plugin_state` table is not created by any schema or migration, so both functions would fail with "no such table". Port it only if a caller appears |
 | `src/models/resource.ts` | done | `models-rs/src/resource.rs`, with `services/blob-store.ts`, `resource-hash.ts` (no trace span) and `resource-selector.ts` in `models-rs/src/services/`. Reads overflow blobs each time instead of the original's 256-entry in-memory cache. Known divergence: the original looks up legacy selector aliases on a plain object, so `constructor:x` or `__proto__:x` pick up inherited properties; the port treats them as plain types |
-| `src/models/environment.ts` | open | needs `resource.ts` |
-| `src/models/plugin-model.ts` | open | 1203 lines over nine services |
+| `src/models/environment.ts` | done | `models-rs/src/environment.rs`; `getEnvironmentResources` rows keep the link's `order` field, like the original's `r.*, er."order"` spread |
+| `src/models/plugin-model.ts` | open, deferred | 1203 lines, 81 exports, and the hub of the plugin services: it needs `services/harness-scope.ts` (the platform registry), `plugin-composition.ts` (marketplace pin cache, resource sync, upstream plugins), `plugin-extends.ts` (cloud API errors, forks, dependency views, and a cycle back into `plugin-model.ts`), `plugin-upstream.ts`, `plugin-constraints.ts` (semver ranges), `claude-plugin-pins.ts` and `agent-plugins/name.ts`. Porting it now means porting most of the plugin services with it, so it waits for the platforms registry and is then done as one unit with those services |
 
 Read-through note: the original memoizes some reads while a status computation
 runs (`computationSlot`, `inStatusComputation`). The Rust ports always take the

@@ -5,6 +5,7 @@
 //! Tests pass fixed ones, the way the original's tests pin them.
 
 pub mod apply_removal_backup;
+pub mod environment;
 pub mod global_apply_snapshot;
 pub mod harness;
 pub mod imported_snapshot;

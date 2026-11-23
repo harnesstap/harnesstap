@@ -547,6 +547,90 @@ fn call(ctx: &Ctx, home: &str, cwd: &str, f: &str, a: &[Value]) -> Result<Value>
             walk(std::path::Path::new(home), "", &mut out);
             Value::Array(out)
         }
+        "resolveEnvironmentSelector" => {
+            to_value(environment::resolve_environment_selector(ctx, &str_arg(0))?)
+        }
+        "createEnvironment" => to_value(environment::create_environment(
+            ctx,
+            s(&a0, "name").unwrap(),
+            s(&a0, "description"),
+        )?),
+        "getEnvironment" => to_value(environment::get_environment(ctx, &str_arg(0))?),
+        "getEnvironmentByName" => to_value(environment::get_environment_by_name(ctx, &str_arg(0))?),
+        "listEnvironments" => to_value(environment::list_environments(ctx)?),
+        "deleteEnvironment" => json!(environment::delete_environment(ctx, &str_arg(0))?),
+        "upsertEnvironmentEnvVar" => to_value(environment::upsert_environment_env_var(
+            ctx,
+            &str_arg(0),
+            &str_arg(1),
+            &str_arg(2),
+        )?),
+        "removeEnvironmentEnvVar" => json!(environment::remove_environment_env_var(
+            ctx,
+            &str_arg(0),
+            &str_arg(1)
+        )?),
+        "upsertEnvironmentModelConfig" => to_value(environment::upsert_environment_model_config(
+            ctx,
+            &str_arg(0),
+            s(&a[1], "model").unwrap(),
+            s(&a[1], "provider"),
+            s(&a[1], "name"),
+        )?),
+        "removeEnvironmentModelConfig" => json!(environment::remove_environment_model_config(
+            ctx,
+            &str_arg(0),
+            a.get(1).and_then(Value::as_str),
+        )?),
+        "upsertEnvironmentPermission" => to_value(environment::upsert_environment_permission(
+            ctx,
+            &str_arg(0),
+            s(&a[1], "action").unwrap(),
+            s(&a[1], "pattern").unwrap(),
+            s(&a[1], "name"),
+        )?),
+        "removeEnvironmentPermission" => json!(environment::remove_environment_permission(
+            ctx,
+            &str_arg(0),
+            s(&a[1], "name"),
+            s(&a[1], "action"),
+            s(&a[1], "pattern"),
+        )?),
+        "listEnvironmentReferences" => {
+            to_value(environment::list_environment_references(ctx, &str_arg(0))?)
+        }
+        "hasEnvironmentReferences" => {
+            json!(environment::has_environment_references(ctx, &str_arg(0))?)
+        }
+        "addResourceToEnvironment" => {
+            environment::add_resource_to_environment(ctx, &str_arg(0), s(&a[1], "id").unwrap())?;
+            Value::Null
+        }
+        "removeResourceFromEnvironment" => {
+            environment::remove_resource_from_environment(ctx, &str_arg(0), &str_arg(1))?;
+            Value::Null
+        }
+        "getEnvironmentResources" => {
+            to_value(environment::get_environment_resources(ctx, &str_arg(0))?)
+        }
+        "addSecretRefToEnvironment" => {
+            environment::add_secret_ref_to_environment(
+                ctx,
+                &str_arg(0),
+                &str_arg(1),
+                &str_arg(2),
+                &str_arg(3),
+            )?;
+            Value::Null
+        }
+        "getEnvironmentSecretRefs" => {
+            to_value(environment::get_environment_secret_refs(ctx, &str_arg(0))?)
+        }
+        "removeSecretRefFromEnvironment" => json!(environment::remove_secret_ref_from_environment(
+            ctx,
+            &str_arg(0),
+            &str_arg(1)
+        )?),
         "__query" => {
             let mut stmt = ctx.db.conn.prepare(&str_arg(0)).unwrap();
             let n = stmt.column_count();
