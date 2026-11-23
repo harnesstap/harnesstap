@@ -415,3 +415,62 @@ export function flattenUniqueFiles(results: ApplyResult[]): SerializedFile[] {
   }
   return [...byPath.values()];
 }
+
+function instructionSinkPaths(platformIds: readonly string[]): Set<string> {
+  const sinks = new Set<string>();
+  for (const id of platformIds) {
+    const platform = getPlatform(id);
+    if (!platform) continue;
+    for (const raw of [platform.projectPaths.instructions, platform.globalPaths.instructions]) {
+      const normalized = raw?.replace(/\\/g, "/").replace(/^~\//, "").replace(/^\.\//, "");
+      if (normalized && /\.md$/i.test(normalized)) sinks.add(normalized);
+    }
+  }
+  return sinks;
+}
+
+function joinSharedSections(contents: readonly string[]): string {
+  const distinct = [...new Set(contents)];
+  const kept = distinct.filter(
+    (content) => !distinct.some((other) => other !== content && other.includes(content)),
+  );
+  return kept
+    .map((content, index) => (index < kept.length - 1 ? content.replace(/\n+$/, "") : content))
+    .join("\n\n");
+}
+
+/**
+ * Harnesses that read the same instructions file (AGENTS.md) each emit their
+ * own slice of it: Codex adds rules, an instruction-only harness adds skills.
+ * Written as-is, the last harness would overwrite the others and every apply
+ * would flip the file back and forth. Give every harness the same bytes: each
+ * distinct slice once, in harness order, so the file is the same on every run.
+ * Only instruction markdown files are combined; any other path emitted twice
+ * keeps its per-harness content.
+ */
+export function mergeSharedInstructionEmits(results: ApplyResult[]): ApplyResult[] {
+  const sinks = instructionSinkPaths(results.map((result) => result.platformId));
+  if (sinks.size === 0) return results;
+
+  const contentsByPath = new Map<string, string[]>();
+  for (const result of results) {
+    for (const file of result.files) {
+      const path = file.path.replace(/\\/g, "/");
+      if (!sinks.has(path) || file.encoding === "base64") continue;
+      contentsByPath.set(path, [...(contentsByPath.get(path) ?? []), file.content]);
+    }
+  }
+  const merged = new Map<string, string>();
+  for (const [path, contents] of contentsByPath) {
+    if (new Set(contents).size > 1) merged.set(path, joinSharedSections(contents));
+  }
+  if (merged.size === 0) return results;
+
+  return results.map((result) => ({
+    ...result,
+    files: result.files.map((file) => {
+      const content = merged.get(file.path.replace(/\\/g, "/"));
+      return content === undefined || file.encoding === "base64" ? file : { ...file, content };
+    }),
+  }));
+}
