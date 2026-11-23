@@ -412,15 +412,21 @@ export function writeLockfile(projectRoot: string, lock: Lockfile): void {
       ...(entry.declared_license ? { declared_license: entry.declared_license } : {}),
     })),
   };
-  writeFileSync(
-    path,
-    stringifyYaml(document, {
-      indent: 2,
-      lineWidth: 0,
-      defaultKeyType: "PLAIN",
-    }),
-    "utf8",
-  );
+  const rendered = stringifyYaml(document, {
+    indent: 2,
+    lineWidth: 0,
+    defaultKeyType: "PLAIN",
+  });
+  // Only the timestamp differs on a repeat apply: leave the file (and its
+  // generated_at) alone so a checked-in lock does not change on every run.
+  if (existsSync(path) && withoutGeneratedAt(readFileSync(path, "utf8")) === withoutGeneratedAt(rendered)) {
+    return;
+  }
+  writeFileSync(path, rendered, "utf8");
+}
+
+function withoutGeneratedAt(text: string): string {
+  return text.replace(/^generated_at:.*$/m, "generated_at:");
 }
 
 function parseLockSource(value: unknown): LockSource {
