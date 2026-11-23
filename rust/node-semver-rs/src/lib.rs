@@ -149,7 +149,8 @@ impl SemVer {
         let minor = to_number(group(2).unwrap_or(""));
         let patch = to_number(group(3).unwrap_or(""));
         for (value, name) in [(major, "major"), (minor, "minor"), (patch, "patch")] {
-            if value > MAX_SAFE_INTEGER || value < 0.0 {
+            // The groups are digit runs, so `value` is never NaN and a range check is the same.
+            if !(0.0..=MAX_SAFE_INTEGER).contains(&value) {
                 return Err(type_error(format!("Invalid {name} version")));
             }
         }
