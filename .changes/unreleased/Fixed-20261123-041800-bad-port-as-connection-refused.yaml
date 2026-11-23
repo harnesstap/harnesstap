@@ -1,0 +1,5 @@
+kind: Fixed
+body: A request to a URL whose port Node's fetch rejects as a bad port (for example 127.0.0.1:9) now says the connection was refused, instead of "fetch failed".
+time: 2026-11-23T04:18:00.000000Z
+custom:
+  Issue: ""
