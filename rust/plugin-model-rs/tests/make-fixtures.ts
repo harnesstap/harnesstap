@@ -22,6 +22,7 @@ import * as upstream from "../../../src/services/plugin-upstream.ts";
 import * as names from "../../../src/services/agent-plugins/name.ts";
 import * as versioning from "../../../src/services/plugin-versioning.ts";
 import * as origin from "../../../src/services/plugin-origin.ts";
+import * as dependency from "../../../src/services/plugin-dependency.ts";
 import * as resolveIndex from "../../../src/services/resolve/index.ts";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -74,6 +75,11 @@ spyOn(resolveIndex, "resolveComposition").mockImplementation(((input: { rootSele
   };
 }) as never);
 spyOn(console, "error").mockImplementation(() => {});
+
+const fullResource = (r: Record<string, unknown>) => ({
+  description: "", content: "", source: "", namespace: "", origin_kind: "manual", origin_ref: "",
+  content_hash: "", content_blob_ref: "", created_at: T, updated_at: T, ...r,
+});
 
 const fns: Record<string, (...args: never[]) => unknown> = {
   isFrozenPlugin: model.isFrozenPlugin,
@@ -147,6 +153,12 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   setPluginOrigin: origin.setPluginOrigin,
   assertAuthored: origin.assertAuthored,
   assertSyncable: origin.assertSyncable,
+  parseDependencyRef: dependency.parseDependencyRef,
+  ensureDependencyResource: dependency.ensureDependencyResource,
+  addDependency: dependency.addDependency,
+  dependenciesFromResources: dependency.dependenciesFromResources,
+  listDependencies: dependency.listDependencies,
+  removeDependency: dependency.removeDependency,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
   __query: ((sql: string) => (getDb().prepare(sql).all() as Record<string, unknown>[]).map((row) => Object.values(row))) as never,
   __writeConfig: ((text: string) => {
@@ -501,6 +513,77 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
       { fn: "addDependencyToPlugin", args: [ref(0), "dep-two", "1.0.0"] },
       { fn: "listPluginDependencies", args: [ref(0)] },
       { fn: "listPluginDependencies", args: ["none"] },
+    ],
+  },
+  {
+    name: "dependency",
+    ops: [
+      { fn: "parseDependencyRef", args: ["dep"] },
+      { fn: "parseDependencyRef", args: ["./x/y"] },
+      { fn: "parseDependencyRef", args: ["../a/"] },
+      { fn: "parseDependencyRef", args: ["https://github.com/o/r.git"] },
+      { fn: "parseDependencyRef", args: ["git@github.com:o/r.git"] },
+      { fn: "parseDependencyRef", args: ["git+ssh://h/r"] },
+      { fn: "parseDependencyRef", args: ["file:///tmp/p/"] },
+      { fn: "parseDependencyRef", args: ["ssh://h:22/a:b"] },
+      { fn: "parseDependencyRef", args: ["o/c/n"] },
+      { fn: "parseDependencyRef", args: ["o//n"] },
+      { fn: "parseDependencyRef", args: ["/c/n"] },
+      { fn: "parseDependencyRef", args: ["a/b"] },
+      { fn: "parseDependencyRef", args: ["a/b/c/d"] },
+      { fn: "parseDependencyRef", args: ["n@m"] },
+      { fn: "parseDependencyRef", args: ["@m"] },
+      { fn: "parseDependencyRef", args: ["n@"] },
+      { fn: "parseDependencyRef", args: ["a@b@c"] },
+      { fn: "parseDependencyRef", args: ["  spaced@mk  "] },
+      { fn: "parseDependencyRef", args: [""] },
+      { fn: "parseDependencyRef", args: ["\u00a0x\u00a0"] },
+      { fn: "parseDependencyRef", args: ["http://"] },
+      { fn: "parseDependencyRef", args: ["git@x"] },
+      { fn: "parseDependencyRef", args: ["n@m/x"] },
+      { fn: "parseDependencyRef", args: ["o/c/n@1"] },
+      { fn: "parseDependencyRef", args: ["\ufeffz"] },
+      { fn: "createPlugin", args: [{ name: "p", version: "1.0.0" }] },
+      { fn: "createPlugin", args: [{ name: "host" }] },
+      { fn: "ensureDependencyResource", args: ["dep@mk"] },
+      { fn: "ensureDependencyResource", args: ["dep@mk"] },
+      { fn: "ensureDependencyResource", args: ["dep@mk", { versionConstraint: "^1.0.0" }] },
+      { fn: "ensureDependencyResource", args: ["./local/thing", { versionConstraint: "2", portable: "embed" }] },
+      { fn: "ensureDependencyResource", args: ["org/cat/cp", { versionConstraint: "" }] },
+      { fn: "ensureDependencyResource", args: ["https://github.com/o/gitdep.git"] },
+      { fn: "ensureDependencyResource", args: ["  padded@mk  "] },
+      { fn: "addDependency", args: [ref(25), "dep@mk"] },
+      { fn: "getPluginById", args: [ref(25)] },
+      { fn: "markPluginClean", args: [ref(25)] },
+      { fn: "addDependency", args: [ref(25), "org/cat/cp", { versionConstraint: "~1.2", embedOnExport: true, markDirty: false }] },
+      { fn: "addDependency", args: [ref(25), "./local/thing", { versionConstraint: "2" }] },
+      { fn: "addDependency", args: [ref(25), "plain"] },
+      { fn: "addDependency", args: [ref(25), "host@mk"] },
+      { fn: "addDependency", args: [ref(25), "https://github.com/o/gitdep.git", { embedOnExport: false }] },
+      { fn: "addDependency", args: ["missing", "zz"] },
+      { fn: "listDependencies", args: [ref(25)] },
+      { fn: "listDependencies", args: [ref(26)] },
+      { fn: "addDependency", args: [ref(26), "host@mk"] },
+      { fn: "addDependency", args: [ref(26), "org/cat/host"] },
+      { fn: "addDependency", args: [ref(26), "../host"] },
+      { fn: "listDependencies", args: [ref(26)] },
+      { fn: "listDependencies", args: ["missing"] },
+      { fn: "dependenciesFromResources", args: [[
+        fullResource({ id: "a", type: "skill", name: "s", metadata: {} }),
+        fullResource({ id: "b", type: "plugin", name: "n", metadata: {}, order: 3, harness_scope: { kind: "all" } }),
+        fullResource({ id: "c", type: "plugin", name: "n", metadata: { source_kind: "git", version_constraint: "1", portable: "embed" }, origin_ref: "o" }),
+        fullResource({ id: "d", type: "plugin", name: "n", metadata: { source_kind: null, version_constraint: null, portable: "reference" } }),
+        fullResource({ id: "e", type: "plugin", name: "n", metadata: { source_kind: 3, version_constraint: false } }),
+      ]] },
+      { fn: "removeDependency", args: [ref(25), "nope"] },
+      { fn: "getPluginById", args: [ref(25)] },
+      { fn: "removeDependency", args: [ref(25), "cp"] },
+      { fn: "removeDependency", args: [ref(25), "./local/thing"] },
+      { fn: "removeDependency", args: [ref(25), "https://github.com/o/gitdep.git"] },
+      { fn: "removeDependency", args: [ref(25), "dep@other"] },
+      { fn: "removeDependency", args: [ref(26), "host@mk"] },
+      { fn: "listDependencies", args: [ref(25)] },
+      { fn: "getPluginById", args: [ref(25)] },
     ],
   },
   {

@@ -12,7 +12,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA005RSHJTBHX58NHBW9",
+      "id": "01KDVDNA00191M431APZM5PN1B",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -53,7 +53,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -91,7 +91,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -114,7 +114,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -136,7 +136,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
+      "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -158,7 +158,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNEW8J82JTAHKRMX23X1T",
+      "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -182,7 +182,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -227,7 +227,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA005RSHJTBHX58NHBW9",
+      "id": "01KDVDNA00191M431APZM5PN1B",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -246,7 +246,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -265,7 +265,7 @@
       "alpha@1.0.0"
      ],
      "result": {
-      "id": "01KDVDNA005RSHJTBHX58NHBW9",
+      "id": "01KDVDNA00191M431APZM5PN1B",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -284,7 +284,7 @@
       "alpha@^1.0.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -317,7 +317,7 @@
       "alpha@>=2.0.0-0"
      ],
      "result": {
-      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -336,7 +336,7 @@
       "alpha@latest"
      ],
      "result": {
-      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -355,7 +355,7 @@
       "alpha@ 1.2.0 "
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -409,7 +409,7 @@
       "beta@latest"
      ],
      "result": {
-      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -428,7 +428,7 @@
       "beta@1.0"
      ],
      "result": {
-      "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
+      "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -447,7 +447,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -480,7 +480,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -500,7 +500,7 @@
       "1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -534,7 +534,7 @@
       ""
      ],
      "result": {
-      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -566,7 +566,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -599,7 +599,7 @@
       "alpha@1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -639,7 +639,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -658,7 +658,7 @@
       "default"
      ],
      "result": {
-      "id": "01KDVDNEW8J82JTAHKRMX23X1T",
+      "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -690,7 +690,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA005RSHJTBHX58NHBW9",
+       "id": "01KDVDNA00191M431APZM5PN1B",
        "name": "alpha",
        "version": "1.0.0",
        "org_slug": "",
@@ -703,7 +703,7 @@
        "updated_at": "2026-01-01T00:00:00.000Z"
       },
       {
-       "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+       "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -730,7 +730,7 @@
        "updated_at": "2026-01-01T00:00:01.000Z"
       },
       {
-       "id": "01KDVDNBYG063MZPC87QBNZ7CG",
+       "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
        "name": "alpha",
        "version": "2.0.0-beta.1",
        "org_slug": "",
@@ -743,7 +743,7 @@
        "updated_at": "2026-01-01T00:00:02.000Z"
       },
       {
-       "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
+       "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -756,7 +756,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+       "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -769,7 +769,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8J82JTAHKRMX23X1T",
+       "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -981,7 +981,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA005RSHJTBHX58NHBW9",
+      "id": "01KDVDNA00191M431APZM5PN1B",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1060,7 +1060,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+       "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -1087,7 +1087,7 @@
        "updated_at": "2026-01-01T00:00:49.000Z"
       },
       {
-       "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
+       "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -1100,7 +1100,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+       "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -1113,7 +1113,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8J82JTAHKRMX23X1T",
+       "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -1126,7 +1126,7 @@
        "updated_at": "2026-01-01T00:00:05.000Z"
       },
       {
-       "id": "01KDVDNA005RSHJTBHX58NHBW9",
+       "id": "01KDVDNA00191M431APZM5PN1B",
        "name": "renamed",
        "version": "1.0.0",
        "org_slug": "",
@@ -1173,7 +1173,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA005RSHJTBHX58NHBW9",
+      "id": "01KDVDNA00191M431APZM5PN1B",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1204,7 +1204,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
+      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -1235,7 +1235,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
+      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -1266,7 +1266,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
+      "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -1297,7 +1297,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNEW8J82JTAHKRMX23X1T",
+      "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -3700,7 +3700,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3741,7 +3741,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3805,7 +3805,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3854,7 +3854,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3924,7 +3924,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3984,7 +3984,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4053,7 +4053,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4143,7 +4143,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+       "id": "01KDVDNA00T0T0DW91MHGR4X4A",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4363,7 +4363,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+       "id": "01KDVDNA00T0T0DW91MHGR4X4A",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4584,7 +4584,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
+      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4907,7 +4907,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -4961,7 +4961,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5028,7 +5028,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5127,7 +5127,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5174,7 +5174,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5220,7 +5220,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5266,7 +5266,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5495,7 +5495,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
+      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5561,7 +5561,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -5624,7 +5624,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+      "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -5811,13 +5811,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
+       "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
+       "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
        "dependency_name": "dep-two",
        "version_constraint": "latest",
        "order": 1
@@ -5836,13 +5836,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+       "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+       "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
        "dependency_name": "dep-three",
        "version_constraint": "latest",
        "order": 1
@@ -5904,7 +5904,7 @@
        }
       },
       {
-       "id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
+       "id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -5926,7 +5926,7 @@
        }
       },
       {
-       "id": "01KDVDNKRGHGN524TSCC25S4XJ",
+       "id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -5968,7 +5968,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNA00241MHW6X7Z0HD1DF",
+        "id": "01KDVDNA00M7421BYGKZ7FJGH2",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6001,7 +6001,7 @@
         "updated_at": "2026-01-01T00:00:00.000Z"
        },
        {
-        "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+        "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6171,7 +6171,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+        "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6205,7 +6205,7 @@
         "updated_at": "2026-01-01T00:00:01.000Z"
        },
        {
-        "id": "01KDVDNA00241MHW6X7Z0HD1DF",
+        "id": "01KDVDNA00M7421BYGKZ7FJGH2",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6402,7 +6402,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "id": "01KDVDNXH005AHJMXV08NR2PH3",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -6533,7 +6533,7 @@
        }
       },
       {
-       "id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
+       "id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -6555,7 +6555,7 @@
        }
       },
       {
-       "id": "01KDVDNKRGHGN524TSCC25S4XJ",
+       "id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -6575,7 +6575,7 @@
        }
       },
       {
-       "id": "01KDVDNNQ0M0D9K0WN982GMTQV",
+       "id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
        "type": "plugin",
        "name": "dep-three",
        "description": "",
@@ -6606,7 +6606,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNZFGBEJFZNKQ7C4ZW4J0",
+      "id": "01KDVDNZFG8KNQSNTKVNYW93BP",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -6636,7 +6636,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6687,7 +6687,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6738,7 +6738,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
+      "id": "01KDVDP2D8J601WWP2M9QW2S3R",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -6875,7 +6875,7 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
+       "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
        "dependency_name": "dep-two",
        "version_constraint": "1.0.0",
        "order": 0
@@ -6916,111 +6916,111 @@
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
-      "resource_id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
+      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+      "resource_id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
-      "resource_id": "01KDVDNNQ0M0D9K0WN982GMTQV",
+      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+      "resource_id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
       "resource_id": "R2",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
-      "resource_id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
+      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "resource_id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
-      "resource_id": "01KDVDNKRGHGN524TSCC25S4XJ",
+      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "resource_id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
-      "resource_id": "01KDVDNNQ0M0D9K0WN982GMTQV",
+      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "resource_id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
       "order": 5,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
+      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
+      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
-      "resource_id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
+      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
+      "resource_id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
-      "resource_id": "01KDVDNKRGHGN524TSCC25S4XJ",
+      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
+      "resource_id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
-      "resource_id": "01KDVDNKRGHGN524TSCC25S4XJ",
+      "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "resource_id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -7051,7 +7051,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+      "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -7082,7 +7082,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "id": "01KDVDNXH005AHJMXV08NR2PH3",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -7113,7 +7113,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNZFGBEJFZNKQ7C4ZW4J0",
+      "id": "01KDVDNZFG8KNQSNTKVNYW93BP",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -7144,7 +7144,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
+      "id": "01KDVDP2D8J601WWP2M9QW2S3R",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -7225,7 +7225,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
+      "id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
       "type": "plugin",
       "name": "dep-one",
       "description": "",
@@ -7241,7 +7241,7 @@
       "updated_at": "2026-01-01T00:00:11.000Z"
      },
      {
-      "id": "01KDVDNKRGHGN524TSCC25S4XJ",
+      "id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
       "type": "plugin",
       "name": "dep-two",
       "description": "",
@@ -7257,7 +7257,7 @@
       "updated_at": "2026-01-01T00:00:31.000Z"
      },
      {
-      "id": "01KDVDNNQ0M0D9K0WN982GMTQV",
+      "id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
       "type": "plugin",
       "name": "dep-three",
       "description": "",
@@ -7271,6 +7271,1891 @@
       "content_blob_ref": "",
       "created_at": "2026-01-01T00:00:12.000Z",
       "updated_at": "2026-01-01T00:00:12.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "name": "dependency",
+   "calls": [
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "dep"
+     ],
+     "result": {
+      "name": "dep",
+      "source_kind": "local",
+      "origin_ref": "dep",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "./x/y"
+     ],
+     "result": {
+      "name": "y",
+      "source_kind": "local",
+      "origin_ref": "./x/y",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "../a/"
+     ],
+     "result": {
+      "name": "a",
+      "source_kind": "local",
+      "origin_ref": "../a/",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "https://github.com/o/r.git"
+     ],
+     "result": {
+      "name": "r",
+      "source_kind": "git",
+      "origin_ref": "https://github.com/o/r.git",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "git@github.com:o/r.git"
+     ],
+     "result": {
+      "name": "r",
+      "source_kind": "git",
+      "origin_ref": "git@github.com:o/r.git",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "git+ssh://h/r"
+     ],
+     "result": {
+      "name": "r",
+      "source_kind": "git",
+      "origin_ref": "git+ssh://h/r",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "file:///tmp/p/"
+     ],
+     "result": {
+      "name": "p",
+      "source_kind": "git",
+      "origin_ref": "file:///tmp/p/",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "ssh://h:22/a:b"
+     ],
+     "result": {
+      "name": "b",
+      "source_kind": "git",
+      "origin_ref": "ssh://h:22/a:b",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "o/c/n"
+     ],
+     "result": {
+      "name": "n",
+      "source_kind": "catalog",
+      "origin_ref": "o/c/n",
+      "namespace": "o/c"
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "o//n"
+     ],
+     "result": {
+      "name": "o//n",
+      "source_kind": "local",
+      "origin_ref": "o//n",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "/c/n"
+     ],
+     "result": {
+      "name": "/c/n",
+      "source_kind": "local",
+      "origin_ref": "/c/n",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "a/b"
+     ],
+     "result": {
+      "name": "a/b",
+      "source_kind": "local",
+      "origin_ref": "a/b",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "a/b/c/d"
+     ],
+     "result": {
+      "name": "a/b/c/d",
+      "source_kind": "local",
+      "origin_ref": "a/b/c/d",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "n@m"
+     ],
+     "result": {
+      "name": "n",
+      "source_kind": "marketplace",
+      "origin_ref": "n@m",
+      "namespace": "m"
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "@m"
+     ],
+     "result": {
+      "name": "@m",
+      "source_kind": "local",
+      "origin_ref": "@m",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "n@"
+     ],
+     "result": {
+      "name": "n",
+      "source_kind": "marketplace",
+      "origin_ref": "n@",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "a@b@c"
+     ],
+     "result": {
+      "name": "a@b",
+      "source_kind": "marketplace",
+      "origin_ref": "a@b@c",
+      "namespace": "c"
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "  spaced@mk  "
+     ],
+     "result": {
+      "name": "spaced",
+      "source_kind": "marketplace",
+      "origin_ref": "spaced@mk",
+      "namespace": "mk"
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      ""
+     ],
+     "result": {
+      "name": "",
+      "source_kind": "local",
+      "origin_ref": "",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      " x "
+     ],
+     "result": {
+      "name": "x",
+      "source_kind": "local",
+      "origin_ref": "x",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "http://"
+     ],
+     "result": {
+      "name": "",
+      "source_kind": "git",
+      "origin_ref": "http://",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "git@x"
+     ],
+     "result": {
+      "name": "git@x",
+      "source_kind": "git",
+      "origin_ref": "git@x",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "n@m/x"
+     ],
+     "result": {
+      "name": "n",
+      "source_kind": "marketplace",
+      "origin_ref": "n@m/x",
+      "namespace": "m/x"
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "o/c/n@1"
+     ],
+     "result": {
+      "name": "n@1",
+      "source_kind": "catalog",
+      "origin_ref": "o/c/n@1",
+      "namespace": "o/c"
+     }
+    },
+    {
+     "fn": "parseDependencyRef",
+     "args": [
+      "﻿z"
+     ],
+     "result": {
+      "name": "z",
+      "source_kind": "local",
+      "origin_ref": "z",
+      "namespace": ""
+     }
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "p",
+       "version": "1.0.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "name": "p",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:25.000Z",
+      "updated_at": "2026-01-01T00:00:25.000Z"
+     }
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "host"
+      }
+     ],
+     "result": {
+      "id": "01KDVDP3CG87AQEBX5F82508HT",
+      "name": "host",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:26.000Z",
+      "updated_at": "2026-01-01T00:00:26.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "dep@mk"
+     ],
+     "result": {
+      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "type": "plugin",
+      "name": "dep",
+      "description": "Dependency: dep@mk",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "dep@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:27.000Z",
+      "updated_at": "2026-01-01T00:00:27.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "dep@mk"
+     ],
+     "result": {
+      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "type": "plugin",
+      "name": "dep",
+      "description": "Dependency: dep@mk",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "dep@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:27.000Z",
+      "updated_at": "2026-01-01T00:00:27.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "dep@mk",
+      {
+       "versionConstraint": "^1.0.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDP6A8WRHKV7SYKPH9FF62",
+      "type": "plugin",
+      "name": "dep",
+      "description": "Dependency: dep@mk",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "version_constraint": "^1.0.0",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk#^1.0.0",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "dep@mk",
+      "content_hash": "sha256:7838f121f0b4bb08dc03c1492d6d06a7626db04100725d454ae9c69bae6e4b8e",
+      "content_blob_ref": "blobs/sha256/78/7838f121f0b4bb08dc03c1492d6d06a7626db04100725d454ae9c69bae6e4b8e",
+      "created_at": "2026-01-01T00:00:29.000Z",
+      "updated_at": "2026-01-01T00:00:29.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "./local/thing",
+      {
+       "versionConstraint": "2",
+       "portable": "embed"
+      }
+     ],
+     "result": {
+      "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+      "type": "plugin",
+      "name": "thing",
+      "description": "Dependency: ./local/thing",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "local",
+       "version_constraint": "2",
+       "sync_status": "never_synced",
+       "portable": "embed"
+      },
+      "source": "composition:plugin",
+      "namespace": "2",
+      "origin_kind": "manual",
+      "origin_ref": "./local/thing",
+      "content_hash": "sha256:62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+      "content_blob_ref": "blobs/sha256/62/62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+      "created_at": "2026-01-01T00:00:30.000Z",
+      "updated_at": "2026-01-01T00:00:30.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "org/cat/cp",
+      {
+       "versionConstraint": ""
+      }
+     ],
+     "result": {
+      "id": "01KDVDP88RJQBY3CJY9DVYFK5V",
+      "type": "plugin",
+      "name": "cp",
+      "description": "Dependency: org/cat/cp",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "catalog",
+       "marketplace_name": "org/cat",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "org/cat",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "org/cat/cp",
+      "content_hash": "sha256:34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "content_blob_ref": "blobs/sha256/34/34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "created_at": "2026-01-01T00:00:31.000Z",
+      "updated_at": "2026-01-01T00:00:31.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "https://github.com/o/gitdep.git"
+     ],
+     "result": {
+      "id": "01KDVDP9806GX8BW3RWXK479PH",
+      "type": "plugin",
+      "name": "gitdep",
+      "description": "Dependency: https://github.com/o/gitdep.git",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "git",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "https://github.com/o/gitdep.git",
+      "content_hash": "sha256:399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+      "content_blob_ref": "blobs/sha256/39/399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+      "created_at": "2026-01-01T00:00:32.000Z",
+      "updated_at": "2026-01-01T00:00:32.000Z"
+     }
+    },
+    {
+     "fn": "ensureDependencyResource",
+     "args": [
+      "  padded@mk  "
+     ],
+     "result": {
+      "id": "01KDVDPA78DD2AE2ZFY0NKPQJZ",
+      "type": "plugin",
+      "name": "padded",
+      "description": "Dependency:   padded@mk  ",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "padded@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:33.000Z",
+      "updated_at": "2026-01-01T00:00:33.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "dep@mk"
+     ],
+     "result": {
+      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "type": "plugin",
+      "name": "dep",
+      "description": "Dependency: dep@mk",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "dep@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:27.000Z",
+      "updated_at": "2026-01-01T00:00:27.000Z"
+     }
+    },
+    {
+     "fn": "getPluginById",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "name": "p",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": true,
+      "created_at": "2026-01-01T00:00:25.000Z",
+      "updated_at": "2026-01-01T00:00:34.000Z"
+     }
+    },
+    {
+     "fn": "markPluginClean",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "org/cat/cp",
+      {
+       "versionConstraint": "~1.2",
+       "embedOnExport": true,
+       "markDirty": false
+      }
+     ],
+     "result": {
+      "id": "01KDVDPE48E4FV0DE4KE3NAMDR",
+      "type": "plugin",
+      "name": "cp",
+      "description": "Dependency: org/cat/cp",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "catalog",
+       "marketplace_name": "org/cat",
+       "version_constraint": "~1.2",
+       "sync_status": "never_synced",
+       "portable": "embed"
+      },
+      "source": "composition:plugin",
+      "namespace": "org/cat#~1.2",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "org/cat/cp",
+      "content_hash": "sha256:48ff72e50866c997818f7adfb65e81643f2bde29e95ce9b4281bcc70c0e92b2b",
+      "content_blob_ref": "blobs/sha256/48/48ff72e50866c997818f7adfb65e81643f2bde29e95ce9b4281bcc70c0e92b2b",
+      "created_at": "2026-01-01T00:00:37.000Z",
+      "updated_at": "2026-01-01T00:00:37.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "./local/thing",
+      {
+       "versionConstraint": "2"
+      }
+     ],
+     "result": {
+      "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+      "type": "plugin",
+      "name": "thing",
+      "description": "Dependency: ./local/thing",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "local",
+       "version_constraint": "2",
+       "sync_status": "never_synced",
+       "portable": "embed"
+      },
+      "source": "composition:plugin",
+      "namespace": "2",
+      "origin_kind": "manual",
+      "origin_ref": "./local/thing",
+      "content_hash": "sha256:62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+      "content_blob_ref": "blobs/sha256/62/62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+      "created_at": "2026-01-01T00:00:30.000Z",
+      "updated_at": "2026-01-01T00:00:30.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "plain"
+     ],
+     "result": {
+      "id": "01KDVDPG2RDBFW84HZK9476RHY",
+      "type": "plugin",
+      "name": "plain",
+      "description": "Dependency: plain",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "local",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "plain",
+      "content_hash": "sha256:f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "created_at": "2026-01-01T00:00:39.000Z",
+      "updated_at": "2026-01-01T00:00:39.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "host@mk"
+     ],
+     "result": {
+      "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: host@mk",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "host@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:40.000Z",
+      "updated_at": "2026-01-01T00:00:40.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "https://github.com/o/gitdep.git",
+      {
+       "embedOnExport": false
+      }
+     ],
+     "result": {
+      "id": "01KDVDP9806GX8BW3RWXK479PH",
+      "type": "plugin",
+      "name": "gitdep",
+      "description": "Dependency: https://github.com/o/gitdep.git",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "git",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "https://github.com/o/gitdep.git",
+      "content_hash": "sha256:399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+      "content_blob_ref": "blobs/sha256/39/399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+      "created_at": "2026-01-01T00:00:32.000Z",
+      "updated_at": "2026-01-01T00:00:32.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      "missing",
+      "zz"
+     ],
+     "error": "Plugin not found: missing"
+    },
+    {
+     "fn": "listDependencies",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "name": "dep",
+       "source_kind": "marketplace",
+       "ref": "dep@mk",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+        "type": "plugin",
+        "name": "dep",
+        "description": "Dependency: dep@mk",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "marketplace",
+         "marketplace_name": "mk",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "mk",
+        "origin_kind": "marketplace_link",
+        "origin_ref": "dep@mk",
+        "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+        "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+        "created_at": "2026-01-01T00:00:27.000Z",
+        "updated_at": "2026-01-01T00:00:27.000Z",
+        "order": 0,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "cp",
+       "source_kind": "catalog",
+       "ref": "org/cat/cp",
+       "version_constraint": "~1.2",
+       "embed_on_export": true,
+       "resource": {
+        "id": "01KDVDPE48E4FV0DE4KE3NAMDR",
+        "type": "plugin",
+        "name": "cp",
+        "description": "Dependency: org/cat/cp",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "catalog",
+         "marketplace_name": "org/cat",
+         "version_constraint": "~1.2",
+         "sync_status": "never_synced",
+         "portable": "embed"
+        },
+        "source": "composition:plugin",
+        "namespace": "org/cat#~1.2",
+        "origin_kind": "marketplace_link",
+        "origin_ref": "org/cat/cp",
+        "content_hash": "sha256:48ff72e50866c997818f7adfb65e81643f2bde29e95ce9b4281bcc70c0e92b2b",
+        "content_blob_ref": "blobs/sha256/48/48ff72e50866c997818f7adfb65e81643f2bde29e95ce9b4281bcc70c0e92b2b",
+        "created_at": "2026-01-01T00:00:37.000Z",
+        "updated_at": "2026-01-01T00:00:37.000Z",
+        "order": 1,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "thing",
+       "source_kind": "local",
+       "ref": "./local/thing",
+       "version_constraint": "2",
+       "embed_on_export": true,
+       "resource": {
+        "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+        "type": "plugin",
+        "name": "thing",
+        "description": "Dependency: ./local/thing",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "local",
+         "version_constraint": "2",
+         "sync_status": "never_synced",
+         "portable": "embed"
+        },
+        "source": "composition:plugin",
+        "namespace": "2",
+        "origin_kind": "manual",
+        "origin_ref": "./local/thing",
+        "content_hash": "sha256:62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+        "content_blob_ref": "blobs/sha256/62/62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+        "created_at": "2026-01-01T00:00:30.000Z",
+        "updated_at": "2026-01-01T00:00:30.000Z",
+        "order": 2,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "plain",
+       "source_kind": "local",
+       "ref": "plain",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDPG2RDBFW84HZK9476RHY",
+        "type": "plugin",
+        "name": "plain",
+        "description": "Dependency: plain",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "local",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "plain",
+        "content_hash": "sha256:f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+        "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+        "created_at": "2026-01-01T00:00:39.000Z",
+        "updated_at": "2026-01-01T00:00:39.000Z",
+        "order": 3,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "host",
+       "source_kind": "marketplace",
+       "ref": "host@mk",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+        "type": "plugin",
+        "name": "host",
+        "description": "Dependency: host@mk",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "marketplace",
+         "marketplace_name": "mk",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "mk",
+        "origin_kind": "marketplace_link",
+        "origin_ref": "host@mk",
+        "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+        "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+        "created_at": "2026-01-01T00:00:40.000Z",
+        "updated_at": "2026-01-01T00:00:40.000Z",
+        "order": 4,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "gitdep",
+       "source_kind": "git",
+       "ref": "https://github.com/o/gitdep.git",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDP9806GX8BW3RWXK479PH",
+        "type": "plugin",
+        "name": "gitdep",
+        "description": "Dependency: https://github.com/o/gitdep.git",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "git",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "",
+        "origin_kind": "marketplace_link",
+        "origin_ref": "https://github.com/o/gitdep.git",
+        "content_hash": "sha256:399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+        "content_blob_ref": "blobs/sha256/39/399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+        "created_at": "2026-01-01T00:00:32.000Z",
+        "updated_at": "2026-01-01T00:00:32.000Z",
+        "order": 5,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listDependencies",
+     "args": [
+      {
+       "$ref": [
+        26,
+        "id"
+       ]
+      }
+     ],
+     "result": []
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        26,
+        "id"
+       ]
+      },
+      "host@mk"
+     ],
+     "result": {
+      "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: host@mk",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "marketplace",
+       "marketplace_name": "mk",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "host@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:40.000Z",
+      "updated_at": "2026-01-01T00:00:40.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        26,
+        "id"
+       ]
+      },
+      "org/cat/host"
+     ],
+     "result": {
+      "id": "01KDVDPPXG1Y8MCKZ5J44M3BJ6",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: org/cat/host",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "catalog",
+       "marketplace_name": "org/cat",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "org/cat",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "org/cat/host",
+      "content_hash": "sha256:34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "content_blob_ref": "blobs/sha256/34/34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "created_at": "2026-01-01T00:00:46.000Z",
+      "updated_at": "2026-01-01T00:00:46.000Z"
+     }
+    },
+    {
+     "fn": "addDependency",
+     "args": [
+      {
+       "$ref": [
+        26,
+        "id"
+       ]
+      },
+      "../host"
+     ],
+     "result": {
+      "id": "01KDVDPQWRTFD0PTF68SN2ZPWB",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: ../host",
+      "content": "{}",
+      "metadata": {
+       "source_kind": "local",
+       "sync_status": "never_synced",
+       "portable": "reference"
+      },
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "../host",
+      "content_hash": "sha256:f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "created_at": "2026-01-01T00:00:47.000Z",
+      "updated_at": "2026-01-01T00:00:47.000Z"
+     }
+    },
+    {
+     "fn": "listDependencies",
+     "args": [
+      {
+       "$ref": [
+        26,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "name": "host",
+       "source_kind": "catalog",
+       "ref": "org/cat/host",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDPPXG1Y8MCKZ5J44M3BJ6",
+        "type": "plugin",
+        "name": "host",
+        "description": "Dependency: org/cat/host",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "catalog",
+         "marketplace_name": "org/cat",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "org/cat",
+        "origin_kind": "marketplace_link",
+        "origin_ref": "org/cat/host",
+        "content_hash": "sha256:34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+        "content_blob_ref": "blobs/sha256/34/34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+        "created_at": "2026-01-01T00:00:46.000Z",
+        "updated_at": "2026-01-01T00:00:46.000Z",
+        "order": 1,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listDependencies",
+     "args": [
+      "missing"
+     ],
+     "result": []
+    },
+    {
+     "fn": "dependenciesFromResources",
+     "args": [
+      [
+       {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "a",
+        "type": "skill",
+        "name": "s",
+        "metadata": {}
+       },
+       {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "b",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {},
+        "order": 3,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "o",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "c",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {
+         "source_kind": "git",
+         "version_constraint": "1",
+         "portable": "embed"
+        }
+       },
+       {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "d",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {
+         "source_kind": null,
+         "version_constraint": null,
+         "portable": "reference"
+        }
+       },
+       {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "e",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {
+         "source_kind": 3,
+         "version_constraint": false
+        }
+       }
+      ]
+     ],
+     "result": [
+      {
+       "name": "n",
+       "source_kind": "local",
+       "ref": "n",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "b",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {},
+        "order": 3,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "n",
+       "source_kind": "git",
+       "ref": "o",
+       "version_constraint": "1",
+       "embed_on_export": true,
+       "resource": {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "o",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "c",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {
+         "source_kind": "git",
+         "version_constraint": "1",
+         "portable": "embed"
+        }
+       }
+      },
+      {
+       "name": "n",
+       "source_kind": "local",
+       "ref": "n",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "d",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {
+         "source_kind": null,
+         "version_constraint": null,
+         "portable": "reference"
+        }
+       }
+      },
+      {
+       "name": "n",
+       "source_kind": 3,
+       "ref": "n",
+       "version_constraint": false,
+       "embed_on_export": false,
+       "resource": {
+        "description": "",
+        "content": "",
+        "source": "",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "id": "e",
+        "type": "plugin",
+        "name": "n",
+        "metadata": {
+         "source_kind": 3,
+         "version_constraint": false
+        }
+       }
+      }
+     ]
+    },
+    {
+     "fn": "removeDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "nope"
+     ],
+     "result": false
+    },
+    {
+     "fn": "getPluginById",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "name": "p",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": true,
+      "created_at": "2026-01-01T00:00:25.000Z",
+      "updated_at": "2026-01-01T00:00:38.000Z"
+     }
+    },
+    {
+     "fn": "removeDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "cp"
+     ],
+     "result": true
+    },
+    {
+     "fn": "removeDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "./local/thing"
+     ],
+     "result": true
+    },
+    {
+     "fn": "removeDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "https://github.com/o/gitdep.git"
+     ],
+     "result": true
+    },
+    {
+     "fn": "removeDependency",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      },
+      "dep@other"
+     ],
+     "result": true
+    },
+    {
+     "fn": "removeDependency",
+     "args": [
+      {
+       "$ref": [
+        26,
+        "id"
+       ]
+      },
+      "host@mk"
+     ],
+     "result": true
+    },
+    {
+     "fn": "listDependencies",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "name": "plain",
+       "source_kind": "local",
+       "ref": "plain",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDPG2RDBFW84HZK9476RHY",
+        "type": "plugin",
+        "name": "plain",
+        "description": "Dependency: plain",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "local",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "plain",
+        "content_hash": "sha256:f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+        "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+        "created_at": "2026-01-01T00:00:39.000Z",
+        "updated_at": "2026-01-01T00:00:39.000Z",
+        "order": 3,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      },
+      {
+       "name": "host",
+       "source_kind": "marketplace",
+       "ref": "host@mk",
+       "version_constraint": "",
+       "embed_on_export": false,
+       "resource": {
+        "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+        "type": "plugin",
+        "name": "host",
+        "description": "Dependency: host@mk",
+        "content": "{}",
+        "metadata": {
+         "source_kind": "marketplace",
+         "marketplace_name": "mk",
+         "sync_status": "never_synced",
+         "portable": "reference"
+        },
+        "source": "composition:plugin",
+        "namespace": "mk",
+        "origin_kind": "marketplace_link",
+        "origin_ref": "host@mk",
+        "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+        "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+        "created_at": "2026-01-01T00:00:40.000Z",
+        "updated_at": "2026-01-01T00:00:40.000Z",
+        "order": 4,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "fn": "getPluginById",
+     "args": [
+      {
+       "$ref": [
+        25,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "name": "p",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": true,
+      "created_at": "2026-01-01T00:00:25.000Z",
+      "updated_at": "2026-01-01T00:00:38.000Z"
+     }
+    }
+   ],
+   "dump": {
+    "environments": [
+     {
+      "id": "env1",
+      "name": "one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e1",
+      "name": "e-one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e2",
+      "name": "e-two",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    ],
+    "plugin_resources": [
+     {
+      "plugin_id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "resource_id": "01KDVDPG2RDBFW84HZK9476RHY",
+      "order": 3,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "resource_id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "order": 4,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDP3CG87AQEBX5F82508HT",
+      "resource_id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "order": 0,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDP3CG87AQEBX5F82508HT",
+      "resource_id": "01KDVDPQWRTFD0PTF68SN2ZPWB",
+      "order": 2,
+      "harness_scope": "all"
+     }
+    ],
+    "plugin_working_snapshots": [
+     {
+      "plugin_id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "source_version": "1.0.0",
+      "payload": "{\"resource_ids\":[\"01KDVDP4BRP2DDH4KSJZ5FYJAC\",\"01KDVDPE48E4FV0DE4KE3NAMDR\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"latest\"},{\"name\":\"cp\",\"version\":\"~1.2\"}],\"excludes\":[]}",
+      "created_at": "2026-01-01T00:00:38.000Z"
+     },
+     {
+      "plugin_id": "01KDVDP3CG87AQEBX5F82508HT",
+      "source_version": "1.0.0",
+      "payload": "{\"resource_ids\":[],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[],\"excludes\":[]}",
+      "created_at": "2026-01-01T00:00:45.000Z"
+     }
+    ],
+    "plugins": [
+     {
+      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "name": "p",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:25.000Z",
+      "updated_at": "2026-01-01T00:00:38.000Z",
+      "dirty": 1,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDP3CG87AQEBX5F82508HT",
+      "name": "host",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:26.000Z",
+      "updated_at": "2026-01-01T00:00:45.000Z",
+      "dirty": 1,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     }
+    ],
+    "resources": [
+     {
+      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "type": "plugin",
+      "name": "dep",
+      "description": "Dependency: dep@mk",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"marketplace\",\"marketplace_name\":\"mk\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "dep@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:27.000Z",
+      "updated_at": "2026-01-01T00:00:27.000Z"
+     },
+     {
+      "id": "01KDVDP6A8WRHKV7SYKPH9FF62",
+      "type": "plugin",
+      "name": "dep",
+      "description": "Dependency: dep@mk",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"marketplace\",\"marketplace_name\":\"mk\",\"version_constraint\":\"^1.0.0\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "mk#^1.0.0",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "dep@mk",
+      "content_hash": "sha256:7838f121f0b4bb08dc03c1492d6d06a7626db04100725d454ae9c69bae6e4b8e",
+      "content_blob_ref": "blobs/sha256/78/7838f121f0b4bb08dc03c1492d6d06a7626db04100725d454ae9c69bae6e4b8e",
+      "created_at": "2026-01-01T00:00:29.000Z",
+      "updated_at": "2026-01-01T00:00:29.000Z"
+     },
+     {
+      "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+      "type": "plugin",
+      "name": "thing",
+      "description": "Dependency: ./local/thing",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"local\",\"version_constraint\":\"2\",\"sync_status\":\"never_synced\",\"portable\":\"embed\"}",
+      "source": "composition:plugin",
+      "namespace": "2",
+      "origin_kind": "manual",
+      "origin_ref": "./local/thing",
+      "content_hash": "sha256:62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+      "content_blob_ref": "blobs/sha256/62/62ac14abfeef1693d53c5de39002b506c1f3130c3b25551477fe1e1b03d5ffe6",
+      "created_at": "2026-01-01T00:00:30.000Z",
+      "updated_at": "2026-01-01T00:00:30.000Z"
+     },
+     {
+      "id": "01KDVDP88RJQBY3CJY9DVYFK5V",
+      "type": "plugin",
+      "name": "cp",
+      "description": "Dependency: org/cat/cp",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"catalog\",\"marketplace_name\":\"org/cat\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "org/cat",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "org/cat/cp",
+      "content_hash": "sha256:34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "content_blob_ref": "blobs/sha256/34/34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "created_at": "2026-01-01T00:00:31.000Z",
+      "updated_at": "2026-01-01T00:00:31.000Z"
+     },
+     {
+      "id": "01KDVDP9806GX8BW3RWXK479PH",
+      "type": "plugin",
+      "name": "gitdep",
+      "description": "Dependency: https://github.com/o/gitdep.git",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"git\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "https://github.com/o/gitdep.git",
+      "content_hash": "sha256:399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+      "content_blob_ref": "blobs/sha256/39/399645b1497d295499a78e6d2f6e4647a8ca09310dbb80517496b4e0e1aa5b2b",
+      "created_at": "2026-01-01T00:00:32.000Z",
+      "updated_at": "2026-01-01T00:00:32.000Z"
+     },
+     {
+      "id": "01KDVDPA78DD2AE2ZFY0NKPQJZ",
+      "type": "plugin",
+      "name": "padded",
+      "description": "Dependency:   padded@mk  ",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"marketplace\",\"marketplace_name\":\"mk\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "padded@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:33.000Z",
+      "updated_at": "2026-01-01T00:00:33.000Z"
+     },
+     {
+      "id": "01KDVDPE48E4FV0DE4KE3NAMDR",
+      "type": "plugin",
+      "name": "cp",
+      "description": "Dependency: org/cat/cp",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"catalog\",\"marketplace_name\":\"org/cat\",\"version_constraint\":\"~1.2\",\"sync_status\":\"never_synced\",\"portable\":\"embed\"}",
+      "source": "composition:plugin",
+      "namespace": "org/cat#~1.2",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "org/cat/cp",
+      "content_hash": "sha256:48ff72e50866c997818f7adfb65e81643f2bde29e95ce9b4281bcc70c0e92b2b",
+      "content_blob_ref": "blobs/sha256/48/48ff72e50866c997818f7adfb65e81643f2bde29e95ce9b4281bcc70c0e92b2b",
+      "created_at": "2026-01-01T00:00:37.000Z",
+      "updated_at": "2026-01-01T00:00:37.000Z"
+     },
+     {
+      "id": "01KDVDPG2RDBFW84HZK9476RHY",
+      "type": "plugin",
+      "name": "plain",
+      "description": "Dependency: plain",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"local\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "plain",
+      "content_hash": "sha256:f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "created_at": "2026-01-01T00:00:39.000Z",
+      "updated_at": "2026-01-01T00:00:39.000Z"
+     },
+     {
+      "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: host@mk",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"marketplace\",\"marketplace_name\":\"mk\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "mk",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "host@mk",
+      "content_hash": "sha256:3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "content_blob_ref": "blobs/sha256/3f/3f5952dae6c01eb40885a007c76cc616b5b8e5983f53736d5519dd91bc081d19",
+      "created_at": "2026-01-01T00:00:40.000Z",
+      "updated_at": "2026-01-01T00:00:40.000Z"
+     },
+     {
+      "id": "01KDVDPPXG1Y8MCKZ5J44M3BJ6",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: org/cat/host",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"catalog\",\"marketplace_name\":\"org/cat\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "org/cat",
+      "origin_kind": "marketplace_link",
+      "origin_ref": "org/cat/host",
+      "content_hash": "sha256:34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "content_blob_ref": "blobs/sha256/34/34a6d65847419705a37327573a952bb10bc07c0ef87da62f321ae4c8f394e69d",
+      "created_at": "2026-01-01T00:00:46.000Z",
+      "updated_at": "2026-01-01T00:00:46.000Z"
+     },
+     {
+      "id": "01KDVDPQWRTFD0PTF68SN2ZPWB",
+      "type": "plugin",
+      "name": "host",
+      "description": "Dependency: ../host",
+      "content": "{}",
+      "metadata": "{\"source_kind\":\"local\",\"sync_status\":\"never_synced\",\"portable\":\"reference\"}",
+      "source": "composition:plugin",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "../host",
+      "content_hash": "sha256:f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
+      "created_at": "2026-01-01T00:00:47.000Z",
+      "updated_at": "2026-01-01T00:00:47.000Z"
      }
     ]
    }
@@ -7302,7 +9187,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.0.0",
       "org_slug": "",
@@ -7431,7 +9316,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.0.0",
       "org_slug": "",
@@ -7472,7 +9357,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -7561,7 +9446,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -7570,7 +9455,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNKRGBNA4FWFKH2EBDT8D",
+       "id": "01KDVDNKRGGAKNTP5J1XJANSC9",
        "name": "v",
        "version": "1.0.0",
        "dirty": false,
@@ -7631,7 +9516,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -7713,7 +9598,7 @@
        }
       },
       {
-       "id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+       "id": "01KDVDNEW87FBVRHWP6VK88MTF",
        "type": "plugin",
        "name": "dep",
        "description": "",
@@ -7830,7 +9715,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNKRGBNA4FWFKH2EBDT8D",
+       "id": "01KDVDNKRGGAKNTP5J1XJANSC9",
        "name": "v",
        "version": "1.0.0",
        "org_slug": "",
@@ -7858,7 +9743,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.1.0",
        "org_slug": "",
@@ -7910,7 +9795,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNKRGBNA4FWFKH2EBDT8D",
+       "id": "01KDVDNKRGGAKNTP5J1XJANSC9",
        "name": "v",
        "version": "1.0.0",
        "org_slug": "",
@@ -7938,7 +9823,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.1.0",
        "org_slug": "",
@@ -8017,7 +9902,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.2.0",
       "org_slug": "",
@@ -8064,7 +9949,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.3.0",
       "org_slug": "",
@@ -8105,7 +9990,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPF3G1GK72DHSHBNE549Q",
+      "id": "01KDVDPF3GB0347VFZAD7ZG914",
       "name": "w",
       "version": "1.0.0",
       "org_slug": "",
@@ -8146,7 +10031,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.4.0",
       "org_slug": "",
@@ -8193,7 +10078,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.5.0",
       "org_slug": "",
@@ -8233,7 +10118,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.5.0",
        "dirty": false,
@@ -8242,7 +10127,7 @@
        "updated_at": "2026-01-01T00:00:41.000Z"
       },
       {
-       "id": "01KDVDPJ185SB5PW9SVWPQA5BH",
+       "id": "01KDVDPJ18D1ZESA8S1REV095P",
        "name": "v",
        "version": "1.4.0",
        "dirty": false,
@@ -8251,7 +10136,7 @@
        "updated_at": "2026-01-01T00:00:41.000Z"
       },
       {
-       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "id": "01KDVDPD50K14XNG2J2V937D78",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -8269,7 +10154,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPKZRB7RSZJ1PM97X15Z0",
+      "id": "01KDVDPKZR39SHM40VZTF0HKBH",
       "name": "broken-x",
       "version": "1.0.0",
       "org_slug": "",
@@ -8308,7 +10193,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPKZRB7RSZJ1PM97X15Z0",
+      "id": "01KDVDPKZR39SHM40VZTF0HKBH",
       "name": "broken-x",
       "version": "2.0.0",
       "org_slug": "",
@@ -8490,7 +10375,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.5.0",
       "org_slug": "",
@@ -8544,7 +10429,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.6.0",
       "org_slug": "",
@@ -8584,7 +10469,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.6.0",
        "dirty": false,
@@ -8593,7 +10478,7 @@
        "updated_at": "2026-01-01T00:01:03.000Z"
       },
       {
-       "id": "01KDVDQ7GRWFB4TH2Q9D6423KP",
+       "id": "01KDVDQ7GRCHZX90RVPDACHSVZ",
        "name": "v",
        "version": "1.5.0",
        "dirty": false,
@@ -8602,7 +10487,7 @@
        "updated_at": "2026-01-01T00:01:03.000Z"
       },
       {
-       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "id": "01KDVDPD50K14XNG2J2V937D78",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -8647,7 +10532,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -8687,7 +10572,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.7.0",
        "dirty": false,
@@ -8696,7 +10581,7 @@
        "updated_at": "2026-01-01T00:01:08.000Z"
       },
       {
-       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "id": "01KDVDPD50K14XNG2J2V937D78",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -8727,7 +10612,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -8767,9 +10652,9 @@
      ],
      "result": [
       [
-       "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "01KDVDNA00AS9VQ5EFH321T33N",
        "1.7.0",
-       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW8QR1GJQZ6Q3QZAXVE\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
+       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW87FBVRHWP6VK88MTF\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
       ]
      ]
     },
@@ -8804,7 +10689,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.8.0",
       "org_slug": "",
@@ -8844,7 +10729,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "id": "01KDVDNA00AS9VQ5EFH321T33N",
        "name": "v",
        "version": "1.8.0",
        "dirty": false,
@@ -8853,7 +10738,7 @@
        "updated_at": "2026-01-01T00:01:15.000Z"
       },
       {
-       "id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+       "id": "01KDVDQK7RA06E9GSBP2B55JT1",
        "name": "v",
        "version": "1.7.0",
        "dirty": false,
@@ -8862,7 +10747,7 @@
        "updated_at": "2026-01-01T00:01:15.000Z"
       },
       {
-       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "id": "01KDVDPD50K14XNG2J2V937D78",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -8899,74 +10784,74 @@
     ],
     "plugin_excludes": [
      {
-      "plugin_id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "plugin_id": "01KDVDNA00AS9VQ5EFH321T33N",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "plugin_id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "plugin_id": "01KDVDPD50K14XNG2J2V937D78",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:00:36.000Z"
      },
      {
-      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:01:15.000Z"
      }
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "plugin_id": "01KDVDPD50K14XNG2J2V937D78",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDPD50FGQS30N14Z953ZQC",
-      "resource_id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "plugin_id": "01KDVDPD50K14XNG2J2V937D78",
+      "resource_id": "01KDVDNEW87FBVRHWP6VK88MTF",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPF3G1GK72DHSHBNE549Q",
-      "resource_id": "01KDVDPG2RNGPFR8XH079P15TD",
+      "plugin_id": "01KDVDPF3GB0347VFZAD7ZG914",
+      "resource_id": "01KDVDPG2RA5JAVBQ7PVK4NAYR",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "plugin_id": "01KDVDNA00AS9VQ5EFH321T33N",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNA00EZ2J3M1NTYB85ME3",
-      "resource_id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "plugin_id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "resource_id": "01KDVDNEW87FBVRHWP6VK88MTF",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
       "resource_id": "R2",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
-      "resource_id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
+      "resource_id": "01KDVDNEW87FBVRHWP6VK88MTF",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "id": "01KDVDNA00AS9VQ5EFH321T33N",
       "name": "v",
       "version": "1.8.0",
       "org_slug": "",
@@ -8997,7 +10882,7 @@
       "upstream_plugin_id": "UP"
      },
      {
-      "id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "id": "01KDVDPD50K14XNG2J2V937D78",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -9028,7 +10913,7 @@
       "upstream_plugin_id": "UP"
      },
      {
-      "id": "01KDVDPF3G1GK72DHSHBNE549Q",
+      "id": "01KDVDPF3GB0347VFZAD7ZG914",
       "name": "w",
       "version": "1.0.0",
       "org_slug": "",
@@ -9059,7 +10944,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDPKZRB7RSZJ1PM97X15Z0",
+      "id": "01KDVDPKZR39SHM40VZTF0HKBH",
       "name": "broken-x",
       "version": "2.0.0",
       "org_slug": "",
@@ -9090,7 +10975,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDPNY8XNPKRRYZPYT2HSDT",
+      "id": "01KDVDPNY8BSE9RX3854CRM26W",
       "name": "broken-x",
       "version": "1.0.0",
       "org_slug": "",
@@ -9121,7 +11006,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "id": "01KDVDQK7RA06E9GSBP2B55JT1",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -9186,7 +11071,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "id": "01KDVDNEW87FBVRHWP6VK88MTF",
       "type": "plugin",
       "name": "dep",
       "description": "",
@@ -9202,7 +11087,7 @@
       "updated_at": "2026-01-01T00:00:05.000Z"
      },
      {
-      "id": "01KDVDPG2RNGPFR8XH079P15TD",
+      "id": "01KDVDPG2RA5JAVBQ7PVK4NAYR",
       "type": "plugin",
       "name": "v",
       "description": "",
