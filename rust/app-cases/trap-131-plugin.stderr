@@ -1,1 +1,1 @@
-✗ fetch failed (3 attempts): http://127.0.0.1:9/api/public/plugins?q=h%C3%A9llo+w%C3%B6rld&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud
+✗ Connection refused (3 attempts): http://127.0.0.1:9/api/public/plugins?q=h%C3%A9llo+w%C3%B6rld&limit=100&sort=name&org=harnesstap-cloud&org=harnessdeck-cloud

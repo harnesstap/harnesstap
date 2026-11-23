@@ -84,6 +84,20 @@ describe("fetchWithTimeout", () => {
     expect(Date.now() - started).toBeLessThan(2_000);
   });
 
+  it("reports Node fetch 'bad port' (undici, port 9) as connection refused", async () => {
+    const cause = new Error("bad port");
+    const failure = new TypeError("fetch failed", { cause });
+    const fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(failure);
+    const url = "http://127.0.0.1:9/api/public/plugins";
+    try {
+      await expect(fetchWithTimeout(url, { timeoutMs: 5_000, retries: 0 })).rejects.toThrow(
+        `Connection refused (1 attempts): ${url}`,
+      );
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("does not report a generic fetch failure as a timeout", async () => {
     const fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(new Error("socket hung up"));
     try {
