@@ -641,6 +641,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "settings-rs",
  "ulid",
 ]
 
@@ -852,6 +853,14 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "settings-rs"
+version = "0.1.0"
+dependencies = [
+ "emit-rs",
+ "serde_json",
 ]
 
 [[package]]

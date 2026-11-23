@@ -8,7 +8,9 @@ use db_rs::connection::Db;
 use db_rs::schema::{InitializeSchemaOptions, initialize_schema};
 use models_rs::resource::{Resource, map_resource_row};
 use models_rs::{Clock, Ctx, Ids, Result, iso_from_millis};
+use plugin_model_rs::origin::{self, AuthoredCapability};
 use plugin_model_rs::upstream::{self, PluginUpstream, UpstreamRow};
+use plugin_model_rs::versioning::{self, NameVersion, ResolveComposition};
 use plugin_model_rs::*;
 use rusqlite::Connection;
 use rusqlite::types::Value as Sql;
@@ -120,6 +122,31 @@ impl PluginComposition for Stand {
     }
 }
 
+impl ResolveComposition for Stand {
+    fn resolved_set(&self, ctx: &Ctx, root_selector: &str) -> Result<Vec<NameVersion>> {
+        let root = resolve_plugin_selector(ctx, root_selector)?;
+        let Some(root) = root.filter(|r| !r.name.starts_with("broken")) else {
+            return Err("unresolvable".to_owned());
+        };
+        Ok(Stand::refs(ctx, &root.id)?
+            .into_iter()
+            .map(|r| NameVersion {
+                name: r.dependency_name,
+                version: r.version_constraint,
+            })
+            .collect())
+    }
+}
+
+fn capability(v: &Value) -> AuthoredCapability {
+    match v.as_str().unwrap() {
+        "edit" => AuthoredCapability::Edit,
+        "cut" => AuthoredCapability::Cut,
+        "publish" => AuthoredCapability::Publish,
+        _ => AuthoredCapability::Needs,
+    }
+}
+
 fn resolve(v: &Value, results: &[Value]) -> Value {
     match v {
         Value::Array(items) => Value::Array(items.iter().map(|x| resolve(x, results)).collect()),
@@ -162,7 +189,7 @@ fn opt_str(v: Option<&Value>) -> Option<String> {
     v.and_then(Value::as_str).map(str::to_owned)
 }
 
-fn call(ctx: &Ctx, f: &str, a: &[Value]) -> Result<Value> {
+fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
     let s = |i: usize| a.get(i).and_then(Value::as_str).unwrap_or_default();
     let o = |i: usize, k: &str| a.get(i).and_then(|v| v.get(k)).and_then(Value::as_str);
     let strs = |i: usize| -> Vec<String> {
@@ -348,6 +375,83 @@ fn call(ctx: &Ctx, f: &str, a: &[Value]) -> Result<Value> {
         "isValidAgentSkillName" => json!(name::is_valid_agent_skill_name(s(0))),
         "slugifyAgentSkillName" => json!(name::slugify_agent_skill_name(s(0))),
         "slugifyApName" => json!(name::slugify_ap_name(s(0))),
+        "formatPluginVersionLabel" => json!(versioning::format_plugin_version_label(
+            s(0),
+            a[1].as_bool().unwrap()
+        )),
+        "listPluginVersionHistory" => to_value(versioning::list_plugin_version_history(ctx, s(0))?),
+        "markPluginClean" => {
+            versioning::mark_plugin_clean(ctx, s(0))?;
+            Value::Null
+        }
+        "markPluginDirty" => {
+            versioning::mark_plugin_dirty(ctx, &Stand, s(0))?;
+            Value::Null
+        }
+        "cutPluginVersion" => to_value(versioning::cut_plugin_version(
+            ctx,
+            &Stand,
+            o(0, "pluginId").unwrap(),
+            o(0, "newVersion").unwrap(),
+        )?),
+        "assertPluginsCleanForShare" => {
+            versioning::assert_plugins_clean_for_share(&from::<Vec<Plugin>>(&a[0])?)?;
+            Value::Null
+        }
+        "getFrozenResolvedSet" => versioning::get_frozen_resolved_set(ctx, s(0))?,
+        "formatPluginRollbackConfirmMessage" => {
+            json!(versioning::format_plugin_rollback_confirm_message(
+                o(0, "headVersion").unwrap(),
+                o(0, "frozenVersion").unwrap(),
+                a[0]["dirty"].as_bool().unwrap(),
+            ))
+        }
+        "rollbackPluginVersion" => to_value(versioning::rollback_plugin_version(
+            ctx,
+            &Stand,
+            o(0, "selector").unwrap(),
+            o(0, "toVersion").unwrap(),
+        )?),
+        "getPluginOrigin" => json!(origin::get_plugin_origin(ctx, s(0))?),
+        "setPluginOrigin" => {
+            origin::set_plugin_origin(ctx, s(0), s(1))?;
+            Value::Null
+        }
+        "assertAuthored" => {
+            origin::assert_authored(ctx, s(0), capability(&a[1]))?;
+            Value::Null
+        }
+        "assertSyncable" => {
+            origin::assert_syncable(ctx, s(0))?;
+            Value::Null
+        }
+        "__query" => {
+            let mut stmt = ctx.db.conn.prepare(s(0)).unwrap();
+            let n = stmt.column_count();
+            let rows: Vec<Value> = stmt
+                .query_map([], |row| {
+                    (0..n)
+                        .map(|i| {
+                            Ok(match row.get::<_, Sql>(i)? {
+                                Sql::Null => Value::Null,
+                                Sql::Integer(v) => json!(v),
+                                Sql::Real(v) => json!(v),
+                                Sql::Text(t) => json!(t),
+                                Sql::Blob(_) => json!("<blob>"),
+                            })
+                        })
+                        .collect::<rusqlite::Result<Vec<_>>>()
+                        .map(Value::Array)
+                })
+                .unwrap()
+                .collect::<rusqlite::Result<_>>()
+                .unwrap();
+            Value::Array(rows)
+        }
+        "__writeConfig" => {
+            std::fs::write(std::path::Path::new(home).join("config.json"), s(0)).unwrap();
+            Value::Null
+        }
         "__exec" => {
             ctx.db.exec(s(0))?;
             Value::Null
@@ -463,7 +567,7 @@ fn plugin_model_matches_the_original() {
             clock.0.set(base + i as i64 * 1000);
             let args = resolve(&c["args"], &results);
             let f = c["fn"].as_str().unwrap();
-            match call(&ctx, f, args.as_array().unwrap()) {
+            match call(&ctx, &home, f, args.as_array().unwrap()) {
                 Ok(v) => {
                     actual_calls.push(json!({ "i": i, "fn": f, "result": v }));
                     results.push(v);
@@ -510,5 +614,5 @@ fn plugin_model_matches_the_original() {
         failures.len(),
         failures.join("\n\n")
     );
-    assert!(calls > 1700, "{calls} calls");
+    assert!(calls > 1800, "{calls} calls");
 }

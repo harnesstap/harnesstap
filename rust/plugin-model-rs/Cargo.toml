@@ -13,6 +13,7 @@ harness-scope-rs = { path = "../harness-scope-rs" }
 models-rs = { path = "../models-rs" }
 node-semver-rs = { path = "../node-semver-rs" }
 resolve-rs = { path = "../resolve-rs" }
+settings-rs = { path = "../settings-rs" }
 regex = "1"
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
