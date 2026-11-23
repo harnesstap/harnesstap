@@ -23,5 +23,15 @@
     "scan",
     "status"
   ],
-  "units": []
+  "units": [
+    {
+      "name": "version",
+      "crate": "version-rs",
+      "path": "../version-rs",
+      "commands": [
+        "ht"
+      ],
+      "switch": "RUST_ANYTHING_UNIT_VERSION"
+    }
+  ]
 }
