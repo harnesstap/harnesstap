@@ -102,6 +102,7 @@ const oracle = (id: string) => {
   };
 };
 
+const rewrites: unknown[] = [];
 const scenarios: unknown[] = [];
 const tmpRoot = mkdtempSync(join(tmpdir(), "lockfile-fixtures-"));
 
@@ -183,6 +184,18 @@ for (let s = 0; s < 250; s++) {
     mkdirSync(dir, { recursive: true });
     calls.push({ fn: "writeLockfile", ...run(() => lockfile.writeLockfile(dir, lock)) });
     yaml = readFileSync(lockfile.lockfilePath(dir), "utf8");
+    // #658: an existing file that differs only in its generated_at line is left alone.
+    const y = yaml;
+    const pres = [
+      y.replace(/^generated_at:.*$/m, "generated_at: '1999-01-01T00:00:00.000Z'"), y + "# trailing\n",
+      y.replace(/^generated_at:.*\n/m, ""), y.replace(/^generated_at:.*$/m, "generated_at:"), y.replace(/\n/g, "\r\n"),
+      "generated_at: x\n" + y, y.replace(/^generated_at:.*$/m, "generated_at: a\u2028tail"), y,
+    ];
+    for (const pre of pres) {
+      writeFileSync(lockfile.lockfilePath(dir), pre);
+      const r = run(() => lockfile.writeLockfile(dir, lock));
+      rewrites.push({ s, pre, ...r, after: readFileSync(lockfile.lockfilePath(dir), "utf8") });
+    }
     reread = run(() => lockfile.readLockfile(dir));
     calls.push({ fn: "lockfileMatchesResolution", ...run(() => lockfile.lockfileMatchesResolution(lock, result as never)) });
     calls.push({ fn: "lockIsUsable", ...run(() => lockfile.lockIsUsable(lock, "root")) });
@@ -206,6 +219,7 @@ for (let s = 0; s < 250; s++) {
 }
 
 // readLockfile on hand-written files.
+
 const reads: unknown[] = [];
 const texts = [
   "", "[]\n", "a\n", "lockfile_version: 1\n", "lockfile_version: '1'\n", "lockfile_version: 2\n", "lockfile_version: 3\n",
@@ -270,5 +284,5 @@ const misc = {
   envelopes: ["", "abc", "ünïcode", "a\r\nb"].map((s) => [s, lockfile.sha256Envelope(s)]),
 };
 rmSync(tmpRoot, { recursive: true, force: true });
-writeFileSync(new URL("./fixtures/lockfile.json", import.meta.url), JSON.stringify({ misc, scenarios, reads, diffs }));
+writeFileSync(new URL("./fixtures/lockfile.json", import.meta.url), JSON.stringify({ misc, scenarios, rewrites, reads, diffs }));
 console.log(scenarios.length, "scenarios,", reads.length, "reads,", diffs.length, "diffs");

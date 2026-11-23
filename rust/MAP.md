@@ -130,7 +130,7 @@ Resolve and package-cache, wave 1:
 | `src/services/resolve/version-mediation.ts` | done | `rust/resolve-rs/src/version_mediation.rs`, with `UnsatisfiableConstraintError` (message, reason, actions, hints) and `displayConstraint` from `resolve/types.ts`; `tests/make-fixtures.ts` records 2600 calls under bun, including every error reason and source kind. `SingletonConflictError` and the conflict-side labels wait for `dependency-graph.ts` |
 | `src/services/package-cache/paths.ts` | done | `rust/package-cache-paths-rs`, gate passed, 2466/2466 cases. Carries its own copy of `posix_join`: a rust-anything unit cannot depend on `db-rs`, because `db-rs` links `plugin-semver-rs`, whose `#[napi]` exports (the wire buffer registration among them) replace the unit's own and every call then fails with "the wire buffers are not registered". Units share code through plain crates only |
 | `src/services/resolve/dependency-graph.ts`, `resolve/index.ts` | open | need `plugin-model.ts` |
-| `src/services/lockfile.ts` | done (pre-#658) | `rust/lockfile-rs`, a plain crate on `yaml-rs`, `resolve-rs` and `models-rs`. The plugin model and the two origin helpers (`recoverOriginLocator`, `canonicalApmRepoUrl`) are not ported yet, so they come in through the `PluginLookup` trait; the clock and `PACKAGE_VERSION` are parameters. `resolve-rs` gained the resolution types (`SelectedPlugin`, `ResolutionResult`, ...) and `resolutionKey`/`resourceFingerprint`; `emit-rs` gained JavaScript `String()`, `Number()`, `trim` and truthiness. `tests/make-fixtures.ts` (bun, `spyOn` on `getPluginById` and `getPluginResources`, `setSystemTime`) records 250 resolutions (built lock, written YAML byte for byte, read back, `lockfileMatchesResolution`, `lockIsUsable`, `compareLockToResolution`, `lockedVersionsFrom`, also against a changed resolution), 24 hand-written lockfiles for `readLockfile` (coercions, legacy `dependencies`, bad versions, YAML errors) and 150 `diffDeployedFileHashes`/`verifyDeployedFileHashes` calls against a temporary tree. Kept as in the original: `compareLockToResolution` never reports `removed` (it filters the locked names by `lockedByName.has`); a lock path named like an `Object.prototype` member (`toString`, ...) makes the diff throw a `TypeError`, and `null` metadata on an `env_var` or `mcp_server` resource throws one too; `__proto__` is dropped from the planned hashes but kept when read from a file. Differs: a plugin named like an `Object.prototype` member is not looked up through the prototype in `execStatuses` and `declaredLicenses`; `TypeError` and YAML parse messages are compared by error name only (the engine and saphyr word them differently). Re-record after #658 (below) |
+| `src/services/lockfile.ts` | done (#658 included) | `rust/lockfile-rs`, a plain crate on `yaml-rs`, `resolve-rs` and `models-rs`. The plugin model and the two origin helpers (`recoverOriginLocator`, `canonicalApmRepoUrl`) are not ported yet, so they come in through the `PluginLookup` trait; the clock and `PACKAGE_VERSION` are parameters. `resolve-rs` gained the resolution types (`SelectedPlugin`, `ResolutionResult`, ...) and `resolutionKey`/`resourceFingerprint`; `emit-rs` gained JavaScript `String()`, `Number()`, `trim` and truthiness. `tests/make-fixtures.ts` (bun, `spyOn` on `getPluginById` and `getPluginResources`, `setSystemTime`) records 250 resolutions (built lock, written YAML byte for byte, read back, `lockfileMatchesResolution`, `lockIsUsable`, `compareLockToResolution`, `lockedVersionsFrom`, also against a changed resolution), 24 hand-written lockfiles for `readLockfile` (coercions, legacy `dependencies`, bad versions, YAML errors) 150 `diffDeployedFileHashes`/`verifyDeployedFileHashes` calls against a temporary tree, and (#658) each built lock written over eight existing texts (1952 cases: a file that differs only in its first `generated_at:` line is left alone). Kept as in the original: `compareLockToResolution` never reports `removed` (it filters the locked names by `lockedByName.has`); a lock path named like an `Object.prototype` member (`toString`, ...) makes the diff throw a `TypeError`, and `null` metadata on an `env_var` or `mcp_server` resource throws one too; `__proto__` is dropped from the planned hashes but kept when read from a file. Differs: a plugin named like an `Object.prototype` member is not looked up through the prototype in `execStatuses` and `declaredLicenses`; `TypeError` and YAML parse messages are compared by error name only (the engine and saphyr word them differently) |
 | npm `picomatch` 4.0.4 | done (POSIX) | `rust/picomatch-rs`, a plain crate: `picomatch(pattern, { dot: true })` as `apm-policy.ts` (`matchPolicyPattern`) and `scanner-ignore.ts` call it. `lib/parse.js` (with its fast paths and the repeated-extglob analysis) is ported line by line and builds the same JavaScript regex source, which `src/regex.rs` then runs on `fancy-regex` after rewriting the spots where the syntaxes differ (`.`, `\d`/`\w`/`\s`/`\b`, identity escapes, lone braces, class ranges and set operators, empty groups and classes, stacked quantifiers that JavaScript rejects). `tests/make-fixtures.mjs` records 4000 patterns (about 200 written by hand, the rest random) against 113 inputs: the `makeRe` source must match byte for byte (including `RegExp.prototype.source` escaping and the `/$^/` fallback for an invalid regex) and every answer must match. Two local runs of 60000 patterns each (seeds 7 and 12345) also pass. Why not `globset`: on an earlier 4000-pattern recording it agreed on all inputs for 2321 patterns only; it rejected 1421 that picomatch accepts (extglobs, POSIX classes, unbalanced brackets) and answered differently for 258 more, `*` and `**` included (picomatch lets them match a trailing `/`). Open: the Windows variant (`windows: true` on win32, backslash separators), which the app gets on Windows; other options are unused |
 | `src/services/apm-dependencies.ts` | done | `rust/apm-rs/src/dependencies.rs`, a plain crate module: the `dependencies.apm` and `dependencies.mcp` parsers, runtime and dev collection, `cloneUrlFromOrigin`. `tests/make-fixtures.ts` records 1551 entries and 9 documents; `env` and `headers` keep the JavaScript key order |
 | `src/services/apm-targets.ts` (with `parsePlatformFilter`, `uniqueHarnessTargets`, `assertSupportedHarnessTargets` from `harness-targets.ts`) | done | `rust/apm-rs/src/targets.rs`: target mapping, signal detection on disk (a symlinked directory is not a signal, as with `lstat`), `resolveCompileTargets` and `previewApmTargets`. The recorder builds 400 project trees. Not reproduced: target tokens named like `Object.prototype` members (`constructor`, `toString`), which the original looks up on a plain object; the fixtures leave them out |
@@ -151,26 +151,33 @@ index, which is why the fixture ids sort in creation order like real ULIDs.
 
 PR #658 changes how shared `AGENTS.md` instruction emits are merged, and stops
 rewriting the lockfile when only `generated_at` differs. It merged to `main` on
-2026-11-22 (`3f426447`), after the recordings here were made, so this stack still
-records the earlier behavior. After the stack takes in that `main` (by a merge),
-re-record these and re-check their ports:
+2026-11-22 (`3f426447`). The stack took in that `main` by a merge on 2026-11-22.
+State of each unit it touches:
 
-- `src/services/lockfile.ts` (`rust/lockfile-rs`): #658 makes `writeLockfile` leave the file alone when the
-  existing text equals the new one with every `generated_at:` line blanked; port that check in `write_lockfile`
-- `src/services/shared-emit-paths.ts` and `src/services/applier.ts`
-- `src/agent/parity-handlers/apply.ts` and `src/cli/commands/plugin.ts`
-- the `app-cases/` apply cases that write a shared `AGENTS.md` or the lockfile
+- the `app-cases/`: re-recorded on `main` before W0 merged (`91100372`, in #655), so they
+  already show #658's behavior
+- `src/services/lockfile.ts` (`rust/lockfile-rs`): re-recorded, and `write_lockfile` now leaves
+  the file alone when the existing text equals the new one with its first `generated_at:` line
+  blanked (1952 rewrite cases over existing files)
+- `src/services/shared-emit-paths.ts`, `src/services/applier.ts`,
+  `src/agent/parity-handlers/apply.ts` and `src/cli/commands/plugin.ts`: not ported yet, so
+  nothing to re-record; port them from current `main`
 
-### Re-record after #669 (the "Request timed out" fix)
+### Re-record after #669 and #680 (refused connections)
 
 PR #669 changes the text `fetchWithTimeout` (`src/utils/fetch-with-timeout.ts`)
 prints for refused connections. It merged to `main` on 2026-11-22 at 15:19
-Tahiti time (`8cd5a11b`), after these recordings. After the stack takes in that
-`main` (by a merge), re-record the 94 `app-cases/` that show `Request timed out` (listed in
-`rerecord/timeout-fix.txt`), and re-check the ports of
+Tahiti time (`8cd5a11b`), and the `app-cases/` were re-recorded with it before W0
+merged (`91100372`): none shows `Request timed out` any more
+(`rerecord/timeout-fix.txt` lists the 94 that did). 108 cases now show
+`fetch failed` instead of `Connection refused`, because Node reports the
+sandbox's refused port as a bad port. PR #680 (open) treats that as a refused
+connection. After #680 merges and the stack takes in that `main` (by a merge),
+re-record the `app-cases/` that show `fetch failed`, and re-check the ports of
 `src/utils/fetch-with-timeout.ts` and its callers (`catalog-client`,
 `catalog-list-stream`, `plugin-source`, `plugin-origin-update`,
-`upstream-check`, `mcp-registry`, `cloud-api-version`, `self-update`).
+`upstream-check`, `mcp-registry`, `cloud-api-version`, `self-update`) when they
+are ported.
 
 ### Wave 2: CLI surface
 
@@ -198,9 +205,9 @@ Lift, per-platform npm packages, Homebrew formula and cask, installers
 1. `example-229-migrate` writes `harnesstap-state.tar.gz`, whose bytes change on
    every run (gzip and tar timestamps). The case keeps its stdout and exit code
    but no longer compares the archive. Compare the archive's content instead?
-2. Network calls to a refused port print `Request timed out after 30000ms (3
-   attempts)` within about a second. The port must reproduce that text (ADR-003)
-   unless the original is fixed first.
+2. Network calls to a refused port print `fetch failed` on current `main` (the
+   sandbox's port is a bad port to Node). #680 fixes that in the original; the
+   cases are re-recorded once it merges (see "Re-record after #669 and #680").
 3. Rust CI (build, clippy, replay) is not added: no workflow change without
    approval.
 4. rust-anything 3.3.0 loops forever in `with_local_imports` (`src/gate.rs`) for any
