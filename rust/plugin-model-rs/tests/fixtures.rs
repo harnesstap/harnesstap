@@ -8,6 +8,7 @@ use db_rs::connection::Db;
 use db_rs::schema::{InitializeSchemaOptions, initialize_schema};
 use models_rs::resource::{Resource, map_resource_row};
 use models_rs::{Clock, Ctx, Ids, Result, iso_from_millis};
+use plugin_model_rs::claude_pins::{self, ClaudeHost, FsClaudeHost};
 use plugin_model_rs::cloud_error::{self, CloudApiError, CloudFailure};
 use plugin_model_rs::dependency::{self, AddDependencyOptions};
 use plugin_model_rs::extends;
@@ -99,13 +100,6 @@ impl PluginComposition for Stand {
                 |r| map_resource_row(ctx, r),
             )
             .map_err(|e| e.to_string())
-    }
-    fn claude_config_from_plugin_pins(&self, _ctx: &Ctx, pins: &[PluginPin]) -> Option<Value> {
-        (!pins.is_empty()).then(|| {
-            json!({ "plugins": pins.iter().map(|p| json!({
-                "id": p.reference, "version": p.version_constraint, "enabled": true
-            })).collect::<Vec<_>>() })
-        })
     }
 }
 
@@ -221,7 +215,7 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
     let scope = |i: usize| a.get(i).filter(|v| !v.is_null());
     Ok(match f {
         "isFrozenPlugin" => json!(is_frozen_plugin(&from::<Plugin>(&a[0])?)),
-        "mergePluginsById" => to_value(merge_plugins_by_id(ctx, &Stand, &strs(0))?),
+        "mergePluginsById" => to_value(merge_plugins_by_id(ctx, &strs(0))?),
         "createPlugin" => to_value(create_plugin(ctx, &from(&a[0])?)?),
         "stampPluginOrigin" => {
             stamp_plugin_origin(ctx, s(0), &from(&a[1])?)?;
@@ -350,9 +344,7 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
         "resolveApName" => json!(resolve_ap_name(o(0, "name").unwrap(), o(0, "ap_name"))),
         "updatePluginName" => json!(update_plugin_name(ctx, s(0), s(1))?),
         "updatePluginDescription" => json!(update_plugin_description(ctx, s(0), s(1))?),
-        "createPluginFromSources" => {
-            to_value(create_plugin_from_sources(ctx, &Stand, &from(&a[0])?)?)
-        }
+        "createPluginFromSources" => to_value(create_plugin_from_sources(ctx, &from(&a[0])?)?),
         "resolvePluginSelector" => to_value(resolve_plugin_selector(ctx, s(0))?),
         "listPluginVersions" => to_value(list_plugin_versions(ctx, s(0))?),
         "upstreamFromRow" => {
@@ -542,6 +534,64 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
                 .unwrap();
             Value::Array(rows)
         }
+        "resolveClaudeInstallRefCandidates" => json!(
+            claude_pins::resolve_claude_install_ref_candidates(&FsClaudeHost, s(0), home)?
+        ),
+        "resolveCatalogPluginMarketplaceBootstrap" => Value::Array(
+            claude_pins::resolve_catalog_plugin_marketplace_bootstrap(s(0))
+                .into_iter()
+                .map(|(name, repo)| json!({ "name": name, "repo": repo }))
+                .collect(),
+        ),
+        "resolveClaudeEnabledPluginRef" => json!(claude_pins::resolve_claude_enabled_plugin_ref(
+            &FsClaudeHost,
+            s(0),
+            home
+        )?),
+        "findInstalledRefForCatalogPin" => to_value(
+            claude_pins::find_installed_ref_for_catalog_pin(&FsClaudeHost, s(0), home, a.get(1))?,
+        ),
+        "claudeConfigFromPluginPins" => to_value(claude_pins::claude_config_from_plugin_pins(
+            &FsClaudeHost,
+            &from::<Vec<PluginPin>>(&a[0])?,
+            home,
+        )?),
+        "listInstalledRefScopes" => Value::Array(
+            FsClaudeHost
+                .installed_ref_scopes(home)?
+                .into_iter()
+                .map(|(r, scope)| match scope {
+                    Some(scope) => json!({ "ref": r, "scope": scope }),
+                    None => json!({ "ref": r }),
+                })
+                .collect(),
+        ),
+        "listConfiguredMarketplaceNames" => json!(FsClaudeHost.configured_marketplace_names(home)?),
+        "marketplaceHasPlugin" => json!(
+            FsClaudeHost
+                .marketplace_plugin_names(home, s(0))
+                .is_some_and(|n| n.contains(s(1)))
+        ),
+        "__throws" => json!(call(ctx, home, s(0), &a[1..]).is_err()),
+        "__writeFile" => {
+            let path = std::path::Path::new(home).join(s(0));
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, s(1)).unwrap();
+            Value::Null
+        }
+        "__mkdir" => {
+            std::fs::create_dir_all(std::path::Path::new(home).join(s(0))).unwrap();
+            Value::Null
+        }
+        "__rm" => {
+            let path = std::path::Path::new(home).join(s(0));
+            if path.is_dir() {
+                std::fs::remove_dir_all(path).unwrap();
+            } else if path.exists() {
+                std::fs::remove_file(path).unwrap();
+            }
+            Value::Null
+        }
         "__writeConfig" => {
             std::fs::write(std::path::Path::new(home).join("config.json"), s(0)).unwrap();
             Value::Null
@@ -638,7 +688,7 @@ fn plugin_model_matches_the_original() {
         let home = home_dir.to_string_lossy().into_owned();
         let env = {
             let home = home.clone();
-            move |k: &str| (k == "HARNESSTAP_HOME").then(|| home.clone())
+            move |k: &str| matches!(k, "HARNESSTAP_HOME" | "HOME").then(|| home.clone())
         };
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys = ON").unwrap();
