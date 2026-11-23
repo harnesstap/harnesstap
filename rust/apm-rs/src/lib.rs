@@ -10,5 +10,6 @@ pub mod manifest;
 pub mod mcp_manifest;
 pub mod overlay;
 pub mod policy;
+pub mod project_config;
 pub mod skill_auxiliary;
 pub mod targets;
