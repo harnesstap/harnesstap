@@ -13,8 +13,17 @@ use serde_json::{Map, Value, json};
 struct Fixtures {
     misc: Misc,
     scenarios: Vec<Scenario>,
+    rewrites: Vec<Rewrite>,
     reads: Vec<Read>,
     diffs: Vec<Diff>,
+}
+
+/// `writeLockfile` over an existing file (#658: only `generated_at` differing keeps the file).
+#[derive(Deserialize)]
+struct Rewrite {
+    s: usize,
+    pre: String,
+    after: String,
 }
 
 #[derive(Deserialize)]
@@ -268,7 +277,7 @@ fn envelopes() {
 fn scenarios_build_write_read_and_compare() {
     let f = load();
     let version = &f.misc.package_version;
-    let (mut built, mut failed) = (0, 0);
+    let (mut built, mut failed, mut rewrites) = (0, 0, 0);
     for (i, s) in f.scenarios.iter().enumerate() {
         let ctx = format!("scenario {i}");
         let lookup = Lookup(s);
@@ -293,6 +302,18 @@ fn scenarios_build_write_read_and_compare() {
             *s.yaml.as_ref().unwrap(),
             "{ctx}: yaml"
         );
+        for r in f.rewrites.iter().filter(|r| r.s == i) {
+            std::fs::write(lockfile_path(root), &r.pre).unwrap();
+            write_lockfile(root, &lock, version).unwrap();
+            assert_eq!(
+                std::fs::read_to_string(lockfile_path(root)).unwrap(),
+                r.after,
+                "{ctx}: rewrite over {:?}",
+                r.pre
+            );
+            rewrites += 1;
+        }
+        std::fs::write(lockfile_path(root), s.yaml.as_ref().unwrap()).unwrap();
         let reread = read_lockfile(root).unwrap().unwrap();
         assert_lock(
             &reread,
@@ -325,6 +346,7 @@ fn scenarios_build_write_read_and_compare() {
         }
     }
     assert!(built > 100 && failed > 0, "built {built}, failed {failed}");
+    assert_eq!(rewrites, f.rewrites.len());
 }
 
 #[test]
