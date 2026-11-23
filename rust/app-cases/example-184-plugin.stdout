@@ -1,4 +1,4 @@
-⚠ harnesstap-cloud: Catalog request timed out (30s). Try again, or list local plugins without --remote.
+⚠ harnesstap-cloud: fetch failed (3 attempts): http://127.0.0.1:9/api/public/plugins?q=fullstack&limit=25&org=harnesstap-cloud&org=harnessdeck-cloud
 No remote results.
 
 0 remote plugins across 1 source
