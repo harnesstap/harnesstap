@@ -45,6 +45,21 @@ pub fn posix_normalize(path: &str) -> String {
     if absolute { format!("/{out}") } else { out }
 }
 
+/// Node's `path.posix.resolve(path)` against `cwd`.
+pub fn posix_resolve(cwd: &str, path: &str) -> String {
+    let joined = if path.starts_with('/') {
+        path.to_owned()
+    } else {
+        format!("{cwd}/{path}")
+    };
+    let normalized = posix_normalize(&joined);
+    if normalized.len() > 1 {
+        normalized.trim_end_matches('/').to_owned()
+    } else {
+        normalized
+    }
+}
+
 /// The variables the original reads. `None` is an unset variable.
 pub trait Env {
     fn var(&self, name: &str) -> Option<String>;

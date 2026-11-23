@@ -50,6 +50,36 @@ pub fn open(env: &dyn Env) -> Result<Db, String> {
     })
 }
 
+impl Db {
+    /// Wrap a connection that is already open (tests use an in-memory one).
+    pub fn from_connection(conn: Connection, path: impl Into<String>) -> Db {
+        Db {
+            conn,
+            path: path.into(),
+            generation: WriteGeneration::default(),
+        }
+    }
+
+    /// A tracked `prepare(sql).run(...)`: bumps the status write generation
+    /// when a status-relevant statement changes rows.
+    pub fn run<P: rusqlite::Params>(&self, sql: &str, params: P) -> Result<usize, String> {
+        let changes = self
+            .conn
+            .prepare_cached(sql)
+            .and_then(|mut stmt| stmt.execute(params))
+            .map_err(|e| e.to_string())?;
+        self.generation.after_run(sql, changes);
+        Ok(changes)
+    }
+
+    /// A tracked `exec(sql)`.
+    pub fn exec(&self, sql: &str) -> Result<(), String> {
+        self.conn.execute_batch(sql).map_err(|e| e.to_string())?;
+        self.generation.after_exec(sql);
+        Ok(())
+    }
+}
+
 /// `readDbDataVersion`: moves when another connection commits; -1 on error.
 pub fn data_version(db: &Db) -> i64 {
     db.conn

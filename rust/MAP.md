@@ -76,20 +76,12 @@ States: `open`, `claimed by <session> <date>`, `done`.
 | YAML emitter | done | `rust/emit-rs` (`emit_rs::yaml::stringify`): the `yaml` 2.8 `stringify` call with `{ indent: 2, lineWidth: 0, defaultKeyType: "PLAIN" }` that every YAML writer in `src/` uses (the original rebuilds the document rather than editing it in place, so there is no layout to keep beyond that). 3485 fixture cases recorded from the original by `emit-rs/tests/make-fixtures.mjs`, including every YAML file in `app-cases/`. Parsing (saphyr) comes with its first caller |
 | JSON emitter | done | `rust/emit-rs` (`emit_rs::json::stringify`): `JSON.stringify(value, null, gap)` with JavaScript key order and number printing (`ryu-js`). 3975 fixture cases, including every JSON file in `app-cases/` |
 | `src/services/plugin-semver.ts` | done | `rust/plugin-semver-rs`, gate passed, 1019/1019 cases (needed by the v35 migration) |
-| `src/models/` | open | stopped here, see below |
+| `src/models/` | moved to wave 1 | see below |
 | `src/db/` | done | `rust/db-rs` (rusqlite, bundled SQLite): paths, `getDb` pragmas and completion mode, `initializeSchema` with every migration v22 to v44, status write tracking. A plain crate: functions that take a database handle cannot go through `record`, so `db-rs/tests/make-fixtures.ts` runs the original under bun on 23 schema scenarios (fresh, the legacy layouts from `test/db/*.test.ts`, seeded v25, v31 and v34 databases, the three error paths, partial downgrades) and the Rust tests compare every table, column, row and error. The SQL is copied by `db-rs/tests/extract-sql.py`. `native-module.ts` has no counterpart (SQLite is linked in) |
 
-Why `src/models/` stopped (rabbit hole rule): 126 files in `src/services/` import a model,
-and `plugin-model.ts` (1203 lines) imports nine services, several of which import models
-back, so most models only move together with wave 1 and 2 services. They are CRUD over the
-`getDb()` singleton with `ulid()` ids and `new Date()` timestamps, so each needs a db fixture
-harness like `db-rs` plus a pinned clock and id source rather than `record`. The leaves that
-import only `db/connection` and types are ready to port next on top of `db-rs`:
-`snapshot.ts` (76 lines), `preexisting-path.ts` (93), `package-cache-entry.ts` (111),
-`project.ts` (152), `apply-removal-backup.ts` (175), `plugin-pin-materialization.ts` (183).
-`project.ts` also needs `ulid` (see `research/ulid.md`).
+`src/models/` in wave 1: see "Wave 1: core engine" below.
 
-### Wave 1: core engine
+## Wave 1: core engine
 
 Harness writers (`src/platforms/`), resolve, package-cache, apm and lock,
 snapshots and revert.

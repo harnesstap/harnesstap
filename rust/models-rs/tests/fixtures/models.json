@@ -1,0 +1,1597 @@
+{
+ "cwd": "/workspace/rust-port-w0",
+ "scenarios": [
+  {
+   "name": "projects",
+   "calls": [
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO plugins (id, name, version, created_at, updated_at) VALUES ('p1', 'one', '1.0.0', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'), ('p2', 'two', '1.0.0', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "createProject",
+     "args": [
+      {
+       "git_origin": "github.com/a/b",
+       "name": "b",
+       "local_path": "/w/b"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "git_origin": "github.com/a/b",
+      "name": "b",
+      "local_path": "/w/b",
+      "local_id": "",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "createProject",
+     "args": [
+      {
+       "git_origin": "",
+       "local_id": "loc1",
+       "name": "a",
+       "local_path": "./rel/../x/"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYG09S1X2NQZFZNFM21",
+      "git_origin": "",
+      "local_id": "loc1",
+      "name": "a",
+      "local_path": "./rel/../x/",
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "getProject",
+     "args": [
+      {
+       "$ref": [
+        1,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "git_origin": "github.com/a/b",
+      "local_id": "",
+      "name": "b",
+      "local_path": "/w/b",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "getProject",
+     "args": [
+      "missing"
+     ],
+     "result": null
+    },
+    {
+     "fn": "getProjectByOrigin",
+     "args": [
+      "github.com/a/b"
+     ],
+     "result": {
+      "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "git_origin": "github.com/a/b",
+      "local_id": "",
+      "name": "b",
+      "local_path": "/w/b",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "getProjectByOrigin",
+     "args": [
+      ""
+     ],
+     "result": null
+    },
+    {
+     "fn": "getProjectByLocalId",
+     "args": [
+      "loc1"
+     ],
+     "result": {
+      "id": "01KDVDNBYG09S1X2NQZFZNFM21",
+      "git_origin": "",
+      "local_id": "loc1",
+      "name": "a",
+      "local_path": "./rel/../x/",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "getProjectByLocalId",
+     "args": [
+      ""
+     ],
+     "result": null
+    },
+    {
+     "fn": "upsertProject",
+     "args": [
+      {
+       "git_origin": "github.com/a/b",
+       "name": "renamed",
+       "local_path": "/w/b2"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "git_origin": "github.com/a/b",
+      "local_id": "",
+      "name": "renamed",
+      "local_path": "/w/b2",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "upsertProject",
+     "args": [
+      {
+       "git_origin": "github.com/c/d",
+       "name": "d",
+       "local_path": "/w/d"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNKRGZ3TX0FVXFS8ZAR8Q",
+      "git_origin": "github.com/c/d",
+      "name": "d",
+      "local_path": "/w/d",
+      "local_id": "",
+      "created_at": "2026-01-01T00:00:10.000Z"
+     }
+    },
+    {
+     "fn": "upsertProjectByLocalId",
+     "args": [
+      {
+       "local_id": "loc1",
+       "name": "a2",
+       "local_path": "/w/a"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYG09S1X2NQZFZNFM21",
+      "git_origin": "",
+      "local_id": "loc1",
+      "name": "a2",
+      "local_path": "/w/a",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "upsertProjectByLocalId",
+     "args": [
+      {
+       "local_id": "loc2",
+       "name": "c",
+       "local_path": "/w/c"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNNQ0DV1182VN27343DA0",
+      "git_origin": "",
+      "local_id": "loc2",
+      "name": "c",
+      "local_path": "/w/c",
+      "created_at": "2026-01-01T00:00:12.000Z"
+     }
+    },
+    {
+     "fn": "listProjects",
+     "args": [],
+     "result": [
+      {
+       "id": "01KDVDNBYG09S1X2NQZFZNFM21",
+       "git_origin": "",
+       "local_id": "loc1",
+       "name": "a2",
+       "local_path": "/w/a",
+       "tracked_at": "",
+       "created_at": "2026-01-01T00:00:02.000Z"
+      },
+      {
+       "id": "01KDVDNNQ0DV1182VN27343DA0",
+       "git_origin": "",
+       "local_id": "loc2",
+       "name": "c",
+       "local_path": "/w/c",
+       "tracked_at": "",
+       "created_at": "2026-01-01T00:00:12.000Z"
+      },
+      {
+       "id": "01KDVDNKRGZ3TX0FVXFS8ZAR8Q",
+       "git_origin": "github.com/c/d",
+       "local_id": "",
+       "name": "d",
+       "local_path": "/w/d",
+       "tracked_at": "",
+       "created_at": "2026-01-01T00:00:10.000Z"
+      },
+      {
+       "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+       "git_origin": "github.com/a/b",
+       "local_id": "",
+       "name": "renamed",
+       "local_path": "/w/b2",
+       "tracked_at": "",
+       "created_at": "2026-01-01T00:00:01.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "getProjectByLocalPath",
+     "args": [
+      "/w/b2/"
+     ],
+     "result": {
+      "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "git_origin": "github.com/a/b",
+      "local_id": "",
+      "name": "renamed",
+      "local_path": "/w/b2",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "getProjectByLocalPath",
+     "args": [
+      "/w/nope"
+     ],
+     "result": null
+    },
+    {
+     "fn": "applyPluginToProject",
+     "args": [
+      {
+       "project_id": {
+        "$ref": [
+         1,
+         "id"
+        ]
+       },
+       "plugin_id": "p1",
+       "platforms": [
+        "claude",
+        "cursor"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "applyPluginToProject",
+     "args": [
+      {
+       "project_id": {
+        "$ref": [
+         1,
+         "id"
+        ]
+       },
+       "plugin_id": "p2",
+       "platforms": []
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "applyPluginToProject",
+     "args": [
+      {
+       "project_id": {
+        "$ref": [
+         1,
+         "id"
+        ]
+       },
+       "plugin_id": "p1",
+       "platforms": [
+        "é\"\n"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "getProjectPlugins",
+     "args": [
+      {
+       "$ref": [
+        1,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "project_id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+       "plugin_id": "p1",
+       "platforms": [
+        "é\"\n"
+       ],
+       "applied_at": "2026-01-01T00:00:18.000Z"
+      },
+      {
+       "project_id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+       "plugin_id": "p2",
+       "platforms": [],
+       "applied_at": "2026-01-01T00:00:17.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "createProject",
+     "args": [
+      {
+       "git_origin": "",
+       "name": "bad",
+       "local_path": "/w/bad"
+      }
+     ],
+     "error": "CHECK constraint failed: git_origin != '' OR local_id != ''"
+    }
+   ],
+   "dump": {
+    "plugins": [
+     {
+      "id": "p1",
+      "name": "one",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "p2",
+      "name": "two",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     }
+    ],
+    "project_plugins": [
+     {
+      "project_id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "plugin_id": "p2",
+      "platforms": "[]",
+      "applied_at": "2026-01-01T00:00:17.000Z"
+     },
+     {
+      "project_id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "plugin_id": "p1",
+      "platforms": "[\"é\\\"\\n\"]",
+      "applied_at": "2026-01-01T00:00:18.000Z"
+     }
+    ],
+    "projects": [
+     {
+      "id": "01KDVDNAZ8K9CE2E6AR29AV8EP",
+      "git_origin": "github.com/a/b",
+      "local_id": "",
+      "name": "renamed",
+      "local_path": "/w/b2",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     },
+     {
+      "id": "01KDVDNBYG09S1X2NQZFZNFM21",
+      "git_origin": "",
+      "local_id": "loc1",
+      "name": "a2",
+      "local_path": "/w/a",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:02.000Z"
+     },
+     {
+      "id": "01KDVDNKRGZ3TX0FVXFS8ZAR8Q",
+      "git_origin": "github.com/c/d",
+      "local_id": "",
+      "name": "d",
+      "local_path": "/w/d",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:10.000Z"
+     },
+     {
+      "id": "01KDVDNNQ0DV1182VN27343DA0",
+      "git_origin": "",
+      "local_id": "loc2",
+      "name": "c",
+      "local_path": "/w/c",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:12.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "name": "snapshots",
+   "calls": [
+    {
+     "fn": "createProject",
+     "args": [
+      {
+       "git_origin": "o",
+       "name": "p",
+       "local_path": "/p"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "git_origin": "o",
+      "name": "p",
+      "local_path": "/p",
+      "local_id": "",
+      "created_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "createSnapshot",
+     "args": [
+      {
+       "project_id": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "label": "first",
+       "state": {
+        "1": true,
+        "plugins": [],
+        "resources": [],
+        "platform_files": {
+         "claude": {
+          "CLAUDE.md": "# hi\n"
+         }
+        }
+       }
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ83CJN70N5W3PZMXDQ",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "first",
+      "state": {
+       "1": true,
+       "plugins": [],
+       "resources": [],
+       "platform_files": {
+        "claude": {
+         "CLAUDE.md": "# hi\n"
+        }
+       }
+      },
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "createSnapshot",
+     "args": [
+      {
+       "project_id": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "label": "second",
+       "state": {
+        "plugins": [
+         {
+          "name": "x",
+          "n": 1.5
+         }
+        ],
+        "resources": [],
+        "platform_files": {}
+       }
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYGT7R2VD9TA71E5D3M",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "second",
+      "state": {
+       "plugins": [
+        {
+         "name": "x",
+         "n": 1.5
+        }
+       ],
+       "resources": [],
+       "platform_files": {}
+      },
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "getSnapshot",
+     "args": [
+      {
+       "$ref": [
+        1,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ83CJN70N5W3PZMXDQ",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "first",
+      "state": {
+       "1": true,
+       "plugins": [],
+       "resources": [],
+       "platform_files": {
+        "claude": {
+         "CLAUDE.md": "# hi\n"
+        }
+       }
+      },
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "getSnapshot",
+     "args": [
+      "nope"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findSnapshotById",
+     "args": [
+      {
+       "$ref": [
+        2,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYGT7R2VD9TA71E5D3M",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "second",
+      "state": {
+       "plugins": [
+        {
+         "name": "x",
+         "n": 1.5
+        }
+       ],
+       "resources": [],
+       "platform_files": {}
+      },
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "findSnapshotById",
+     "args": [
+      {
+       "$prefix": [
+        2,
+        "id",
+        7
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "findSnapshotById",
+     "args": [
+      {
+       "$prefix": [
+        2,
+        "id",
+        24
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYGT7R2VD9TA71E5D3M",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "second",
+      "state": {
+       "plugins": [
+        {
+         "name": "x",
+         "n": 1.5
+        }
+       ],
+       "resources": [],
+       "platform_files": {}
+      },
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "findSnapshotById",
+     "args": [
+      {
+       "$prefix": [
+        2,
+        "id",
+        4
+       ]
+      },
+      3
+     ],
+     "result": null
+    },
+    {
+     "fn": "listSnapshots",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "01KDVDNBYGT7R2VD9TA71E5D3M",
+       "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+       "label": "second",
+       "state": {
+        "plugins": [
+         {
+          "name": "x",
+          "n": 1.5
+         }
+        ],
+        "resources": [],
+        "platform_files": {}
+       },
+       "created_at": "2026-01-01T00:00:02.000Z"
+      },
+      {
+       "id": "01KDVDNAZ83CJN70N5W3PZMXDQ",
+       "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+       "label": "first",
+       "state": {
+        "1": true,
+        "plugins": [],
+        "resources": [],
+        "platform_files": {
+         "claude": {
+          "CLAUDE.md": "# hi\n"
+         }
+        }
+       },
+       "created_at": "2026-01-01T00:00:01.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "listSnapshots",
+     "args": [
+      "other"
+     ],
+     "result": []
+    },
+    {
+     "fn": "getLatestSnapshot",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYGT7R2VD9TA71E5D3M",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "second",
+      "state": {
+       "plugins": [
+        {
+         "name": "x",
+         "n": 1.5
+        }
+       ],
+       "resources": [],
+       "platform_files": {}
+      },
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "getLatestSnapshot",
+     "args": [
+      "other"
+     ],
+     "result": null
+    }
+   ],
+   "dump": {
+    "projects": [
+     {
+      "id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "git_origin": "o",
+      "local_id": "",
+      "name": "p",
+      "local_path": "/p",
+      "tracked_at": "",
+      "created_at": "2026-01-01T00:00:00.000Z"
+     }
+    ],
+    "snapshots": [
+     {
+      "id": "01KDVDNAZ83CJN70N5W3PZMXDQ",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "first",
+      "state": "{\"1\":true,\"plugins\":[],\"resources\":[],\"platform_files\":{\"claude\":{\"CLAUDE.md\":\"# hi\\n\"}}}",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     },
+     {
+      "id": "01KDVDNBYGT7R2VD9TA71E5D3M",
+      "project_id": "01KDVDNA00D6RKJM2FNXD84F5Z",
+      "label": "second",
+      "state": "{\"plugins\":[{\"name\":\"x\",\"n\":1.5}],\"resources\":[],\"platform_files\":{}}",
+      "created_at": "2026-01-01T00:00:02.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "name": "preexisting paths",
+   "calls": [
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "b.md"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00DEWTC20XGCQ6SZV3",
+      "root_path": "/r",
+      "path": "b.md",
+      "content_hash": "",
+      "created_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "a.md",
+       "content_hash": "h1"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8C7H3JT4Z49ZK7WSK",
+      "root_path": "/r",
+      "path": "a.md",
+      "content_hash": "h1",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "a.md",
+       "content_hash": "h1"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8C7H3JT4Z49ZK7WSK",
+      "root_path": "/r",
+      "path": "a.md",
+      "content_hash": "h1",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "a.md",
+       "content_hash": "h2"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8C7H3JT4Z49ZK7WSK",
+      "root_path": "/r",
+      "path": "a.md",
+      "content_hash": "h2",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "a.md",
+       "content_hash": ""
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8C7H3JT4Z49ZK7WSK",
+      "root_path": "/r",
+      "path": "a.md",
+      "content_hash": "h2",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "a.md"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8C7H3JT4Z49ZK7WSK",
+      "root_path": "/r",
+      "path": "a.md",
+      "content_hash": "h2",
+      "created_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "isPreexistingPath",
+     "args": [
+      "/r",
+      "a.md"
+     ],
+     "result": true
+    },
+    {
+     "fn": "isPreexistingPath",
+     "args": [
+      "/r",
+      "c.md"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listPreexistingPaths",
+     "args": [
+      "/r"
+     ],
+     "result": [
+      "a.md",
+      "b.md"
+     ]
+    },
+    {
+     "fn": "listPreexistingPaths",
+     "args": [
+      "/x"
+     ],
+     "result": []
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "DROP TABLE preexisting_paths"
+     ],
+     "result": null
+    },
+    {
+     "fn": "recordPreexistingPath",
+     "args": [
+      {
+       "root_path": "/r",
+       "path": "z",
+       "content_hash": "h"
+      }
+     ],
+     "result": {
+      "id": "",
+      "root_path": "/r",
+      "path": "z",
+      "content_hash": "h",
+      "created_at": "2026-01-01T00:00:11.000Z"
+     }
+    },
+    {
+     "fn": "isPreexistingPath",
+     "args": [
+      "/r",
+      "a.md"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listPreexistingPaths",
+     "args": [
+      "/r"
+     ],
+     "result": []
+    }
+   ],
+   "dump": {}
+  },
+  {
+   "name": "package cache",
+   "calls": [
+    {
+     "fn": "upsertPackageCacheEntry",
+     "args": [
+      {
+       "kind": "apm_git",
+       "origin_ref": "o/r",
+       "resolved_key": "abc",
+       "relative_path": "apm/o/r"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00E2Y04031DAP9VPKR",
+      "kind": "apm_git",
+      "resource_id": null,
+      "origin_ref": "o/r",
+      "resolved_key": "abc",
+      "relative_path": "apm/o/r",
+      "content_fingerprint": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "upsertPackageCacheEntry",
+     "args": [
+      {
+       "kind": "host_plugin",
+       "origin_ref": "o/r",
+       "resolved_key": "abc",
+       "relative_path": "hp",
+       "resource_id": null,
+       "content_fingerprint": "f"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ8BET7YJ72XMGFDED7",
+      "kind": "host_plugin",
+      "resource_id": null,
+      "origin_ref": "o/r",
+      "resolved_key": "abc",
+      "relative_path": "hp",
+      "content_fingerprint": "f",
+      "created_at": "2026-01-01T00:00:01.000Z",
+      "updated_at": "2026-01-01T00:00:01.000Z"
+     }
+    },
+    {
+     "fn": "upsertPackageCacheEntry",
+     "args": [
+      {
+       "kind": "apm_git",
+       "origin_ref": "o/r",
+       "resolved_key": "abc",
+       "relative_path": "apm/o/r2",
+       "content_fingerprint": "sha256:1"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00E2Y04031DAP9VPKR",
+      "kind": "apm_git",
+      "resource_id": null,
+      "origin_ref": "o/r",
+      "resolved_key": "abc",
+      "relative_path": "apm/o/r2",
+      "content_fingerprint": "sha256:1",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "findPackageCacheEntry",
+     "args": [
+      {
+       "kind": "apm_git",
+       "origin_ref": "o/r",
+       "resolved_key": "abc"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00E2Y04031DAP9VPKR",
+      "kind": "apm_git",
+      "resource_id": null,
+      "origin_ref": "o/r",
+      "resolved_key": "abc",
+      "relative_path": "apm/o/r2",
+      "content_fingerprint": "sha256:1",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:02.000Z"
+     }
+    },
+    {
+     "fn": "findPackageCacheEntry",
+     "args": [
+      {
+       "kind": "apm_git",
+       "origin_ref": "o/r",
+       "resolved_key": "zzz"
+      }
+     ],
+     "result": null
+    }
+   ],
+   "dump": {
+    "package_cache_entries": [
+     {
+      "id": "01KDVDNA00E2Y04031DAP9VPKR",
+      "kind": "apm_git",
+      "resource_id": null,
+      "origin_ref": "o/r",
+      "resolved_key": "abc",
+      "relative_path": "apm/o/r2",
+      "content_fingerprint": "sha256:1",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:02.000Z"
+     },
+     {
+      "id": "01KDVDNAZ8BET7YJ72XMGFDED7",
+      "kind": "host_plugin",
+      "resource_id": null,
+      "origin_ref": "o/r",
+      "resolved_key": "abc",
+      "relative_path": "hp",
+      "content_fingerprint": "f",
+      "created_at": "2026-01-01T00:00:01.000Z",
+      "updated_at": "2026-01-01T00:00:01.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "name": "removal backups",
+   "calls": [
+    {
+     "fn": "recordApplyRemovalBackup",
+     "args": [
+      {
+       "apply_id": "A1",
+       "relative_path": "b/x.md",
+       "content": {
+        "$bytes": "68690a"
+       },
+       "mode": 420
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA003519SW2J8YPG0DDG",
+      "apply_id": "A1",
+      "snapshot_id": null,
+      "relative_path": "b/x.md",
+      "mode": 420,
+      "in_trash": false,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "content": {
+       "$bytes": "68690a"
+      }
+     }
+    },
+    {
+     "fn": "recordApplyRemovalBackup",
+     "args": [
+      {
+       "apply_id": "A1",
+       "snapshot_id": "S1",
+       "relative_path": "a.bin",
+       "content": {
+        "$bytes": "00ff10"
+       },
+       "mode": 493
+      }
+     ],
+     "result": {
+      "id": "01KDVDNAZ89RZGNPAZ2RD7WK0Y",
+      "apply_id": "A1",
+      "snapshot_id": "S1",
+      "relative_path": "a.bin",
+      "mode": 493,
+      "in_trash": false,
+      "created_at": "2026-01-01T00:00:01.000Z",
+      "content": {
+       "$bytes": "00ff10"
+      }
+     }
+    },
+    {
+     "fn": "recordTrashedApplyRemovalBackup",
+     "args": [
+      {
+       "apply_id": "A2",
+       "relative_path": "dir/kept.md",
+       "mode": 420
+      }
+     ],
+     "result": {
+      "id": "01KDVDNBYGVCGHMFEB07HEX4J3",
+      "apply_id": "A2",
+      "snapshot_id": null,
+      "relative_path": "dir/kept.md",
+      "mode": 420,
+      "in_trash": true,
+      "created_at": "2026-01-01T00:00:02.000Z",
+      "content": {
+       "$missing": true
+      }
+     }
+    },
+    {
+     "fn": "recordTrashedApplyRemovalBackup",
+     "args": [
+      {
+       "apply_id": "A2",
+       "relative_path": "gone.md",
+       "mode": 420
+      }
+     ],
+     "result": {
+      "id": "01KDVDNCXRTPAHCVABC181GHE9",
+      "apply_id": "A2",
+      "snapshot_id": null,
+      "relative_path": "gone.md",
+      "mode": 420,
+      "in_trash": true,
+      "created_at": "2026-01-01T00:00:03.000Z",
+      "content": {
+       "$missing": true
+      }
+     }
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      "trash/A2/dir/kept.md",
+      "6b657074"
+     ],
+     "result": null
+    },
+    {
+     "fn": "listApplyRemovalBackups",
+     "args": [
+      {
+       "apply_id": "A1"
+      }
+     ],
+     "result": [
+      {
+       "id": "01KDVDNAZ89RZGNPAZ2RD7WK0Y",
+       "apply_id": "A1",
+       "snapshot_id": "S1",
+       "relative_path": "a.bin",
+       "mode": 493,
+       "in_trash": false,
+       "created_at": "2026-01-01T00:00:01.000Z",
+       "content": {
+        "$bytes": "00ff10"
+       }
+      },
+      {
+       "id": "01KDVDNA003519SW2J8YPG0DDG",
+       "apply_id": "A1",
+       "snapshot_id": null,
+       "relative_path": "b/x.md",
+       "mode": 420,
+       "in_trash": false,
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "content": {
+        "$bytes": "68690a"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listApplyRemovalBackups",
+     "args": [
+      {
+       "snapshot_id": "S1",
+       "apply_id": "A2"
+      }
+     ],
+     "result": [
+      {
+       "id": "01KDVDNAZ89RZGNPAZ2RD7WK0Y",
+       "apply_id": "A1",
+       "snapshot_id": "S1",
+       "relative_path": "a.bin",
+       "mode": 493,
+       "in_trash": false,
+       "created_at": "2026-01-01T00:00:01.000Z",
+       "content": {
+        "$bytes": "00ff10"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listApplyRemovalBackups",
+     "args": [
+      {
+       "apply_id": "A2"
+      }
+     ],
+     "result": [
+      {
+       "id": "01KDVDNBYGVCGHMFEB07HEX4J3",
+       "apply_id": "A2",
+       "snapshot_id": null,
+       "relative_path": "dir/kept.md",
+       "mode": 420,
+       "in_trash": true,
+       "created_at": "2026-01-01T00:00:02.000Z",
+       "content": {
+        "$bytes": "6b657074"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listApplyRemovalBackups",
+     "args": [
+      {}
+     ],
+     "result": []
+    },
+    {
+     "fn": "listApplyRemovalBackups",
+     "args": [
+      {
+       "apply_id": "",
+       "snapshot_id": ""
+      }
+     ],
+     "result": []
+    },
+    {
+     "fn": "listTrashPinnedApplyIds",
+     "args": [],
+     "result": [
+      "A2"
+     ]
+    }
+   ],
+   "dump": {
+    "apply_removal_backups": [
+     {
+      "id": "01KDVDNA003519SW2J8YPG0DDG",
+      "apply_id": "A1",
+      "snapshot_id": null,
+      "relative_path": "b/x.md",
+      "mode": 420,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "in_trash": 0,
+      "content": {
+       "$bytes": "68690a"
+      }
+     },
+     {
+      "id": "01KDVDNAZ89RZGNPAZ2RD7WK0Y",
+      "apply_id": "A1",
+      "snapshot_id": "S1",
+      "relative_path": "a.bin",
+      "mode": 493,
+      "created_at": "2026-01-01T00:00:01.000Z",
+      "in_trash": 0,
+      "content": {
+       "$bytes": "00ff10"
+      }
+     },
+     {
+      "id": "01KDVDNBYGVCGHMFEB07HEX4J3",
+      "apply_id": "A2",
+      "snapshot_id": null,
+      "relative_path": "dir/kept.md",
+      "mode": 420,
+      "created_at": "2026-01-01T00:00:02.000Z",
+      "in_trash": 1,
+      "content": {
+       "$bytes": ""
+      }
+     },
+     {
+      "id": "01KDVDNCXRTPAHCVABC181GHE9",
+      "apply_id": "A2",
+      "snapshot_id": null,
+      "relative_path": "gone.md",
+      "mode": 420,
+      "created_at": "2026-01-01T00:00:03.000Z",
+      "in_trash": 1,
+      "content": {
+       "$bytes": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "plugin pin materializations",
+   "calls": [
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, origin_ref, created_at, updated_at) VALUES ('R1', 'plugin', 'a', 'p@m', '2026-01-01T00:00:00.000Z', '2026-01-02'), ('R2', 'plugin', 'b', 'p@m', '2026-01-01T00:00:00.000Z', '2026-01-03'), ('R3', 'skill', 'c', 'p@m', '2026-01-01T00:00:00.000Z', '2026-01-04')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "upsertPluginPinMaterialization",
+     "args": [
+      {
+       "scope": "global",
+       "root_path": "/h",
+       "relative_path": ".\\skills\\s\\SKILL.md",
+       "origin_ref": "p@m",
+       "resource_type": "skill",
+       "resource_name": "s"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "upsertPluginPinMaterialization",
+     "args": [
+      {
+       "scope": "global",
+       "root_path": "/h",
+       "relative_path": "./skills/s/SKILL.md",
+       "origin_ref": "p@m2",
+       "resource_type": "skill",
+       "resource_name": "s",
+       "plugin_pin_resource_id": "R1"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "upsertPluginPinMaterialization",
+     "args": [
+      {
+       "scope": "project",
+       "root_path": "/p",
+       "relative_path": "rules/r.md",
+       "origin_ref": "p@m",
+       "resource_type": "rule",
+       "resource_name": "r"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "matchesPluginPinMaterialization",
+     "args": [
+      "/h",
+      {
+       "type": "skill",
+       "name": "s",
+       "source": " ~/skills/s "
+      }
+     ],
+     "result": true
+    },
+    {
+     "fn": "matchesPluginPinMaterialization",
+     "args": [
+      "/h",
+      {
+       "type": "skill",
+       "name": "s",
+       "source": "skills/s/SKILL.md"
+      }
+     ],
+     "result": true
+    },
+    {
+     "fn": "matchesPluginPinMaterialization",
+     "args": [
+      "/h",
+      {
+       "type": "skill",
+       "name": "t",
+       "source": "skills/s"
+      }
+     ],
+     "result": false
+    },
+    {
+     "fn": "matchesPluginPinMaterialization",
+     "args": [
+      "/p",
+      {
+       "type": "rule",
+       "name": "r",
+       "source": "./rules/r.md"
+      }
+     ],
+     "result": true
+    },
+    {
+     "fn": "matchesPluginPinMaterialization",
+     "args": [
+      "/p",
+      {
+       "type": "rule",
+       "name": "r"
+      }
+     ],
+     "result": false
+    },
+    {
+     "fn": "matchesPluginPinMaterialization",
+     "args": [
+      "/p",
+      {
+       "type": "rule",
+       "name": "r",
+       "source": "  "
+      }
+     ],
+     "result": false
+    },
+    {
+     "fn": "findPluginPinResourceIdByOriginRef",
+     "args": [
+      "p@m"
+     ],
+     "result": "R2"
+    },
+    {
+     "fn": "findPluginPinResourceIdByOriginRef",
+     "args": [
+      "none"
+     ],
+     "result": null
+    }
+   ],
+   "dump": {
+    "plugin_pin_materializations": [
+     {
+      "id": "01KDVDNAZ85ZE48T4P4K6D6RE1",
+      "scope": "global",
+      "root_path": "/h",
+      "relative_path": "skills/s/SKILL.md",
+      "origin_ref": "p@m2",
+      "resource_type": "skill",
+      "resource_name": "s",
+      "plugin_pin_resource_id": "R1",
+      "created_at": "2026-01-01T00:00:01.000Z",
+      "updated_at": "2026-01-01T00:00:02.000Z"
+     },
+     {
+      "id": "01KDVDNCXRGCS4Y7EM4FV3JBTW",
+      "scope": "project",
+      "root_path": "/p",
+      "relative_path": "rules/r.md",
+      "origin_ref": "p@m",
+      "resource_type": "rule",
+      "resource_name": "r",
+      "plugin_pin_resource_id": null,
+      "created_at": "2026-01-01T00:00:03.000Z",
+      "updated_at": "2026-01-01T00:00:03.000Z"
+     }
+    ],
+    "resources": [
+     {
+      "id": "R1",
+      "type": "plugin",
+      "name": "a",
+      "description": "",
+      "content": "",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "p@m",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-02"
+     },
+     {
+      "id": "R2",
+      "type": "plugin",
+      "name": "b",
+      "description": "",
+      "content": "",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "p@m",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-03"
+     },
+     {
+      "id": "R3",
+      "type": "skill",
+      "name": "c",
+      "description": "",
+      "content": "",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "p@m",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-04"
+     }
+    ]
+   }
+  }
+ ]
+}
