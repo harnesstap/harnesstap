@@ -29,6 +29,14 @@ pub trait Host {
     fn var(&self, name: &str) -> Option<String>;
     fn stdout_is_tty(&self) -> bool;
     fn stderr_is_tty(&self) -> bool;
+    /// `process.stdin.isTTY`. Defaults to a TTY, where actions that would prompt hand back.
+    fn stdin_is_tty(&self) -> bool {
+        true
+    }
+    /// `process.cwd()`; `None` sends actions that resolve paths to the original.
+    fn cwd(&self) -> Option<String> {
+        None
+    }
     /// Opens the database (creating and migrating it like `getDb` + `initializeSchema`) and
     /// lists the profile plugin names (`listProfilePluginsCommand`).
     fn profile_names(&mut self) -> ProfileNames;
@@ -390,14 +398,17 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
             if args.iter().any(|a| a == "-v" || a == "--verbose") {
                 return Outcome::Original;
             }
-            let Some(printed) = actions::run(&call) else {
+            // Whether output with this exit code is printed: after a successful action the
+            // original may print an update notice, and themed output may be colored.
+            let (skip, plain) = (
+                skips_update_notice(host, args),
+                root_help_is_plain(host, args),
+            );
+            let shown = move |code: u8, themed: bool| (code != 0 || skip) && (!themed || plain);
+            let Some(printed) = actions::run(&call, host, &shown) else {
                 return Outcome::Original;
             };
-            // After a successful action the original may print an update notice.
-            if printed.code == 0 && !skips_update_notice(host, args) {
-                return Outcome::Original;
-            }
-            if printed.themed && !root_help_is_plain(host, args) {
+            if !shown(printed.code, printed.themed) {
                 return Outcome::Original;
             }
             Outcome::Answer {

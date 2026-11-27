@@ -130,10 +130,15 @@ name = "cli-rs"
 version = "0.1.0"
 dependencies = [
  "collate-rs",
+ "db-rs",
  "emit-rs",
+ "harness-rs",
+ "models-rs",
+ "platforms-rs",
  "regex",
  "serde",
  "serde_json",
+ "settings-rs",
 ]
 
 [[package]]
@@ -371,6 +376,15 @@ dependencies = [
  "libc",
  "r-efi",
  "wasip2",
+]
+
+[[package]]
+name = "harness-rs"
+version = "0.1.0"
+dependencies = [
+ "db-rs",
+ "models-rs",
+ "platforms-rs",
 ]
 
 [[package]]

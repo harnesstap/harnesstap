@@ -4,8 +4,10 @@
 
 use serde_json::Value;
 
+use crate::Host;
 use crate::commander::ActionCall;
 
+mod harness;
 mod help;
 
 /// What an action printed and its exit code.
@@ -17,12 +19,21 @@ pub struct Printed {
     pub themed: bool,
 }
 
+/// Whether `lib.rs` prints an output with this exit code and theming. An action with side
+/// effects checks it for its success before it writes anything.
+pub type Shown<'a> = &'a dyn Fn(u8, bool) -> bool;
+
 /// Runs the action at `call.path`, or `None` when it is not ported.
-pub fn run(call: &ActionCall) -> Option<Printed> {
+pub fn run(call: &ActionCall, host: &mut dyn Host, shown: Shown) -> Option<Printed> {
     let path: Vec<&str> = call.path.iter().map(String::as_str).collect();
     match path.as_slice() {
         ["help"] => Some(help::help(call)),
         ["help", "scenario"] => Some(help::scenario(call)),
+        ["harness", "list"] => harness::list(call, host),
+        ["harness", "set"] => harness::set(call, host, shown),
+        ["harness", "status"] => harness::status(call, host, shown),
+        ["harness", "project", "set"] => harness::project_set(call, host, shown),
+        ["harness", "project", "status"] => harness::project_status(call, host, shown),
         _ => None,
     }
 }

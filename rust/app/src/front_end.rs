@@ -20,6 +20,14 @@ impl Host for ProcessHost {
     fn stderr_is_tty(&self) -> bool {
         std::io::stderr().is_terminal()
     }
+    fn stdin_is_tty(&self) -> bool {
+        std::io::stdin().is_terminal()
+    }
+    fn cwd(&self) -> Option<String> {
+        std::env::current_dir()
+            .ok()
+            .and_then(|p| p.to_str().map(str::to_string))
+    }
     /// `getDb` + `initializeSchema` + `listProfilePluginsCommand` (`src/cli/runtime.ts`).
     fn profile_names(&mut self) -> ProfileNames {
         profile_names().map_or(ProfileNames::Failed, ProfileNames::Names)

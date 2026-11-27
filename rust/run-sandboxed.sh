@@ -3,8 +3,12 @@
 # app replay: a fresh HOME per run, network calls refused (proxy and service URLs point at 127.0.0.1:9), telemetry off, no color, and a
 # fixed version string. Usage: bash rust/run-sandboxed.sh <command> [args...]
 set -u
-home="$(mktemp -d "${TMPDIR:-/tmp}/ht-home.XXXXXX")"
-trap 'rm -rf "$home"' EXIT
+# HT_SANDBOX_HOME keeps one HOME across runs (recorders that set up state first).
+home="${HT_SANDBOX_HOME:-}"
+if [ -z "$home" ]; then
+  home="$(mktemp -d "${TMPDIR:-/tmp}/ht-home.XXXXXX")"
+  trap 'rm -rf "$home"' EXIT
+fi
 export HOME="$home"
 export XDG_CONFIG_HOME="$home/.config" XDG_DATA_HOME="$home/.local/share" XDG_CACHE_HOME="$home/.cache" XDG_STATE_HOME="$home/.local/state"
 export HARNESSTAP_TELEMETRY=0 NO_COLOR=1 FORCE_COLOR=0 TERM=dumb CI=1 TZ=UTC LANG=C.UTF-8 LC_ALL=C.UTF-8

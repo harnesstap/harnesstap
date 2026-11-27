@@ -1,0 +1,20 @@
+[package]
+name = "harness-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "What `ht harness` reaches: the non-interactive harness selection (src/services/harness-config.ts, harness-targets.ts), scanner detection (detectPlatforms) and path-keyed project identity"
+
+[dependencies]
+db-rs = { path = "../db-rs" }
+models-rs = { path = "../models-rs" }
+platforms-rs = { path = "../platforms-rs" }
+
+[dev-dependencies]
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

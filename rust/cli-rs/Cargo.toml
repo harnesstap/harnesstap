@@ -8,10 +8,18 @@ description = "The CLI front end of `ht`: src/bin.ts and src/cli/runtime.ts befo
 
 [dependencies]
 collate-rs = { path = "../collate-rs" }
+db-rs = { path = "../db-rs" }
 emit-rs = { path = "../emit-rs" }
+harness-rs = { path = "../harness-rs" }
+models-rs = { path = "../models-rs" }
+platforms-rs = { path = "../platforms-rs" }
+settings-rs = { path = "../settings-rs" }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[dev-dependencies]
+rusqlite = { version = "0.37", features = ["bundled"] }
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
