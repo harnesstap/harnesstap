@@ -2,8 +2,8 @@
 //! do before an action runs, with commander 13's parse over the original's command tree
 //! (`data/tree.json`, dumped by `tests/dump-tree.ts`). It answers root help, the
 //! `uninstall` and `version` guards, `--help` on any command, a command group's own help
-//! and every commander error; for anything else (an action, colored help, telemetry that is
-//! not switched off, `--verbose` errors) it says so and the original runs.
+//! and every commander error, plus the actions ported in `actions/`; for anything else
+//! (colored help, errors under `--verbose`) it says so and the original runs.
 
 pub mod actions;
 pub mod commander;
@@ -38,6 +38,9 @@ pub trait Host {
             .ok()
             .map(|p| p.to_string_lossy().into_owned())
     }
+    /// `setTelemetryProduct("cli")`, `maybeWarnCliTelemetry` and `trackCliStartup`, run just
+    /// before an answer that comes after them in the original.
+    fn telemetry_prologue(&mut self, args: &[String]);
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,6 +48,13 @@ pub enum Outcome {
     /// Run the original with the same argv.
     Original,
     Answer {
+        stdout: String,
+        stderr: String,
+        code: u8,
+    },
+    /// An action ran: print this, then do what `runHarnesstapCli` does after a parse that
+    /// returned (`maybeNotifyCliUpdate` with this exit code).
+    Acted {
         stdout: String,
         stderr: String,
         code: u8,
@@ -179,13 +189,6 @@ fn env_truthy(host: &dyn Host, name: &str) -> bool {
     host.var(name).is_some_and(|v| !v.is_empty())
 }
 
-/// `telemetryEnvFlag()` is `false`: no notice, no startup event.
-fn telemetry_off(host: &dyn Host) -> bool {
-    host.var("HARNESSTAP_TELEMETRY")
-        .map(|v| v.trim_matches(is_js_space).to_lowercase())
-        .is_some_and(|v| matches!(v.as_str(), "0" | "false" | "no" | "off"))
-}
-
 /// Root help is plain text: `theme` styles only when `NO_COLOR` is unset and chalk's
 /// `supports-color` level is above 0. `None` when it could be colored.
 fn root_help_is_plain(host: &dyn Host, args: &[String]) -> bool {
@@ -215,30 +218,6 @@ fn commander_help_is_plain(host: &dyn Host, tty: bool) -> bool {
         return false;
     }
     !tty
-}
-
-/// `shouldSkipCliUpdateNotice` (`src/services/self-update.ts`).
-fn skips_update_notice(host: &dyn Host, args: &[String]) -> bool {
-    let skip = host.var("HARNESSTAP_SKIP_UPDATE_CHECK");
-    if matches!(skip.as_deref(), Some("1" | "true")) {
-        return true;
-    }
-    if host.var("HARNESSTAP_UPDATE_CHECK").as_deref() != Some("1")
-        && (env_truthy(host, "BUN_TEST") || host.var("NODE_ENV").as_deref() == Some("test"))
-    {
-        return true;
-    }
-    if matches!(
-        args.first().map(String::as_str),
-        Some("__complete" | "completion")
-    ) {
-        return true;
-    }
-    args.iter().enumerate().any(|(i, a)| {
-        a == "--json"
-            || a == "--format=json"
-            || (a == "--format" && args.get(i + 1).is_some_and(|n| n == "json"))
-    })
 }
 
 /// `resolveInvocationName`: `ht` when launched as `ht`, else `harnesstap`.
@@ -352,10 +331,17 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
         }
         _ => {}
     }
-    if !telemetry_off(host) {
-        return Outcome::Original;
+    // Everything below comes after `maybeWarnCliTelemetry` and `trackCliStartup` in the
+    // original: decide first, then run that prologue only when Rust answers.
+    let outcome = after_prologue(host, args);
+    if outcome != Outcome::Original {
+        host.telemetry_prologue(args);
     }
+    outcome
+}
 
+/// `runHarnesstapCli` from the profile shorthand on: the parse and the action.
+fn after_prologue(host: &mut dyn Host, args: &[String]) -> Outcome {
     let data = tree();
     // rewriteProfileShorthandArgv
     if let Some(index) = first_positional_index(args) {
@@ -399,20 +385,15 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
             let ctx = actions::Ctx {
                 host: &*host,
                 args,
-                success_answered: skips_update_notice(&*host, args),
                 plain: root_help_is_plain(&*host, args),
             };
             let Some(printed) = actions::run(&call, &ctx) else {
                 return Outcome::Original;
             };
-            // After a successful action the original may print an update notice.
-            if printed.code == 0 && !skips_update_notice(host, args) {
-                return Outcome::Original;
-            }
             if printed.themed && !root_help_is_plain(host, args) {
                 return Outcome::Original;
             }
-            Outcome::Answer {
+            Outcome::Acted {
                 stdout: printed.stdout,
                 stderr: printed.stderr,
                 code: printed.code,
@@ -422,13 +403,14 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
             call,
             group_help: true,
         } => {
-            let path = call.path;
-            if !skips_update_notice(host, args)
-                || !commander_help_is_plain(host, host.stdout_is_tty())
-            {
+            if !commander_help_is_plain(host, host.stdout_is_tty()) {
                 return Outcome::Original;
             }
-            node_at(&root, &path).map_or(Outcome::Original, |n| answer_out(n.help.clone()))
+            node_at(&root, &call.path).map_or(Outcome::Original, |n| Outcome::Acted {
+                stdout: n.help.clone(),
+                stderr: String::new(),
+                code: 0,
+            })
         }
         Stop::Help { path, to_stderr } => {
             let tty = if to_stderr {

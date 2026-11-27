@@ -67,7 +67,7 @@ pub(super) fn export(call: &ActionCall, ctx: &Ctx<'_>) -> Option<Printed> {
             });
         }
     };
-    if !ctx.answers(0, false) {
+    if !ctx.answers(false) {
         return None;
     }
     let path = ctx.resolve(output)?;

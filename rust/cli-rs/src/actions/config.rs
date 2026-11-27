@@ -496,7 +496,7 @@ pub(super) fn init(call: &ActionCall, ctx: &Ctx<'_>) -> Option<Printed> {
     // getDb on a missing database creates it, and the first query finds no table.
     let db_path = db_rs::paths::db_path(ctx);
     if !Path::new(&db_path).exists() {
-        if !ctx.answers(1, themed) {
+        if !ctx.answers(themed) {
             return None;
         }
         let db = db_rs::connection::open(ctx).ok()?;
@@ -507,7 +507,7 @@ pub(super) fn init(call: &ActionCall, ctx: &Ctx<'_>) -> Option<Printed> {
     let mctx = models_ctx(&db, ctx);
     let plugins = match plugin_model_rs::list_plugins(&mctx) {
         Ok(p) => p,
-        Err(e) => return ctx.answers(1, themed).then(|| report(Err(e))),
+        Err(e) => return ctx.answers(themed).then(|| report(Err(e))),
     };
     let is_profile = |p: &plugin_model_rs::Plugin| p.tags.iter().any(|t| t == PROFILE_PLUGIN_TAG);
     let profile_named = |n: &str| plugins.iter().any(|p| p.name == n && is_profile(p));
@@ -598,7 +598,7 @@ pub(super) fn init(call: &ActionCall, ctx: &Ctx<'_>) -> Option<Printed> {
     })()
     .ok()?;
 
-    if !ctx.answers(u8::from(result.is_err()), themed) {
+    if !ctx.answers(themed) {
         return None;
     }
     // A write the checks above did not foresee fails: the original runs and meets it again.

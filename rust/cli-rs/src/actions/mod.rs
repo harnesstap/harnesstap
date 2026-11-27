@@ -1,8 +1,8 @@
 //! Actions answered without the original, one module per command group. Each builds its
-//! whole output in memory; `lib.rs` prints it only when the original would print nothing
-//! after it (a failure, or a success with the update check skipped). An action that writes
-//! files or the database decides its outcome first and writes only when [`Ctx::answers`]
-//! says that outcome is printed, so the original never runs after a partial write.
+//! whole output in memory; `lib.rs` prints it unless it is themed and colors are on. An
+//! action that writes files or the database decides its outcome first and writes only when
+//! [`Ctx::answers`] says that outcome is printed, so the original never runs after a partial
+//! write.
 
 use serde_json::Value;
 
@@ -18,16 +18,14 @@ pub struct Ctx<'a> {
     pub host: &'a dyn Host,
     /// argv without the program (`process.argv.slice(2)`).
     pub args: &'a [String],
-    /// A successful run is printed here (no update notice can follow it).
-    pub success_answered: bool,
     /// Themed output would be plain text.
     pub plain: bool,
 }
 
 impl Ctx<'_> {
-    /// Whether `lib.rs` prints an outcome with this exit code, so its side effects may happen.
-    pub fn answers(&self, code: u8, themed: bool) -> bool {
-        (code != 0 || self.success_answered) && (!themed || self.plain)
+    /// Whether `lib.rs` prints an outcome, so its side effects may happen.
+    pub fn answers(&self, themed: bool) -> bool {
+        !themed || self.plain
     }
 
     /// `path.resolve(p)` against `process.cwd()`.

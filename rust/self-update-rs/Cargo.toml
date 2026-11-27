@@ -1,0 +1,20 @@
+[package]
+name = "self-update-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "The port of the CLI update notice in src/services/self-update.ts (maybeNotifyCliUpdate and what it reaches)"
+
+[features]
+# A real `UpdateFetch` over HTTPS (`HttpFetch`). Off by default: the tests use a fake.
+http = ["dep:ureq"]
+
+[dependencies]
+emit-rs = { path = "../emit-rs" }
+node-semver-rs = { path = "../node-semver-rs" }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+ureq = { version = "3", optional = true }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

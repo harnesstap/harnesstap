@@ -105,7 +105,13 @@ Decision: Every one of the 44 registered harnesses is ported. No feature is drop
 Consequences: The harness writers (`src/platforms/`) are ported whole.
 
 ## ADR-018: Invocation name and the front end's hand-back rules
-Status: accepted (2026-11-27)
+Status: accepted (2026-11-27), partly superseded by ADR-019
 Context: `resolveInvocationName` prints `ht` when the script is launched as `ht` and `harnesstap` otherwise. The cases were recorded through `node dist/bin.js`, so they show `harnesstap`, while the front door binary is named `ht`. The front end (`cli-rs`) also meets output it cannot reproduce yet: chalk colors, the telemetry notice and startup event, the CLI update check, and `--verbose` stacks.
 Decision: The Rust front door reads its own argv[0] the same way (`ht` only when launched as `ht`), and replay runs it through a `harnesstap` hard link, which is the npm package's other bin name. `cli-rs` answers only when the original's output is plain text and has no side effect it does not reproduce: help when commander's or chalk's color rules give no color, any run only when `HARNESSTAP_TELEMETRY` is off, a command group's own help only when the update check is skipped, errors only without `-v`/`--verbose`. Everything else runs the original.
 Consequences: Real interactive runs (TTY, telemetry not switched off) still reach the original until the theme, telemetry and self-update are ported; the recorded cases run in Rust. Porting those three units widens the front end without changing its parser.
+
+## ADR-019: The front end runs the telemetry prologue and the update notice itself
+Status: accepted (2026-11-27)
+Context: `telemetry-rs` and `self-update-rs` port what `runHarnesstapCli` runs before the parse (`maybeWarnCliTelemetry`, `trackCliStartup`) and after an action (`maybeNotifyCliUpdate`). Both write state files and may print to stderr, so running them and then falling back to the original could print twice.
+Decision: `cli-rs` decides first (the parse and a ported action build their output in memory), and only when Rust answers does the front door run the telemetry prologue, print the answer, then run the update notice after an action. A fallback runs neither, so the original does them exactly once. Events go out on a detached thread with an 800 ms timeout, like the original's unref'd socket. The install channel and method are read from the Rust binary's path, where the original reads the script's. This replaces ADR-018's "telemetry not switched off" and "update check" hand-back rules; the color and `--verbose` rules stay.
+Consequences: Interactive runs with telemetry on stay in Rust. Root help and the `uninstall`/`version` guards still come before the prologue, as in the original. Packaging (wave 4) decides what the binary's path looks like to the channel detection.
