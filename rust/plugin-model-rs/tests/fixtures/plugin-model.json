@@ -12,7 +12,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00191M431APZM5PN1B",
+      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -53,7 +53,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -91,7 +91,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -114,7 +114,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+      "id": "01KDVDNCXRNN22C485PW4JRQTX",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -136,7 +136,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
+      "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -158,7 +158,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
+      "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -182,7 +182,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -227,7 +227,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00191M431APZM5PN1B",
+      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -246,7 +246,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -265,7 +265,7 @@
       "alpha@1.0.0"
      ],
      "result": {
-      "id": "01KDVDNA00191M431APZM5PN1B",
+      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -284,7 +284,7 @@
       "alpha@^1.0.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -317,7 +317,7 @@
       "alpha@>=2.0.0-0"
      ],
      "result": {
-      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -336,7 +336,7 @@
       "alpha@latest"
      ],
      "result": {
-      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -355,7 +355,7 @@
       "alpha@ 1.2.0 "
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -409,7 +409,7 @@
       "beta@latest"
      ],
      "result": {
-      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+      "id": "01KDVDNCXRNN22C485PW4JRQTX",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -428,7 +428,7 @@
       "beta@1.0"
      ],
      "result": {
-      "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
+      "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -447,7 +447,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+      "id": "01KDVDNCXRNN22C485PW4JRQTX",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -480,7 +480,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -500,7 +500,7 @@
       "1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -534,7 +534,7 @@
       ""
      ],
      "result": {
-      "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -566,7 +566,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -599,7 +599,7 @@
       "alpha@1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -639,7 +639,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+      "id": "01KDVDNCXRNN22C485PW4JRQTX",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -658,7 +658,7 @@
       "default"
      ],
      "result": {
-      "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
+      "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -690,7 +690,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00191M431APZM5PN1B",
+       "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
        "name": "alpha",
        "version": "1.0.0",
        "org_slug": "",
@@ -703,7 +703,7 @@
        "updated_at": "2026-01-01T00:00:00.000Z"
       },
       {
-       "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+       "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -730,7 +730,7 @@
        "updated_at": "2026-01-01T00:00:01.000Z"
       },
       {
-       "id": "01KDVDNBYG39ATJ3DKH4AXS7C9",
+       "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
        "name": "alpha",
        "version": "2.0.0-beta.1",
        "org_slug": "",
@@ -743,7 +743,7 @@
        "updated_at": "2026-01-01T00:00:02.000Z"
       },
       {
-       "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
+       "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -756,7 +756,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+       "id": "01KDVDNCXRNN22C485PW4JRQTX",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -769,7 +769,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
+       "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -981,7 +981,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00191M431APZM5PN1B",
+      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1060,7 +1060,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+       "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -1087,7 +1087,7 @@
        "updated_at": "2026-01-01T00:00:49.000Z"
       },
       {
-       "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
+       "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -1100,7 +1100,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+       "id": "01KDVDNCXRNN22C485PW4JRQTX",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -1113,7 +1113,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
+       "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -1126,7 +1126,7 @@
        "updated_at": "2026-01-01T00:00:05.000Z"
       },
       {
-       "id": "01KDVDNA00191M431APZM5PN1B",
+       "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
        "name": "renamed",
        "version": "1.0.0",
        "org_slug": "",
@@ -1173,7 +1173,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00191M431APZM5PN1B",
+      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1204,7 +1204,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8S2NPJ8WSJ7CCBQ4C",
+      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -1235,7 +1235,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNCXRW186AQ1GMVBMDWQP",
+      "id": "01KDVDNCXRNN22C485PW4JRQTX",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -1266,7 +1266,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNDX0Q2RCJ616NN7RKJQV",
+      "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -1297,7 +1297,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNEW8M5JEJ6D4P4G3RYAD",
+      "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -3700,7 +3700,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3741,7 +3741,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3805,7 +3805,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3854,7 +3854,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3924,7 +3924,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3984,7 +3984,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4053,7 +4053,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4143,7 +4143,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+       "id": "01KDVDNA00F39M7S0GREDGSNSV",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4363,7 +4363,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+       "id": "01KDVDNA00F39M7S0GREDGSNSV",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4584,7 +4584,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00T0T0DW91MHGR4X4A",
+      "id": "01KDVDNA00F39M7S0GREDGSNSV",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4907,7 +4907,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -4961,7 +4961,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5028,7 +5028,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5127,7 +5127,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5174,7 +5174,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5220,7 +5220,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5266,7 +5266,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5495,7 +5495,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00CPH3XXYBVM4H5EJP",
+      "id": "01KDVDNA00GDTSVM603J6RXA89",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5561,7 +5561,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -5624,7 +5624,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+      "id": "01KDVDNAZ8TF9QZER255M9EV7C",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -5811,13 +5811,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
+       "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
+       "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
        "dependency_name": "dep-two",
        "version_constraint": "latest",
        "order": 1
@@ -5836,13 +5836,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+       "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+       "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
        "dependency_name": "dep-three",
        "version_constraint": "latest",
        "order": 1
@@ -5904,7 +5904,7 @@
        }
       },
       {
-       "id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
+       "id": "01KDVDNJS8J3H5V2GZX018M3KG",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -5926,7 +5926,7 @@
        }
       },
       {
-       "id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
+       "id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -5968,7 +5968,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNA00M7421BYGKZ7FJGH2",
+        "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6001,7 +6001,7 @@
         "updated_at": "2026-01-01T00:00:00.000Z"
        },
        {
-        "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+        "id": "01KDVDNAZ8TF9QZER255M9EV7C",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6124,12 +6124,12 @@
         },
         {
          "id": "dep-two",
-         "version": "latest",
+         "version": "",
          "enabled": true
         },
         {
          "id": "dep-three",
-         "version": "latest",
+         "version": "",
          "enabled": true
         }
        ]
@@ -6141,11 +6141,11 @@
        },
        {
         "ref": "dep-two",
-        "version_constraint": "latest"
+        "version_constraint": ""
        },
        {
         "ref": "dep-three",
-        "version_constraint": "latest"
+        "version_constraint": ""
        }
       ]
      }
@@ -6171,7 +6171,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+        "id": "01KDVDNAZ8TF9QZER255M9EV7C",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6205,7 +6205,7 @@
         "updated_at": "2026-01-01T00:00:01.000Z"
        },
        {
-        "id": "01KDVDNA00M7421BYGKZ7FJGH2",
+        "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6327,12 +6327,12 @@
         },
         {
          "id": "dep-three",
-         "version": "latest",
+         "version": "",
          "enabled": true
         },
         {
          "id": "dep-two",
-         "version": "latest",
+         "version": "",
          "enabled": true
         }
        ]
@@ -6344,11 +6344,11 @@
        },
        {
         "ref": "dep-three",
-        "version_constraint": "latest"
+        "version_constraint": ""
        },
        {
         "ref": "dep-two",
-        "version_constraint": "latest"
+        "version_constraint": ""
        }
       ]
      }
@@ -6402,7 +6402,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "id": "01KDVDNXH030BP9NK076TCJCY3",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -6439,12 +6439,12 @@
         },
         {
          "id": "dep-two",
-         "version": "latest",
+         "version": "",
          "enabled": true
         },
         {
          "id": "dep-three",
-         "version": "latest",
+         "version": "",
          "enabled": true
         }
        ]
@@ -6533,7 +6533,7 @@
        }
       },
       {
-       "id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
+       "id": "01KDVDNJS8J3H5V2GZX018M3KG",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -6555,7 +6555,7 @@
        }
       },
       {
-       "id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
+       "id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -6575,7 +6575,7 @@
        }
       },
       {
-       "id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
+       "id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
        "type": "plugin",
        "name": "dep-three",
        "description": "",
@@ -6606,7 +6606,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNZFG8KNQSNTKVNYW93BP",
+      "id": "01KDVDNZFGTR26C17X7HT3QAWT",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -6636,7 +6636,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6687,7 +6687,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6738,7 +6738,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8J601WWP2M9QW2S3R",
+      "id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -6769,7 +6769,7 @@
         },
         {
          "id": "dep-two",
-         "version": "latest",
+         "version": "",
          "enabled": true
         }
        ]
@@ -6875,7 +6875,7 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
+       "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
        "dependency_name": "dep-two",
        "version_constraint": "1.0.0",
        "order": 0
@@ -6916,111 +6916,111 @@
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
-      "resource_id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
+      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
+      "resource_id": "01KDVDNJS8J3H5V2GZX018M3KG",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
-      "resource_id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
+      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
+      "resource_id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
       "resource_id": "R2",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
-      "resource_id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
+      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
+      "resource_id": "01KDVDNJS8J3H5V2GZX018M3KG",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
-      "resource_id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
+      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
+      "resource_id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH005AHJMXV08NR2PH3",
-      "resource_id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
+      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
+      "resource_id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
       "order": 5,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
+      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
+      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
-      "resource_id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
+      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
+      "resource_id": "01KDVDNJS8J3H5V2GZX018M3KG",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8J601WWP2M9QW2S3R",
-      "resource_id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
+      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
+      "resource_id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00M7421BYGKZ7FJGH2",
-      "resource_id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
+      "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "resource_id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00M7421BYGKZ7FJGH2",
+      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -7051,7 +7051,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8WZ8G42X34SBGFHYN",
+      "id": "01KDVDNAZ8TF9QZER255M9EV7C",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -7082,14 +7082,14 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNXH005AHJMXV08NR2PH3",
+      "id": "01KDVDNXH030BP9NK076TCJCY3",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
       "catalog_slug": "",
       "description": "first",
       "tags": "[\"t1\",\"t2\",\"t3\"]",
-      "claude_config": "{\"marketplaces\":{\"m\":{\"s\":1}},\"plugins\":[{\"id\":\"x\",\"version\":\"2\",\"enabled\":false},{\"id\":\"y\",\"version\":\"1\",\"enabled\":true},{\"id\":\"dep-one\",\"version\":\"2.0.0\",\"enabled\":true},{\"id\":\"dep-two\",\"version\":\"latest\",\"enabled\":true},{\"id\":\"dep-three\",\"version\":\"latest\",\"enabled\":true}]}",
+      "claude_config": "{\"marketplaces\":{\"m\":{\"s\":1}},\"plugins\":[{\"id\":\"x\",\"version\":\"2\",\"enabled\":false},{\"id\":\"y\",\"version\":\"1\",\"enabled\":true},{\"id\":\"dep-one\",\"version\":\"2.0.0\",\"enabled\":true},{\"id\":\"dep-two\",\"version\":\"\",\"enabled\":true},{\"id\":\"dep-three\",\"version\":\"\",\"enabled\":true}]}",
       "needs_config": "[\"K1\",\"K2\"]",
       "default_environment_id": "e1",
       "created_at": "2026-01-01T00:00:20.000Z",
@@ -7113,7 +7113,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNZFG8KNQSNTKVNYW93BP",
+      "id": "01KDVDNZFGTR26C17X7HT3QAWT",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -7144,14 +7144,14 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDP2D8J601WWP2M9QW2S3R",
+      "id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
       "catalog_slug": "",
       "description": "first",
       "tags": "[\"t1\",\"t2\"]",
-      "claude_config": "{\"marketplaces\":{\"m\":{\"s\":1}},\"plugins\":[{\"id\":\"x\",\"version\":\"1\",\"enabled\":true},{\"id\":\"dep-one\",\"version\":\"2.0.0\",\"enabled\":true},{\"id\":\"dep-two\",\"version\":\"latest\",\"enabled\":true}]}",
+      "claude_config": "{\"marketplaces\":{\"m\":{\"s\":1}},\"plugins\":[{\"id\":\"x\",\"version\":\"1\",\"enabled\":true},{\"id\":\"dep-one\",\"version\":\"2.0.0\",\"enabled\":true},{\"id\":\"dep-two\",\"version\":\"\",\"enabled\":true}]}",
       "needs_config": "[\"K1\"]",
       "default_environment_id": null,
       "created_at": "2026-01-01T00:00:25.000Z",
@@ -7225,7 +7225,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNJS81WM39EFPZ0S9M8BQ",
+      "id": "01KDVDNJS8J3H5V2GZX018M3KG",
       "type": "plugin",
       "name": "dep-one",
       "description": "",
@@ -7241,7 +7241,7 @@
       "updated_at": "2026-01-01T00:00:11.000Z"
      },
      {
-      "id": "01KDVDNKRG9Y7ZZB0NE77VZKB4",
+      "id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
       "type": "plugin",
       "name": "dep-two",
       "description": "",
@@ -7257,7 +7257,7 @@
       "updated_at": "2026-01-01T00:00:31.000Z"
      },
      {
-      "id": "01KDVDNNQ04QP8NK3ZAJ043KBG",
+      "id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
       "type": "plugin",
       "name": "dep-three",
       "description": "",
@@ -7587,7 +7587,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "id": "01KDVDP2D8Y7R4C006927HSMKE",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -7608,7 +7608,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP3CG87AQEBX5F82508HT",
+      "id": "01KDVDP3CG1P58CCBRB045DAPS",
       "name": "host",
       "version": "1.0.0",
       "org_slug": "",
@@ -7627,7 +7627,7 @@
       "dep@mk"
      ],
      "result": {
-      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7654,7 +7654,7 @@
       "dep@mk"
      ],
      "result": {
-      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7684,7 +7684,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP6A8WRHKV7SYKPH9FF62",
+      "id": "01KDVDP6A8ARKJR65WKAVNXBHH",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7716,7 +7716,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+      "id": "01KDVDP79G9ED216R5G8JE7STX",
       "type": "plugin",
       "name": "thing",
       "description": "Dependency: ./local/thing",
@@ -7746,7 +7746,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP88RJQBY3CJY9DVYFK5V",
+      "id": "01KDVDP88RSDVH9P72AJRXX2FA",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -7773,7 +7773,7 @@
       "https://github.com/o/gitdep.git"
      ],
      "result": {
-      "id": "01KDVDP9806GX8BW3RWXK479PH",
+      "id": "01KDVDP980T73TQTTZV95PB94E",
       "type": "plugin",
       "name": "gitdep",
       "description": "Dependency: https://github.com/o/gitdep.git",
@@ -7799,7 +7799,7 @@
       "  padded@mk  "
      ],
      "result": {
-      "id": "01KDVDPA78DD2AE2ZFY0NKPQJZ",
+      "id": "01KDVDPA78BBBQ0FDT4FBY0BSV",
       "type": "plugin",
       "name": "padded",
       "description": "Dependency:   padded@mk  ",
@@ -7832,7 +7832,7 @@
       "dep@mk"
      ],
      "result": {
-      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7864,7 +7864,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "id": "01KDVDP2D8Y7R4C006927HSMKE",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -7906,7 +7906,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPE48E4FV0DE4KE3NAMDR",
+      "id": "01KDVDPE48CH1J2AN8ABMZB6EV",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -7943,7 +7943,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+      "id": "01KDVDP79G9ED216R5G8JE7STX",
       "type": "plugin",
       "name": "thing",
       "description": "Dependency: ./local/thing",
@@ -7976,7 +7976,7 @@
       "plain"
      ],
      "result": {
-      "id": "01KDVDPG2RDBFW84HZK9476RHY",
+      "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
       "type": "plugin",
       "name": "plain",
       "description": "Dependency: plain",
@@ -8008,7 +8008,7 @@
       "host@mk"
      ],
      "result": {
-      "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "id": "01KDVDPH20FDD2544C10DKZ5WV",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: host@mk",
@@ -8044,7 +8044,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP9806GX8BW3RWXK479PH",
+      "id": "01KDVDP980T73TQTTZV95PB94E",
       "type": "plugin",
       "name": "gitdep",
       "description": "Dependency: https://github.com/o/gitdep.git",
@@ -8090,7 +8090,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+        "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
         "type": "plugin",
         "name": "dep",
         "description": "Dependency: dep@mk",
@@ -8122,7 +8122,7 @@
        "version_constraint": "~1.2",
        "embed_on_export": true,
        "resource": {
-        "id": "01KDVDPE48E4FV0DE4KE3NAMDR",
+        "id": "01KDVDPE48CH1J2AN8ABMZB6EV",
         "type": "plugin",
         "name": "cp",
         "description": "Dependency: org/cat/cp",
@@ -8155,7 +8155,7 @@
        "version_constraint": "2",
        "embed_on_export": true,
        "resource": {
-        "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+        "id": "01KDVDP79G9ED216R5G8JE7STX",
         "type": "plugin",
         "name": "thing",
         "description": "Dependency: ./local/thing",
@@ -8187,7 +8187,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPG2RDBFW84HZK9476RHY",
+        "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
         "type": "plugin",
         "name": "plain",
         "description": "Dependency: plain",
@@ -8218,7 +8218,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+        "id": "01KDVDPH20FDD2544C10DKZ5WV",
         "type": "plugin",
         "name": "host",
         "description": "Dependency: host@mk",
@@ -8250,7 +8250,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDP9806GX8BW3RWXK479PH",
+        "id": "01KDVDP980T73TQTTZV95PB94E",
         "type": "plugin",
         "name": "gitdep",
         "description": "Dependency: https://github.com/o/gitdep.git",
@@ -8300,7 +8300,7 @@
       "host@mk"
      ],
      "result": {
-      "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "id": "01KDVDPH20FDD2544C10DKZ5WV",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: host@mk",
@@ -8333,7 +8333,7 @@
       "org/cat/host"
      ],
      "result": {
-      "id": "01KDVDPPXG1Y8MCKZ5J44M3BJ6",
+      "id": "01KDVDPPXGDTB8WAVMQT9KPJ29",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: org/cat/host",
@@ -8366,7 +8366,7 @@
       "../host"
      ],
      "result": {
-      "id": "01KDVDPQWRTFD0PTF68SN2ZPWB",
+      "id": "01KDVDPQWR6TSTTRSDFPGMA9W9",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: ../host",
@@ -8404,7 +8404,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPPXG1Y8MCKZ5J44M3BJ6",
+        "id": "01KDVDPPXGDTB8WAVMQT9KPJ29",
         "type": "plugin",
         "name": "host",
         "description": "Dependency: org/cat/host",
@@ -8673,7 +8673,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "id": "01KDVDP2D8Y7R4C006927HSMKE",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -8769,7 +8769,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPG2RDBFW84HZK9476RHY",
+        "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
         "type": "plugin",
         "name": "plain",
         "description": "Dependency: plain",
@@ -8800,7 +8800,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+        "id": "01KDVDPH20FDD2544C10DKZ5WV",
         "type": "plugin",
         "name": "host",
         "description": "Dependency: host@mk",
@@ -8838,7 +8838,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "id": "01KDVDP2D8Y7R4C006927HSMKE",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -8878,39 +8878,39 @@
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
-      "resource_id": "01KDVDPG2RDBFW84HZK9476RHY",
+      "plugin_id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "resource_id": "01KDVDPG2R5N2JS24ZR97QBCGP",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
-      "resource_id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "plugin_id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "resource_id": "01KDVDPH20FDD2544C10DKZ5WV",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP3CG87AQEBX5F82508HT",
-      "resource_id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "plugin_id": "01KDVDP3CG1P58CCBRB045DAPS",
+      "resource_id": "01KDVDPH20FDD2544C10DKZ5WV",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP3CG87AQEBX5F82508HT",
-      "resource_id": "01KDVDPQWRTFD0PTF68SN2ZPWB",
+      "plugin_id": "01KDVDP3CG1P58CCBRB045DAPS",
+      "resource_id": "01KDVDPQWR6TSTTRSDFPGMA9W9",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugin_working_snapshots": [
      {
-      "plugin_id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "plugin_id": "01KDVDP2D8Y7R4C006927HSMKE",
       "source_version": "1.0.0",
-      "payload": "{\"resource_ids\":[\"01KDVDP4BRP2DDH4KSJZ5FYJAC\",\"01KDVDPE48E4FV0DE4KE3NAMDR\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"latest\"},{\"name\":\"cp\",\"version\":\"~1.2\"}],\"excludes\":[]}",
+      "payload": "{\"resource_ids\":[\"01KDVDP4BRJXR2ENW1SF2NKCYP\",\"01KDVDPE48CH1J2AN8ABMZB6EV\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"latest\"},{\"name\":\"cp\",\"version\":\"~1.2\"}],\"excludes\":[]}",
       "created_at": "2026-01-01T00:00:38.000Z"
      },
      {
-      "plugin_id": "01KDVDP3CG87AQEBX5F82508HT",
+      "plugin_id": "01KDVDP3CG1P58CCBRB045DAPS",
       "source_version": "1.0.0",
       "payload": "{\"resource_ids\":[],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[],\"excludes\":[]}",
       "created_at": "2026-01-01T00:00:45.000Z"
@@ -8918,7 +8918,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDP2D8F8Y1T5GQGSDCMHYW",
+      "id": "01KDVDP2D8Y7R4C006927HSMKE",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -8949,7 +8949,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDP3CG87AQEBX5F82508HT",
+      "id": "01KDVDP3CG1P58CCBRB045DAPS",
       "name": "host",
       "version": "1.0.0",
       "org_slug": "",
@@ -8982,7 +8982,7 @@
     ],
     "resources": [
      {
-      "id": "01KDVDP4BRP2DDH4KSJZ5FYJAC",
+      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -8998,7 +8998,7 @@
       "updated_at": "2026-01-01T00:00:27.000Z"
      },
      {
-      "id": "01KDVDP6A8WRHKV7SYKPH9FF62",
+      "id": "01KDVDP6A8ARKJR65WKAVNXBHH",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -9014,7 +9014,7 @@
       "updated_at": "2026-01-01T00:00:29.000Z"
      },
      {
-      "id": "01KDVDP79GZR4F2KJ94M707HJ6",
+      "id": "01KDVDP79G9ED216R5G8JE7STX",
       "type": "plugin",
       "name": "thing",
       "description": "Dependency: ./local/thing",
@@ -9030,7 +9030,7 @@
       "updated_at": "2026-01-01T00:00:30.000Z"
      },
      {
-      "id": "01KDVDP88RJQBY3CJY9DVYFK5V",
+      "id": "01KDVDP88RSDVH9P72AJRXX2FA",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -9046,7 +9046,7 @@
       "updated_at": "2026-01-01T00:00:31.000Z"
      },
      {
-      "id": "01KDVDP9806GX8BW3RWXK479PH",
+      "id": "01KDVDP980T73TQTTZV95PB94E",
       "type": "plugin",
       "name": "gitdep",
       "description": "Dependency: https://github.com/o/gitdep.git",
@@ -9062,7 +9062,7 @@
       "updated_at": "2026-01-01T00:00:32.000Z"
      },
      {
-      "id": "01KDVDPA78DD2AE2ZFY0NKPQJZ",
+      "id": "01KDVDPA78BBBQ0FDT4FBY0BSV",
       "type": "plugin",
       "name": "padded",
       "description": "Dependency:   padded@mk  ",
@@ -9078,7 +9078,7 @@
       "updated_at": "2026-01-01T00:00:33.000Z"
      },
      {
-      "id": "01KDVDPE48E4FV0DE4KE3NAMDR",
+      "id": "01KDVDPE48CH1J2AN8ABMZB6EV",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -9094,7 +9094,7 @@
       "updated_at": "2026-01-01T00:00:37.000Z"
      },
      {
-      "id": "01KDVDPG2RDBFW84HZK9476RHY",
+      "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
       "type": "plugin",
       "name": "plain",
       "description": "Dependency: plain",
@@ -9110,7 +9110,7 @@
       "updated_at": "2026-01-01T00:00:39.000Z"
      },
      {
-      "id": "01KDVDPH2065J5X6PQ20TNNBGP",
+      "id": "01KDVDPH20FDD2544C10DKZ5WV",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: host@mk",
@@ -9126,7 +9126,7 @@
       "updated_at": "2026-01-01T00:00:40.000Z"
      },
      {
-      "id": "01KDVDPPXG1Y8MCKZ5J44M3BJ6",
+      "id": "01KDVDPPXGDTB8WAVMQT9KPJ29",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: org/cat/host",
@@ -9142,7 +9142,7 @@
       "updated_at": "2026-01-01T00:00:46.000Z"
      },
      {
-      "id": "01KDVDPQWRTFD0PTF68SN2ZPWB",
+      "id": "01KDVDPQWR6TSTTRSDFPGMA9W9",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: ../host",
@@ -9156,6 +9156,4354 @@
       "content_blob_ref": "blobs/sha256/f7/f76a098d8b5923c6138d3bfa1963d271f6e75f738dae3c4c5123dc3e9d9c8cd3",
       "created_at": "2026-01-01T00:00:47.000Z",
       "updated_at": "2026-01-01T00:00:47.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "name": "extends",
+   "calls": [
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "skill:a"
+     ],
+     "result": {
+      "type": "skill",
+      "name": "a"
+     }
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      " rule : b "
+     ],
+     "error": "Invalid hidden item \" rule : b \". Use <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "skill:"
+     ],
+     "error": "Invalid hidden item \"skill:\". Use <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "nope:x"
+     ],
+     "error": "Invalid hidden item \"nope:x\". Use <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      ":x"
+     ],
+     "error": "Invalid hidden item \":x\". Use <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "skill:a*"
+     ],
+     "error": "Invalid hidden item \"skill:a*\". Name one item exactly; patterns such as * are not supported."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "skill:[x]"
+     ],
+     "error": "Invalid hidden item \"skill:[x]\". Name one item exactly; patterns such as * are not supported."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "plugin:p"
+     ],
+     "result": {
+      "type": "plugin",
+      "name": "p"
+     }
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "mcp_server:m?"
+     ],
+     "error": "Invalid hidden item \"mcp_server:m?\". Name one item exactly; patterns such as * are not supported."
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "skill:a:b"
+     ],
+     "result": {
+      "type": "skill",
+      "name": "a:b"
+     }
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      "instruction:x "
+     ],
+     "result": {
+      "type": "instruction",
+      "name": "x"
+     }
+    },
+    {
+     "fn": "parseExcludeEntry",
+     "args": [
+      " skill:y"
+     ],
+     "result": {
+      "type": "skill",
+      "name": "y"
+     }
+    },
+    {
+     "fn": "normalizeExcludeEntries",
+     "args": [
+      [
+       "skill:b",
+       "skill:a",
+       " skill:a",
+       "rule:Z",
+       "rule:z",
+       "rule:é",
+       "rule:😀",
+       "rule:～"
+      ]
+     ],
+     "result": [
+      "rule:Z",
+      "rule:z",
+      "rule:é",
+      "rule:😀",
+      "rule:～",
+      "skill:a",
+      "skill:b"
+     ]
+    },
+    {
+     "fn": "normalizeExcludeEntries",
+     "args": [
+      [
+       "skill:a",
+       "bad"
+      ]
+     ],
+     "error": "Invalid hidden item \"bad\". Use <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "normalizeExcludeEntries",
+     "args": [
+      [
+       "skill:s0",
+       "skill:s1",
+       "skill:s2",
+       "skill:s3",
+       "skill:s4",
+       "skill:s5",
+       "skill:s6",
+       "skill:s7",
+       "skill:s8",
+       "skill:s9",
+       "skill:s10",
+       "skill:s11",
+       "skill:s12",
+       "skill:s13",
+       "skill:s14",
+       "skill:s15",
+       "skill:s16",
+       "skill:s17",
+       "skill:s18",
+       "skill:s19",
+       "skill:s20",
+       "skill:s21",
+       "skill:s22",
+       "skill:s23",
+       "skill:s24",
+       "skill:s25",
+       "skill:s26",
+       "skill:s27",
+       "skill:s28",
+       "skill:s29",
+       "skill:s30",
+       "skill:s31",
+       "skill:s32",
+       "skill:s33",
+       "skill:s34",
+       "skill:s35",
+       "skill:s36",
+       "skill:s37",
+       "skill:s38",
+       "skill:s39",
+       "skill:s40",
+       "skill:s41",
+       "skill:s42",
+       "skill:s43",
+       "skill:s44",
+       "skill:s45",
+       "skill:s46",
+       "skill:s47",
+       "skill:s48",
+       "skill:s49",
+       "skill:s50",
+       "skill:s51",
+       "skill:s52",
+       "skill:s53",
+       "skill:s54",
+       "skill:s55",
+       "skill:s56",
+       "skill:s57",
+       "skill:s58",
+       "skill:s59",
+       "skill:s60",
+       "skill:s61",
+       "skill:s62",
+       "skill:s63",
+       "skill:s64",
+       "skill:s65",
+       "skill:s66",
+       "skill:s67",
+       "skill:s68",
+       "skill:s69",
+       "skill:s70",
+       "skill:s71",
+       "skill:s72",
+       "skill:s73",
+       "skill:s74",
+       "skill:s75",
+       "skill:s76",
+       "skill:s77",
+       "skill:s78",
+       "skill:s79",
+       "skill:s80",
+       "skill:s81",
+       "skill:s82",
+       "skill:s83",
+       "skill:s84",
+       "skill:s85",
+       "skill:s86",
+       "skill:s87",
+       "skill:s88",
+       "skill:s89",
+       "skill:s90",
+       "skill:s91",
+       "skill:s92",
+       "skill:s93",
+       "skill:s94",
+       "skill:s95",
+       "skill:s96",
+       "skill:s97",
+       "skill:s98",
+       "skill:s99",
+       "skill:s100",
+       "skill:s101",
+       "skill:s102",
+       "skill:s103",
+       "skill:s104",
+       "skill:s105",
+       "skill:s106",
+       "skill:s107",
+       "skill:s108",
+       "skill:s109",
+       "skill:s110",
+       "skill:s111",
+       "skill:s112",
+       "skill:s113",
+       "skill:s114",
+       "skill:s115",
+       "skill:s116",
+       "skill:s117",
+       "skill:s118",
+       "skill:s119",
+       "skill:s120",
+       "skill:s121",
+       "skill:s122",
+       "skill:s123",
+       "skill:s124",
+       "skill:s125",
+       "skill:s126",
+       "skill:s127",
+       "skill:s128",
+       "skill:s129",
+       "skill:s130",
+       "skill:s131",
+       "skill:s132",
+       "skill:s133",
+       "skill:s134",
+       "skill:s135",
+       "skill:s136",
+       "skill:s137",
+       "skill:s138",
+       "skill:s139",
+       "skill:s140",
+       "skill:s141",
+       "skill:s142",
+       "skill:s143",
+       "skill:s144",
+       "skill:s145",
+       "skill:s146",
+       "skill:s147",
+       "skill:s148",
+       "skill:s149",
+       "skill:s150",
+       "skill:s151",
+       "skill:s152",
+       "skill:s153",
+       "skill:s154",
+       "skill:s155",
+       "skill:s156",
+       "skill:s157",
+       "skill:s158",
+       "skill:s159",
+       "skill:s160",
+       "skill:s161",
+       "skill:s162",
+       "skill:s163",
+       "skill:s164",
+       "skill:s165",
+       "skill:s166",
+       "skill:s167",
+       "skill:s168",
+       "skill:s169",
+       "skill:s170",
+       "skill:s171",
+       "skill:s172",
+       "skill:s173",
+       "skill:s174",
+       "skill:s175",
+       "skill:s176",
+       "skill:s177",
+       "skill:s178",
+       "skill:s179",
+       "skill:s180",
+       "skill:s181",
+       "skill:s182",
+       "skill:s183",
+       "skill:s184",
+       "skill:s185",
+       "skill:s186",
+       "skill:s187",
+       "skill:s188",
+       "skill:s189",
+       "skill:s190",
+       "skill:s191",
+       "skill:s192",
+       "skill:s193",
+       "skill:s194",
+       "skill:s195",
+       "skill:s196",
+       "skill:s197",
+       "skill:s198",
+       "skill:s199",
+       "skill:s200"
+      ]
+     ],
+     "error": "A profile can hide at most 200 items; this one would hide 201."
+    },
+    {
+     "fn": "normalizeExcludeEntries",
+     "args": [
+      [
+       "skill:s0",
+       "skill:s1",
+       "skill:s2",
+       "skill:s3",
+       "skill:s4",
+       "skill:s5",
+       "skill:s6",
+       "skill:s7",
+       "skill:s8",
+       "skill:s9",
+       "skill:s10",
+       "skill:s11",
+       "skill:s12",
+       "skill:s13",
+       "skill:s14",
+       "skill:s15",
+       "skill:s16",
+       "skill:s17",
+       "skill:s18",
+       "skill:s19",
+       "skill:s20",
+       "skill:s21",
+       "skill:s22",
+       "skill:s23",
+       "skill:s24",
+       "skill:s25",
+       "skill:s26",
+       "skill:s27",
+       "skill:s28",
+       "skill:s29",
+       "skill:s30",
+       "skill:s31",
+       "skill:s32",
+       "skill:s33",
+       "skill:s34",
+       "skill:s35",
+       "skill:s36",
+       "skill:s37",
+       "skill:s38",
+       "skill:s39",
+       "skill:s40",
+       "skill:s41",
+       "skill:s42",
+       "skill:s43",
+       "skill:s44",
+       "skill:s45",
+       "skill:s46",
+       "skill:s47",
+       "skill:s48",
+       "skill:s49",
+       "skill:s50",
+       "skill:s51",
+       "skill:s52",
+       "skill:s53",
+       "skill:s54",
+       "skill:s55",
+       "skill:s56",
+       "skill:s57",
+       "skill:s58",
+       "skill:s59",
+       "skill:s60",
+       "skill:s61",
+       "skill:s62",
+       "skill:s63",
+       "skill:s64",
+       "skill:s65",
+       "skill:s66",
+       "skill:s67",
+       "skill:s68",
+       "skill:s69",
+       "skill:s70",
+       "skill:s71",
+       "skill:s72",
+       "skill:s73",
+       "skill:s74",
+       "skill:s75",
+       "skill:s76",
+       "skill:s77",
+       "skill:s78",
+       "skill:s79",
+       "skill:s80",
+       "skill:s81",
+       "skill:s82",
+       "skill:s83",
+       "skill:s84",
+       "skill:s85",
+       "skill:s86",
+       "skill:s87",
+       "skill:s88",
+       "skill:s89",
+       "skill:s90",
+       "skill:s91",
+       "skill:s92",
+       "skill:s93",
+       "skill:s94",
+       "skill:s95",
+       "skill:s96",
+       "skill:s97",
+       "skill:s98",
+       "skill:s99",
+       "skill:s100",
+       "skill:s101",
+       "skill:s102",
+       "skill:s103",
+       "skill:s104",
+       "skill:s105",
+       "skill:s106",
+       "skill:s107",
+       "skill:s108",
+       "skill:s109",
+       "skill:s110",
+       "skill:s111",
+       "skill:s112",
+       "skill:s113",
+       "skill:s114",
+       "skill:s115",
+       "skill:s116",
+       "skill:s117",
+       "skill:s118",
+       "skill:s119",
+       "skill:s120",
+       "skill:s121",
+       "skill:s122",
+       "skill:s123",
+       "skill:s124",
+       "skill:s125",
+       "skill:s126",
+       "skill:s127",
+       "skill:s128",
+       "skill:s129",
+       "skill:s130",
+       "skill:s131",
+       "skill:s132",
+       "skill:s133",
+       "skill:s134",
+       "skill:s135",
+       "skill:s136",
+       "skill:s137",
+       "skill:s138",
+       "skill:s139",
+       "skill:s140",
+       "skill:s141",
+       "skill:s142",
+       "skill:s143",
+       "skill:s144",
+       "skill:s145",
+       "skill:s146",
+       "skill:s147",
+       "skill:s148",
+       "skill:s149",
+       "skill:s150",
+       "skill:s151",
+       "skill:s152",
+       "skill:s153",
+       "skill:s154",
+       "skill:s155",
+       "skill:s156",
+       "skill:s157",
+       "skill:s158",
+       "skill:s159",
+       "skill:s160",
+       "skill:s161",
+       "skill:s162",
+       "skill:s163",
+       "skill:s164",
+       "skill:s165",
+       "skill:s166",
+       "skill:s167",
+       "skill:s168",
+       "skill:s169",
+       "skill:s170",
+       "skill:s171",
+       "skill:s172",
+       "skill:s173",
+       "skill:s174",
+       "skill:s175",
+       "skill:s176",
+       "skill:s177",
+       "skill:s178",
+       "skill:s179",
+       "skill:s180",
+       "skill:s181",
+       "skill:s182",
+       "skill:s183",
+       "skill:s184",
+       "skill:s185",
+       "skill:s186",
+       "skill:s187",
+       "skill:s188",
+       "skill:s189",
+       "skill:s190",
+       "skill:s191",
+       "skill:s192",
+       "skill:s193",
+       "skill:s194",
+       "skill:s195",
+       "skill:s196",
+       "skill:s197",
+       "skill:s198",
+       "skill:s199",
+       "skill:s0",
+       "skill:s1",
+       "skill:s2",
+       "skill:s3",
+       "skill:s4",
+       "skill:s5",
+       "skill:s6",
+       "skill:s7",
+       "skill:s8",
+       "skill:s9",
+       "skill:s10",
+       "skill:s11",
+       "skill:s12",
+       "skill:s13",
+       "skill:s14",
+       "skill:s15",
+       "skill:s16",
+       "skill:s17",
+       "skill:s18",
+       "skill:s19",
+       "skill:s20",
+       "skill:s21",
+       "skill:s22",
+       "skill:s23",
+       "skill:s24",
+       "skill:s25",
+       "skill:s26",
+       "skill:s27",
+       "skill:s28",
+       "skill:s29",
+       "skill:s30",
+       "skill:s31",
+       "skill:s32",
+       "skill:s33",
+       "skill:s34",
+       "skill:s35",
+       "skill:s36",
+       "skill:s37",
+       "skill:s38",
+       "skill:s39",
+       "skill:s40",
+       "skill:s41",
+       "skill:s42",
+       "skill:s43",
+       "skill:s44",
+       "skill:s45",
+       "skill:s46",
+       "skill:s47",
+       "skill:s48",
+       "skill:s49"
+      ]
+     ],
+     "result": [
+      "skill:s0",
+      "skill:s1",
+      "skill:s10",
+      "skill:s100",
+      "skill:s101",
+      "skill:s102",
+      "skill:s103",
+      "skill:s104",
+      "skill:s105",
+      "skill:s106",
+      "skill:s107",
+      "skill:s108",
+      "skill:s109",
+      "skill:s11",
+      "skill:s110",
+      "skill:s111",
+      "skill:s112",
+      "skill:s113",
+      "skill:s114",
+      "skill:s115",
+      "skill:s116",
+      "skill:s117",
+      "skill:s118",
+      "skill:s119",
+      "skill:s12",
+      "skill:s120",
+      "skill:s121",
+      "skill:s122",
+      "skill:s123",
+      "skill:s124",
+      "skill:s125",
+      "skill:s126",
+      "skill:s127",
+      "skill:s128",
+      "skill:s129",
+      "skill:s13",
+      "skill:s130",
+      "skill:s131",
+      "skill:s132",
+      "skill:s133",
+      "skill:s134",
+      "skill:s135",
+      "skill:s136",
+      "skill:s137",
+      "skill:s138",
+      "skill:s139",
+      "skill:s14",
+      "skill:s140",
+      "skill:s141",
+      "skill:s142",
+      "skill:s143",
+      "skill:s144",
+      "skill:s145",
+      "skill:s146",
+      "skill:s147",
+      "skill:s148",
+      "skill:s149",
+      "skill:s15",
+      "skill:s150",
+      "skill:s151",
+      "skill:s152",
+      "skill:s153",
+      "skill:s154",
+      "skill:s155",
+      "skill:s156",
+      "skill:s157",
+      "skill:s158",
+      "skill:s159",
+      "skill:s16",
+      "skill:s160",
+      "skill:s161",
+      "skill:s162",
+      "skill:s163",
+      "skill:s164",
+      "skill:s165",
+      "skill:s166",
+      "skill:s167",
+      "skill:s168",
+      "skill:s169",
+      "skill:s17",
+      "skill:s170",
+      "skill:s171",
+      "skill:s172",
+      "skill:s173",
+      "skill:s174",
+      "skill:s175",
+      "skill:s176",
+      "skill:s177",
+      "skill:s178",
+      "skill:s179",
+      "skill:s18",
+      "skill:s180",
+      "skill:s181",
+      "skill:s182",
+      "skill:s183",
+      "skill:s184",
+      "skill:s185",
+      "skill:s186",
+      "skill:s187",
+      "skill:s188",
+      "skill:s189",
+      "skill:s19",
+      "skill:s190",
+      "skill:s191",
+      "skill:s192",
+      "skill:s193",
+      "skill:s194",
+      "skill:s195",
+      "skill:s196",
+      "skill:s197",
+      "skill:s198",
+      "skill:s199",
+      "skill:s2",
+      "skill:s20",
+      "skill:s21",
+      "skill:s22",
+      "skill:s23",
+      "skill:s24",
+      "skill:s25",
+      "skill:s26",
+      "skill:s27",
+      "skill:s28",
+      "skill:s29",
+      "skill:s3",
+      "skill:s30",
+      "skill:s31",
+      "skill:s32",
+      "skill:s33",
+      "skill:s34",
+      "skill:s35",
+      "skill:s36",
+      "skill:s37",
+      "skill:s38",
+      "skill:s39",
+      "skill:s4",
+      "skill:s40",
+      "skill:s41",
+      "skill:s42",
+      "skill:s43",
+      "skill:s44",
+      "skill:s45",
+      "skill:s46",
+      "skill:s47",
+      "skill:s48",
+      "skill:s49",
+      "skill:s5",
+      "skill:s50",
+      "skill:s51",
+      "skill:s52",
+      "skill:s53",
+      "skill:s54",
+      "skill:s55",
+      "skill:s56",
+      "skill:s57",
+      "skill:s58",
+      "skill:s59",
+      "skill:s6",
+      "skill:s60",
+      "skill:s61",
+      "skill:s62",
+      "skill:s63",
+      "skill:s64",
+      "skill:s65",
+      "skill:s66",
+      "skill:s67",
+      "skill:s68",
+      "skill:s69",
+      "skill:s7",
+      "skill:s70",
+      "skill:s71",
+      "skill:s72",
+      "skill:s73",
+      "skill:s74",
+      "skill:s75",
+      "skill:s76",
+      "skill:s77",
+      "skill:s78",
+      "skill:s79",
+      "skill:s8",
+      "skill:s80",
+      "skill:s81",
+      "skill:s82",
+      "skill:s83",
+      "skill:s84",
+      "skill:s85",
+      "skill:s86",
+      "skill:s87",
+      "skill:s88",
+      "skill:s89",
+      "skill:s9",
+      "skill:s90",
+      "skill:s91",
+      "skill:s92",
+      "skill:s93",
+      "skill:s94",
+      "skill:s95",
+      "skill:s96",
+      "skill:s97",
+      "skill:s98",
+      "skill:s99"
+     ]
+    },
+    {
+     "fn": "parseExcludeList",
+     "args": [
+      [
+       "skill:b",
+       "skill:a",
+       3,
+       null,
+       "bad",
+       "skill:a",
+       "skill:*"
+      ]
+     ],
+     "result": [
+      "skill:a",
+      "skill:b"
+     ]
+    },
+    {
+     "fn": "parseExcludeList",
+     "args": [
+      "skill:a"
+     ],
+     "result": []
+    },
+    {
+     "fn": "parseExcludeList",
+     "args": [
+      null
+     ],
+     "result": []
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      null
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      "str"
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      0
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      []
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      [
+       "x"
+      ]
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "error": "code_only"
+      }
+     ],
+     "result": {
+      "code": "code_only"
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "error": {
+        "code": "c",
+        "message": "m",
+        "requestId": "r",
+        "entry": "e",
+        "ref": "o/c/p@1",
+        "fields": {
+         "a": 1
+        },
+        "details": null
+       }
+      }
+     ],
+     "result": {
+      "code": "c",
+      "message": "m",
+      "requestId": "r",
+      "entry": "e",
+      "ref": "o/c/p@1",
+      "fields": {
+       "a": 1
+      },
+      "details": null
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "error": {
+        "code": ""
+       },
+       "code": "top",
+       "message": "tm",
+       "request_id": "rid"
+      }
+     ],
+     "result": {
+      "code": "top",
+      "message": "tm",
+      "requestId": "rid"
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "error": {
+        "fields": [
+         1
+        ],
+        "details": [
+         1
+        ]
+       },
+       "requestId": ""
+      }
+     ],
+     "result": {
+      "details": [
+       1
+      ]
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "error": [
+        1
+       ],
+       "message": "m"
+      }
+     ],
+     "result": {
+      "message": "m"
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "error": {
+        "message": 5,
+        "entry": ""
+       }
+      }
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      null,
+      "hdr"
+     ],
+     "result": {
+      "requestId": "hdr"
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {
+       "requestId": "body"
+      },
+      "hdr"
+     ],
+     "result": {
+      "requestId": "body"
+     }
+    },
+    {
+     "fn": "parseCloudErrorBody",
+     "args": [
+      {},
+      ""
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      ""
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      "no json"
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      "HTTP 400: {\"error\":{\"code\":\"invalid_exclude\",\"entry\":\"skill:x\",\"message\":\"Bad entry.\"}}"
+     ],
+     "result": {
+      "code": "invalid_exclude",
+      "message": "Bad entry.",
+      "entry": "skill:x"
+     }
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      "x {broken"
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      "a {\"error\":\"e\"} trailing"
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      "{}"
+     ],
+     "result": {}
+    },
+    {
+     "fn": "parseCloudErrorText",
+     "args": [
+      "{\"error\":\"upstream_unpublished\",\"ref\":\"o/c/p@^1\"}"
+     ],
+     "result": {
+      "code": "upstream_unpublished",
+      "ref": "o/c/p@^1"
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "Publish failed",
+        400,
+        {
+         "error": {
+          "code": "x",
+          "message": "msg"
+         }
+        }
+       ]
+      }
+     ],
+     "result": {
+      "message": "Publish failed: 400 msg",
+      "status": 400,
+      "detail": {
+       "code": "x",
+       "message": "msg"
+      }
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        500
+       ]
+      }
+     ],
+     "result": {
+      "message": "P: 500 {}",
+      "status": 500,
+      "detail": {}
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        500,
+        null
+       ]
+      }
+     ],
+     "result": {
+      "message": "P: 500 {}",
+      "status": 500,
+      "detail": {}
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        400,
+        "text body"
+       ]
+      }
+     ],
+     "result": {
+      "message": "P: 400 \"text body\"",
+      "status": 400,
+      "detail": {}
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        400,
+        {
+         "error": "code"
+        }
+       ]
+      }
+     ],
+     "result": {
+      "message": "P: 400 code",
+      "status": 400,
+      "detail": {
+       "code": "code"
+      }
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        401,
+        {
+         "a": 1
+        },
+        "req-9"
+       ]
+      }
+     ],
+     "result": {
+      "message": "P: 401 {\"a\":1}",
+      "status": 401,
+      "detail": {
+       "requestId": "req-9"
+      }
+     }
+    },
+    {
+     "fn": "cloudApiError",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        400,
+        {
+         "error": {
+          "code": "c"
+         }
+        },
+        "req-1"
+       ]
+      }
+     ],
+     "result": {
+      "message": "P: 400 c",
+      "status": 400,
+      "detail": {
+       "code": "c",
+       "requestId": "req-1"
+      }
+     }
+    },
+    {
+     "fn": "cloudErrorDetail",
+     "args": [
+      {
+       "$error": "HTTP 400: {\"error\":{\"code\":\"c\"}}"
+      }
+     ],
+     "result": {
+      "code": "c"
+     }
+    },
+    {
+     "fn": "cloudErrorDetail",
+     "args": [
+      "plain {\"code\":\"k\"}"
+     ],
+     "result": {
+      "code": "k"
+     }
+    },
+    {
+     "fn": "cloudErrorDetail",
+     "args": [
+      {
+       "$cloud": [
+        "P",
+        400,
+        {
+         "error": {
+          "code": "z",
+          "requestId": "q"
+         }
+        }
+       ]
+      }
+     ],
+     "result": {
+      "code": "z",
+      "requestId": "q"
+     }
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "base",
+       "version": "1.0.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:00:50.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('S1', 'skill', 's1', '{}', 'body of s1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('S2', 'skill', 's2', '{}', 'body of s2', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('R1', 'rule', 'r1', '{}', 'body of r1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('HP', 'plugin', 'base', '{\"source_kind\":\"marketplace\"}', 'body of base', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('DP', 'plugin', 'dep', '{\"source_kind\":\"marketplace\",\"version_constraint\":\"^2\"}', 'body of dep', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      "S1"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      "S2"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      "R1"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      "HP"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      "DP"
+     ],
+     "result": null
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "kid",
+       "version": "0.1.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "name": "kid",
+      "version": "0.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:01:01.000Z",
+      "updated_at": "2026-01-01T00:01:01.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, namespace, metadata, content, created_at, updated_at) VALUES ('S1K', 'skill', 's1', 'k', '{}', 'own s1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      "S1K"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('KP', 'plugin', 'kid', '{\"source_kind\":\"local\"}', 'body of kid', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      "KP"
+     ],
+     "result": null
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "S1K",
+       "type": "skill",
+       "name": "s1",
+       "description": "",
+       "content": "own s1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "k",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 0,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "KP",
+       "type": "plugin",
+       "name": "kid",
+       "description": "",
+       "content": "body of kid",
+       "metadata": {
+        "source_kind": "local"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 1,
+       "harness_scope": {
+        "kind": "all"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "resource": {
+        "id": "S1K",
+        "type": "skill",
+        "name": "s1",
+        "description": "",
+        "content": "own s1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "k",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 0,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "own"
+      },
+      {
+       "resource": {
+        "id": "KP",
+        "type": "plugin",
+        "name": "kid",
+        "description": "",
+        "content": "body of kid",
+        "metadata": {
+         "source_kind": "local"
+        },
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 1,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "own"
+      }
+     ]
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": []
+    },
+    {
+     "fn": "setPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      [
+       "skill:s2"
+      ]
+     ],
+     "error": "kid does not keep in sync with a parent, so it has nothing to hide."
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "base@^1.0.0",
+       "version_at_link": "1.0.0"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "S2",
+       "type": "skill",
+       "name": "s2",
+       "description": "",
+       "content": "body of s2",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 1,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "R1",
+       "type": "rule",
+       "name": "r1",
+       "description": "",
+       "content": "body of r1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 2,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "DP",
+       "type": "plugin",
+       "name": "dep",
+       "description": "",
+       "content": "body of dep",
+       "metadata": {
+        "source_kind": "marketplace",
+        "version_constraint": "^2"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 4,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "S1K",
+       "type": "skill",
+       "name": "s1",
+       "description": "",
+       "content": "own s1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "k",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 0,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "KP",
+       "type": "plugin",
+       "name": "kid",
+       "description": "",
+       "content": "body of kid",
+       "metadata": {
+        "source_kind": "local"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 1,
+       "harness_scope": {
+        "kind": "all"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "resource": {
+        "id": "S2",
+        "type": "skill",
+        "name": "s2",
+        "description": "",
+        "content": "body of s2",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 1,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "parent"
+      },
+      {
+       "resource": {
+        "id": "R1",
+        "type": "rule",
+        "name": "r1",
+        "description": "",
+        "content": "body of r1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 2,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "parent"
+      },
+      {
+       "resource": {
+        "id": "DP",
+        "type": "plugin",
+        "name": "dep",
+        "description": "",
+        "content": "body of dep",
+        "metadata": {
+         "source_kind": "marketplace",
+         "version_constraint": "^2"
+        },
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 4,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "parent"
+      },
+      {
+       "resource": {
+        "id": "S1K",
+        "type": "skill",
+        "name": "s1",
+        "description": "",
+        "content": "own s1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "k",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 0,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "own"
+      },
+      {
+       "resource": {
+        "id": "KP",
+        "type": "plugin",
+        "name": "kid",
+        "description": "",
+        "content": "body of kid",
+        "metadata": {
+         "source_kind": "local"
+        },
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 1,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "own"
+      }
+     ]
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "S2",
+       "type": "skill",
+       "name": "s2",
+       "source": "parent",
+       "hidden": false
+      },
+      {
+       "id": "R1",
+       "type": "rule",
+       "name": "r1",
+       "source": "parent",
+       "hidden": false
+      },
+      {
+       "id": "DP",
+       "type": "plugin",
+       "name": "dep",
+       "source": "parent",
+       "hidden": false
+      }
+     ]
+    },
+    {
+     "fn": "listComposedDependencies",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "name": "dep",
+       "source_kind": "marketplace",
+       "ref": "dep",
+       "version_constraint": "^2",
+       "embed_on_export": false,
+       "resource": {
+        "id": "DP",
+        "type": "plugin",
+        "name": "dep",
+        "description": "",
+        "content": "body of dep",
+        "metadata": {
+         "source_kind": "marketplace",
+         "version_constraint": "^2"
+        },
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 4,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listComposedDependencies",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "name": "dep",
+       "source_kind": "marketplace",
+       "ref": "dep",
+       "version_constraint": "^2",
+       "embed_on_export": false,
+       "resource": {
+        "id": "DP",
+        "type": "plugin",
+        "name": "dep",
+        "description": "",
+        "content": "body of dep",
+        "metadata": {
+         "source_kind": "marketplace",
+         "version_constraint": "^2"
+        },
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 4,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listComposedDependencies",
+     "args": [
+      "missing"
+     ],
+     "result": []
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      "missing"
+     ],
+     "result": []
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      "missing"
+     ],
+     "result": []
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      "missing"
+     ],
+     "result": []
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": []
+    },
+    {
+     "fn": "setPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      [
+       "skill:s2",
+       "rule:r1",
+       "skill:nothing"
+      ]
+     ],
+     "result": [
+      "rule:r1",
+      "skill:nothing",
+      "skill:s2"
+     ]
+    },
+    {
+     "fn": "getPluginById",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "name": "kid",
+      "version": "0.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": true,
+      "upstream": {
+       "kind": "extends",
+       "ref": "base@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "created_at": "2026-01-01T00:01:01.000Z",
+      "updated_at": "2026-01-01T00:01:21.000Z"
+     }
+    },
+    {
+     "fn": "markPluginClean",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "setPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      [
+       " rule:r1",
+       "skill:nothing",
+       "skill:s2"
+      ]
+     ],
+     "result": [
+      "rule:r1",
+      "skill:nothing",
+      "skill:s2"
+     ]
+    },
+    {
+     "fn": "getPluginById",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "name": "kid",
+      "version": "0.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "upstream": {
+       "kind": "extends",
+       "ref": "base@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "created_at": "2026-01-01T00:01:01.000Z",
+      "updated_at": "2026-01-01T00:01:21.000Z"
+     }
+    },
+    {
+     "fn": "setPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      [
+       "bad"
+      ]
+     ],
+     "error": "Invalid hidden item \"bad\". Use <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "setPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      [
+       "skill:s1"
+      ]
+     ],
+     "error": "base does not keep in sync with a parent, so it has nothing to hide."
+    },
+    {
+     "fn": "setPluginExcludes",
+     "args": [
+      "missing",
+      []
+     ],
+     "error": "Plugin not found: missing"
+    },
+    {
+     "fn": "listPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      "rule:r1",
+      "skill:nothing",
+      "skill:s2"
+     ]
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "DP",
+       "type": "plugin",
+       "name": "dep",
+       "description": "",
+       "content": "body of dep",
+       "metadata": {
+        "source_kind": "marketplace",
+        "version_constraint": "^2"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 4,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "S1K",
+       "type": "skill",
+       "name": "s1",
+       "description": "",
+       "content": "own s1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "k",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 0,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "KP",
+       "type": "plugin",
+       "name": "kid",
+       "description": "",
+       "content": "body of kid",
+       "metadata": {
+        "source_kind": "local"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 1,
+       "harness_scope": {
+        "kind": "all"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "S2",
+       "type": "skill",
+       "name": "s2",
+       "source": "parent",
+       "hidden": true
+      },
+      {
+       "id": "R1",
+       "type": "rule",
+       "name": "r1",
+       "source": "parent",
+       "hidden": true
+      },
+      {
+       "id": "DP",
+       "type": "plugin",
+       "name": "dep",
+       "source": "parent",
+       "hidden": false
+      }
+     ]
+    },
+    {
+     "fn": "mergePluginsById",
+     "args": [
+      [
+       {
+        "$ref": [
+         61,
+         "id"
+        ]
+       }
+      ]
+     ],
+     "result": {
+      "plugins": [
+       {
+        "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+        "name": "kid",
+        "version": "0.1.0",
+        "org_slug": "",
+        "catalog_slug": "",
+        "origin": "authored",
+        "description": "",
+        "tags": [],
+        "dirty": false,
+        "upstream": {
+         "kind": "extends",
+         "ref": "base@^1.0.0",
+         "version_at_link": "1.0.0"
+        },
+        "created_at": "2026-01-01T00:01:01.000Z",
+        "updated_at": "2026-01-01T00:01:21.000Z"
+       }
+      ],
+      "resources": [
+       {
+        "id": "S1K",
+        "type": "skill",
+        "name": "s1",
+        "description": "",
+        "content": "own s1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "k",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 0,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      ],
+      "claude": {
+       "plugins": [
+        {
+         "id": "dep",
+         "version": "^2",
+         "enabled": true
+        }
+       ]
+      },
+      "pluginPins": [
+       {
+        "ref": "dep",
+        "version_constraint": "^2"
+       }
+      ]
+     }
+    },
+    {
+     "fn": "mergePluginsById",
+     "args": [
+      [
+       {
+        "$ref": [
+         50,
+         "id"
+        ]
+       },
+       {
+        "$ref": [
+         61,
+         "id"
+        ]
+       }
+      ]
+     ],
+     "result": {
+      "plugins": [
+       {
+        "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+        "name": "base",
+        "version": "1.0.0",
+        "org_slug": "",
+        "catalog_slug": "",
+        "origin": "authored",
+        "description": "",
+        "tags": [],
+        "dirty": false,
+        "created_at": "2026-01-01T00:00:50.000Z",
+        "updated_at": "2026-01-01T00:00:50.000Z"
+       },
+       {
+        "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+        "name": "kid",
+        "version": "0.1.0",
+        "org_slug": "",
+        "catalog_slug": "",
+        "origin": "authored",
+        "description": "",
+        "tags": [],
+        "dirty": false,
+        "upstream": {
+         "kind": "extends",
+         "ref": "base@^1.0.0",
+         "version_at_link": "1.0.0"
+        },
+        "created_at": "2026-01-01T00:01:01.000Z",
+        "updated_at": "2026-01-01T00:01:21.000Z"
+       }
+      ],
+      "resources": [
+       {
+        "id": "S1K",
+        "type": "skill",
+        "name": "s1",
+        "description": "",
+        "content": "own s1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "k",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 0,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       {
+        "id": "S2",
+        "type": "skill",
+        "name": "s2",
+        "description": "",
+        "content": "body of s2",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 1,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       {
+        "id": "R1",
+        "type": "rule",
+        "name": "r1",
+        "description": "",
+        "content": "body of r1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 2,
+        "harness_scope": {
+         "kind": "all"
+        }
+       }
+      ],
+      "claude": {
+       "plugins": [
+        {
+         "id": "dep",
+         "version": "^2",
+         "enabled": true
+        }
+       ]
+      },
+      "pluginPins": [
+       {
+        "ref": "dep",
+        "version_constraint": "^2"
+       }
+      ]
+     }
+    },
+    {
+     "fn": "writePluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      [
+       "skill:s1"
+      ]
+     ],
+     "result": [
+      "skill:s1"
+     ]
+    },
+    {
+     "fn": "writePluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      [
+       "skill:s1*"
+      ]
+     ],
+     "error": "Invalid hidden item \"skill:s1*\". Name one item exactly; patterns such as * are not supported."
+    },
+    {
+     "fn": "listPluginExcludes",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      "skill:s1"
+     ]
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:00:50.000Z"
+     }
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "parentMissingError",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": "Parent base@^1.0.0 of kid is not installed."
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "assertParentPublished",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "error": "kid keeps in sync with base@^1.0.0, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy."
+    },
+    {
+     "fn": "assertParentPublished",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "catalogUpstreamBase",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         50,
+         "id"
+        ]
+       },
+       "newVersion": "1.1.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:01:44.000Z"
+     }
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:01:44.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO plugins (id, name, version, created_at, updated_at, frozen_at) VALUES ('B2', 'base', '1.2.0', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO plugins (id, name, version, created_at, updated_at) VALUES ('B3', 'base', '2.0.0', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO plugins (id, name, version, created_at, updated_at) VALUES ('B4', 'base', 'not-semver', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "B2",
+      "name": "base",
+      "version": "1.2.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "frozen_at": "2026-01-01T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET frozen_at = NULL WHERE id = 'B2'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET version = '1.2.0', org_slug = 'x', frozen_at = '2026-01-01T00:00:00.000Z' WHERE id = 'B3'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "B2",
+      "name": "base",
+      "version": "1.2.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET frozen_at = '2026-01-01T00:00:00.000Z' WHERE id = 'B2'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET frozen_at = NULL WHERE id = 'B3'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "B3",
+      "name": "base",
+      "version": "1.2.0",
+      "org_slug": "x",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET version = '9.0.0' WHERE id = 'B2'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET version = '9.0.1' WHERE id = 'B3'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET org_slug = 'o', catalog_slug = 'c', origin_locator = 'o/c/base-slug@1.1.0' WHERE name = 'base'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "catalogUpstreamBase",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": "o/c/base-slug"
+    },
+    {
+     "fn": "catalogUpstreamBase",
+     "args": [
+      {
+       "name": "My Thing",
+       "org_slug": "o",
+       "catalog_slug": "c"
+      }
+     ],
+     "result": "o/c/my-thing"
+    },
+    {
+     "fn": "catalogUpstreamBase",
+     "args": [
+      {
+       "name": "n",
+       "org_slug": "o",
+       "catalog_slug": "c",
+       "ap_name": "ap",
+       "origin_locator": "o/c/"
+      }
+     ],
+     "result": "o/c/"
+    },
+    {
+     "fn": "catalogUpstreamBase",
+     "args": [
+      {
+       "name": "n",
+       "org_slug": "o",
+       "catalog_slug": "c",
+       "origin_locator": "x/c/n@1"
+      }
+     ],
+     "result": "o/c/n"
+    },
+    {
+     "fn": "catalogUpstreamBase",
+     "args": [
+      {
+       "name": "n",
+       "org_slug": "",
+       "catalog_slug": "c"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "kind": "extends",
+      "ref": "o/c/base-slug@^1.0.0",
+      "version_at_link": "1.0.0"
+     }
+    },
+    {
+     "fn": "assertParentPublished",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "id": "kid-literal",
+       "name": "kid",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "extends",
+        "ref": "base@^1.0.0",
+        "version_at_link": "junk"
+       }
+      }
+     ],
+     "result": {
+      "kind": "extends",
+      "ref": "o/c/base-slug@^1.0.0",
+      "version_at_link": "1.1.0"
+     }
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "id": "kid-literal",
+       "name": "kid",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "fork",
+        "ref": "base@^1.0.0",
+        "version_at_link": "1.0.0"
+       }
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "id": "kid-literal",
+       "name": "kid",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "extends",
+        "ref": "o/c/base-slug@^1.0.0",
+        "version_at_link": "1.0.0"
+       }
+      }
+     ],
+     "result": {
+      "kind": "extends",
+      "ref": "o/c/base-slug@^1.0.0",
+      "version_at_link": "1.0.0"
+     }
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "id": "kid-literal",
+       "name": "kid",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "extends",
+        "ref": "base@not a range!!",
+        "version_at_link": ""
+       }
+      }
+     ],
+     "result": {
+      "kind": "extends",
+      "ref": "o/c/base-slug@*",
+      "version_at_link": "9.0.1"
+     }
+    },
+    {
+     "fn": "portableUpstream",
+     "args": [
+      {
+       "id": "kid-literal",
+       "name": "kid",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": ""
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "o/c/base-slug@^1.0.0",
+       "version_at_link": "1.0.0"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.1.0",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:01:44.000Z"
+     }
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "DP",
+       "type": "plugin",
+       "name": "dep",
+       "description": "",
+       "content": "body of dep",
+       "metadata": {
+        "source_kind": "marketplace",
+        "version_constraint": "^2"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 4,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "S1K",
+       "type": "skill",
+       "name": "s1",
+       "description": "",
+       "content": "own s1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "k",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 0,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "KP",
+       "type": "plugin",
+       "name": "kid",
+       "description": "",
+       "content": "body of kid",
+       "metadata": {
+        "source_kind": "local"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 1,
+       "harness_scope": {
+        "kind": "all"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "o/c/zzz@^1.0.0",
+       "version_at_link": ""
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "parentMissingError",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": "Parent o/c/zzz@^1.0.0 of kid is not installed. Run `ht profile pull o/c/zzz@latest` first."
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "error": "Parent o/c/zzz@^1.0.0 of kid is not installed. Run `ht profile pull o/c/zzz@latest` first."
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "error": "Parent o/c/zzz@^1.0.0 of kid is not installed. Run `ht profile pull o/c/zzz@latest` first."
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "error": "Parent o/c/zzz@^1.0.0 of kid is not installed. Run `ht profile pull o/c/zzz@latest` first."
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "o/c/zzz@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.1.0",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:01:44.000Z"
+     }
+    },
+    {
+     "fn": "parentMissingError",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "result": "Parent o/c/zzz@^1.0.0 of kid is not installed. Run `ht profile pull o/c/zzz@1.0.0` first."
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "base@^1.0.0",
+       "version_at_link": "1.0.0"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "gkid",
+       "version": "1.0.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDSPM0RCWKZ5SYY77DMW1W",
+      "name": "gkid",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:02:24.000Z",
+      "updated_at": "2026-01-01T00:02:24.000Z"
+     }
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "kid@*",
+       "version_at_link": ""
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "resource": {
+        "id": "DP",
+        "type": "plugin",
+        "name": "dep",
+        "description": "",
+        "content": "body of dep",
+        "metadata": {
+         "source_kind": "marketplace",
+         "version_constraint": "^2"
+        },
+        "source": "manual",
+        "namespace": "",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 4,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "parent"
+      },
+      {
+       "resource": {
+        "id": "S1K",
+        "type": "skill",
+        "name": "s1",
+        "description": "",
+        "content": "own s1",
+        "metadata": {},
+        "source": "manual",
+        "namespace": "k",
+        "origin_kind": "manual",
+        "origin_ref": "",
+        "content_hash": "",
+        "content_blob_ref": "",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "order": 0,
+        "harness_scope": {
+         "kind": "all"
+        }
+       },
+       "source": "parent"
+      }
+     ]
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "DP",
+       "type": "plugin",
+       "name": "dep",
+       "source": "parent",
+       "hidden": false
+      },
+      {
+       "id": "S1K",
+       "type": "skill",
+       "name": "s1",
+       "source": "parent",
+       "hidden": false
+      }
+     ]
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "gkid@*",
+       "version_at_link": ""
+      }
+     ],
+     "error": "base cannot extend gkid@*: base > gkid > kid > base is a cycle."
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "base@*",
+       "version_at_link": ""
+      }
+     ],
+     "error": "base cannot extend itself (base@*)."
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      {
+       "kind": "fork",
+       "ref": "gkid@*",
+       "version_at_link": ""
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "o/c/base-slug@*",
+       "version_at_link": ""
+      }
+     ],
+     "error": "base cannot extend o/c/base-slug@*: base > base is a cycle."
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "kid@*",
+       "version_at_link": ""
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "nothing@*",
+       "version_at_link": ""
+      },
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "name": "solo",
+       "ap_name": "slug"
+      },
+      {
+       "kind": "extends",
+       "ref": "o/c/slug@1",
+       "version_at_link": ""
+      }
+     ],
+     "error": "solo cannot extend itself (o/c/slug@1)."
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      },
+      {
+       "kind": "extends",
+       "ref": "gkid@*",
+       "version_at_link": ""
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      }
+     ],
+     "error": "base cannot extend gkid: gkid > kid > base > gkid is a cycle."
+    },
+    {
+     "fn": "listComposedItems",
+     "args": [
+      {
+       "$ref": [
+        50,
+        "id"
+       ]
+      }
+     ],
+     "error": "kid cannot extend base: base > gkid > kid > base is a cycle."
+    },
+    {
+     "fn": "getComposedPluginResources",
+     "args": [
+      {
+       "$ref": [
+        61,
+        "id"
+       ]
+      }
+     ],
+     "error": "gkid cannot extend kid: kid > base > gkid > kid is a cycle."
+    },
+    {
+     "fn": "listInheritedItems",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      }
+     ],
+     "error": "base cannot extend gkid: gkid > kid > base > gkid is a cycle."
+    },
+    {
+     "fn": "assertNoExtendsCycle",
+     "args": [
+      {
+       "name": "fresh"
+      },
+      {
+       "kind": "extends",
+       "ref": "gkid@*",
+       "version_at_link": ""
+      }
+     ],
+     "error": "fresh cannot extend gkid@*: fresh > gkid > kid > base > gkid is a cycle."
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$error": "HTTP 400: upstream_unpublished"
+      }
+     ],
+     "result": "gkid keeps in sync with kid@*, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy."
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$cloud": [
+        "Publish",
+        400,
+        {
+         "error": {
+          "code": "upstream_unpublished",
+          "ref": "o/c/p@^1",
+          "requestId": "r1"
+         }
+        }
+       ]
+      }
+     ],
+     "result": "gkid keeps in sync with o/c/p@^1, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy. (request r1)"
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "name": "plain"
+      },
+      "upstream_unpublished"
+     ],
+     "result": "plain keeps in sync with its parent, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy."
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$cloud": [
+        "Publish",
+        400,
+        {
+         "error": {
+          "code": "invalid_exclude",
+          "entry": "skill:x",
+          "message": "Unknown item."
+         }
+        },
+        "rq"
+       ]
+      }
+     ],
+     "result": "Cloud rejected the hidden item \"skill:x\" of gkid (Unknown item). Each hidden item is <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin. Run `ht plugin edit gkid --unhide skill:x` and publish again. (request rq)"
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$cloud": [
+        "Publish",
+        400,
+        {
+         "error": {
+          "code": "invalid_exclude"
+         }
+        }
+       ]
+      }
+     ],
+     "result": "Cloud rejected the hidden item \"an entry\" of gkid. Each hidden item is <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$error": "Publish: 400 {\"error\":{\"code\":\"invalid_exclude\",\"message\":\"x..\"}}"
+      }
+     ],
+     "result": "Cloud rejected the hidden item \"an entry\" of gkid (x.). Each hidden item is <type>:<name>, where type is one of instruction, skill, rule, mcp_server, permission, hook, agent, command, env_var, model_config, plugin."
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$error": "boom"
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "cloudPublishErrorMessage",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      {
+       "$cloud": [
+        "Publish",
+        500,
+        {
+         "error": {
+          "code": "server"
+         }
+        }
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "upstreamUnpublishedFromCloud",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      "HTTP 400: upstream_unpublished"
+     ],
+     "result": "gkid keeps in sync with kid@*, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy."
+    },
+    {
+     "fn": "upstreamUnpublishedFromCloud",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      "HTTP 400: {\"error\":{\"code\":\"upstream_unpublished\",\"ref\":\"o/c/r@1\"}}"
+     ],
+     "result": "gkid keeps in sync with o/c/r@1, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy."
+    },
+    {
+     "fn": "upstreamUnpublishedFromCloud",
+     "args": [
+      {
+       "name": "plain"
+      },
+      "x upstream_unpublished"
+     ],
+     "result": "plain keeps in sync with its parent, which is not published. Publish the parent first, or detach this profile to publish it as a separate copy."
+    },
+    {
+     "fn": "upstreamUnpublishedFromCloud",
+     "args": [
+      {
+       "$ref": [
+        144,
+        "id"
+       ]
+      },
+      "other"
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "id": "other",
+       "name": "base",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "extends",
+        "ref": "base@*",
+        "version_at_link": ""
+       }
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "id": "other",
+       "name": "base",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "extends",
+        "ref": "base@*",
+        "version_at_link": ""
+       }
+      },
+      {
+       "includeSelf": true
+      }
+     ],
+     "result": {
+      "id": "B3",
+      "name": "base",
+      "version": "9.0.1",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "resolveUpstreamParent",
+     "args": [
+      {
+       "id": "kid-literal",
+       "name": "kid",
+       "version": "0.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "upstream": {
+        "kind": "extends",
+        "ref": "kid@*",
+        "version_at_link": ""
+       }
+      }
+     ],
+     "result": null
+    }
+   ],
+   "dump": {
+    "environments": [
+     {
+      "id": "env1",
+      "name": "one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e1",
+      "name": "e-one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e2",
+      "name": "e-two",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    ],
+    "plugin_excludes": [
+     {
+      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "entry": "rule:r1",
+      "created_at": "2026-01-01T00:01:21.000Z"
+     },
+     {
+      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "entry": "skill:nothing",
+      "created_at": "2026-01-01T00:01:21.000Z"
+     },
+     {
+      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "entry": "skill:s2",
+      "created_at": "2026-01-01T00:01:21.000Z"
+     },
+     {
+      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "entry": "skill:s1",
+      "created_at": "2026-01-01T00:01:34.000Z"
+     },
+     {
+      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "entry": "skill:s1",
+      "created_at": "2026-01-01T00:01:44.000Z"
+     }
+    ],
+    "plugin_resources": [
+     {
+      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "resource_id": "S1",
+      "order": 0,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "resource_id": "S2",
+      "order": 1,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "resource_id": "R1",
+      "order": 2,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "resource_id": "HP",
+      "order": 3,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "resource_id": "DP",
+      "order": 4,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "resource_id": "S1K",
+      "order": 0,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "resource_id": "KP",
+      "order": 1,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "resource_id": "S1",
+      "order": 0,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "resource_id": "S2",
+      "order": 1,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "resource_id": "R1",
+      "order": 2,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "resource_id": "HP",
+      "order": 3,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "resource_id": "DP",
+      "order": 4,
+      "harness_scope": "all"
+     }
+    ],
+    "plugin_working_snapshots": [
+     {
+      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "source_version": "0.1.0",
+      "payload": "{\"resource_ids\":[\"S1K\",\"KP\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"0.1.0\",\"resolved_set\":[{\"name\":\"kid\",\"version\":\"latest\"}],\"excludes\":[]}",
+      "created_at": "2026-01-01T00:01:21.000Z"
+     }
+    ],
+    "plugins": [
+     {
+      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "name": "base",
+      "version": "1.1.0",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:50.000Z",
+      "updated_at": "2026-01-01T00:01:44.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "extends",
+      "upstream_ref": "gkid@*",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "name": "kid",
+      "version": "0.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:01:01.000Z",
+      "updated_at": "2026-01-01T00:01:21.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "extends",
+      "upstream_ref": "base@^1.0.0",
+      "upstream_version_at_link": "1.0.0",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "name": "base",
+      "version": "1.0.0",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:01:44.000Z",
+      "updated_at": "2026-01-01T00:01:44.000Z",
+      "dirty": 0,
+      "frozen_at": "2026-01-01T00:01:44.000Z",
+      "overrides": "{\"versions\":{},\"resources\":{},\"frozen_resolved_set\":[{\"name\":\"base\",\"version\":\"latest\"},{\"name\":\"dep\",\"version\":\"^2\"}]}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "B2",
+      "name": "base",
+      "version": "9.0.0",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "dirty": 0,
+      "frozen_at": "2026-01-01T00:00:00.000Z",
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "B3",
+      "name": "base",
+      "version": "9.0.1",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "B4",
+      "name": "base",
+      "version": "not-semver",
+      "org_slug": "o",
+      "catalog_slug": "c",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "o/c/base-slug@1.1.0",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDSPM0RCWKZ5SYY77DMW1W",
+      "name": "gkid",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:02:24.000Z",
+      "updated_at": "2026-01-01T00:02:24.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "extends",
+      "upstream_ref": "kid@*",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     }
+    ],
+    "resources": [
+     {
+      "id": "S1",
+      "type": "skill",
+      "name": "s1",
+      "description": "",
+      "content": "body of s1",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "S2",
+      "type": "skill",
+      "name": "s2",
+      "description": "",
+      "content": "body of s2",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "R1",
+      "type": "rule",
+      "name": "r1",
+      "description": "",
+      "content": "body of r1",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "HP",
+      "type": "plugin",
+      "name": "base",
+      "description": "",
+      "content": "body of base",
+      "metadata": "{\"source_kind\":\"marketplace\"}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "DP",
+      "type": "plugin",
+      "name": "dep",
+      "description": "",
+      "content": "body of dep",
+      "metadata": "{\"source_kind\":\"marketplace\",\"version_constraint\":\"^2\"}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "S1K",
+      "type": "skill",
+      "name": "s1",
+      "description": "",
+      "content": "own s1",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "k",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "KP",
+      "type": "plugin",
+      "name": "kid",
+      "description": "",
+      "content": "body of kid",
+      "metadata": "{\"source_kind\":\"local\"}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
      }
     ]
    }
@@ -9187,7 +13535,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.0.0",
       "org_slug": "",
@@ -9316,7 +13664,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.0.0",
       "org_slug": "",
@@ -9357,7 +13705,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -9446,7 +13794,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -9455,7 +13803,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNKRGGAKNTP5J1XJANSC9",
+       "id": "01KDVDNKRG7BP40YP5CW8NRWX5",
        "name": "v",
        "version": "1.0.0",
        "dirty": false,
@@ -9516,7 +13864,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -9598,7 +13946,7 @@
        }
       },
       {
-       "id": "01KDVDNEW87FBVRHWP6VK88MTF",
+       "id": "01KDVDNEW8B48S9XACE7AY9YW2",
        "type": "plugin",
        "name": "dep",
        "description": "",
@@ -9715,7 +14063,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNKRGGAKNTP5J1XJANSC9",
+       "id": "01KDVDNKRG7BP40YP5CW8NRWX5",
        "name": "v",
        "version": "1.0.0",
        "org_slug": "",
@@ -9743,7 +14091,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.1.0",
        "org_slug": "",
@@ -9795,7 +14143,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNKRGGAKNTP5J1XJANSC9",
+       "id": "01KDVDNKRG7BP40YP5CW8NRWX5",
        "name": "v",
        "version": "1.0.0",
        "org_slug": "",
@@ -9823,7 +14171,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.1.0",
        "org_slug": "",
@@ -9902,7 +14250,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.2.0",
       "org_slug": "",
@@ -9949,7 +14297,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.3.0",
       "org_slug": "",
@@ -9990,7 +14338,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPF3GB0347VFZAD7ZG914",
+      "id": "01KDVDPF3G88HX82P73RRYQ2AJ",
       "name": "w",
       "version": "1.0.0",
       "org_slug": "",
@@ -10031,7 +14379,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.4.0",
       "org_slug": "",
@@ -10078,7 +14426,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.5.0",
       "org_slug": "",
@@ -10118,7 +14466,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.5.0",
        "dirty": false,
@@ -10127,7 +14475,7 @@
        "updated_at": "2026-01-01T00:00:41.000Z"
       },
       {
-       "id": "01KDVDPJ18D1ZESA8S1REV095P",
+       "id": "01KDVDPJ18JA9GZ7JZ16K5ACVW",
        "name": "v",
        "version": "1.4.0",
        "dirty": false,
@@ -10136,7 +14484,7 @@
        "updated_at": "2026-01-01T00:00:41.000Z"
       },
       {
-       "id": "01KDVDPD50K14XNG2J2V937D78",
+       "id": "01KDVDPD50G8QJR1955XAV20EG",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -10154,7 +14502,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPKZR39SHM40VZTF0HKBH",
+      "id": "01KDVDPKZR6Y3515SE1GMACDF0",
       "name": "broken-x",
       "version": "1.0.0",
       "org_slug": "",
@@ -10193,7 +14541,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPKZR39SHM40VZTF0HKBH",
+      "id": "01KDVDPKZR6Y3515SE1GMACDF0",
       "name": "broken-x",
       "version": "2.0.0",
       "org_slug": "",
@@ -10375,7 +14723,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.5.0",
       "org_slug": "",
@@ -10429,7 +14777,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.6.0",
       "org_slug": "",
@@ -10469,7 +14817,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.6.0",
        "dirty": false,
@@ -10478,7 +14826,7 @@
        "updated_at": "2026-01-01T00:01:03.000Z"
       },
       {
-       "id": "01KDVDQ7GRCHZX90RVPDACHSVZ",
+       "id": "01KDVDQ7GRB07ZZW8VQRM7P5KK",
        "name": "v",
        "version": "1.5.0",
        "dirty": false,
@@ -10487,7 +14835,7 @@
        "updated_at": "2026-01-01T00:01:03.000Z"
       },
       {
-       "id": "01KDVDPD50K14XNG2J2V937D78",
+       "id": "01KDVDPD50G8QJR1955XAV20EG",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -10532,7 +14880,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -10572,7 +14920,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.7.0",
        "dirty": false,
@@ -10581,7 +14929,7 @@
        "updated_at": "2026-01-01T00:01:08.000Z"
       },
       {
-       "id": "01KDVDPD50K14XNG2J2V937D78",
+       "id": "01KDVDPD50G8QJR1955XAV20EG",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -10612,7 +14960,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -10652,9 +15000,9 @@
      ],
      "result": [
       [
-       "01KDVDNA00AS9VQ5EFH321T33N",
+       "01KDVDNA00D22NE3GX4J6803BS",
        "1.7.0",
-       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW87FBVRHWP6VK88MTF\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
+       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW8B48S9XACE7AY9YW2\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
       ]
      ]
     },
@@ -10689,7 +15037,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.8.0",
       "org_slug": "",
@@ -10729,7 +15077,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00AS9VQ5EFH321T33N",
+       "id": "01KDVDNA00D22NE3GX4J6803BS",
        "name": "v",
        "version": "1.8.0",
        "dirty": false,
@@ -10738,7 +15086,7 @@
        "updated_at": "2026-01-01T00:01:15.000Z"
       },
       {
-       "id": "01KDVDQK7RA06E9GSBP2B55JT1",
+       "id": "01KDVDQK7R6MWD0FWVV10HXRAS",
        "name": "v",
        "version": "1.7.0",
        "dirty": false,
@@ -10747,7 +15095,7 @@
        "updated_at": "2026-01-01T00:01:15.000Z"
       },
       {
-       "id": "01KDVDPD50K14XNG2J2V937D78",
+       "id": "01KDVDPD50G8QJR1955XAV20EG",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -10784,74 +15132,74 @@
     ],
     "plugin_excludes": [
      {
-      "plugin_id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "plugin_id": "01KDVDNA00D22NE3GX4J6803BS",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "plugin_id": "01KDVDPD50K14XNG2J2V937D78",
+      "plugin_id": "01KDVDPD50G8QJR1955XAV20EG",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:00:36.000Z"
      },
      {
-      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
+      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:01:15.000Z"
      }
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDPD50K14XNG2J2V937D78",
+      "plugin_id": "01KDVDPD50G8QJR1955XAV20EG",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDPD50K14XNG2J2V937D78",
-      "resource_id": "01KDVDNEW87FBVRHWP6VK88MTF",
+      "plugin_id": "01KDVDPD50G8QJR1955XAV20EG",
+      "resource_id": "01KDVDNEW8B48S9XACE7AY9YW2",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPF3GB0347VFZAD7ZG914",
-      "resource_id": "01KDVDPG2RA5JAVBQ7PVK4NAYR",
+      "plugin_id": "01KDVDPF3G88HX82P73RRYQ2AJ",
+      "resource_id": "01KDVDPG2R824W5K3146570ZFQ",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "plugin_id": "01KDVDNA00D22NE3GX4J6803BS",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNA00AS9VQ5EFH321T33N",
-      "resource_id": "01KDVDNEW87FBVRHWP6VK88MTF",
+      "plugin_id": "01KDVDNA00D22NE3GX4J6803BS",
+      "resource_id": "01KDVDNEW8B48S9XACE7AY9YW2",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
+      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
+      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
       "resource_id": "R2",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDQK7RA06E9GSBP2B55JT1",
-      "resource_id": "01KDVDNEW87FBVRHWP6VK88MTF",
+      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
+      "resource_id": "01KDVDNEW8B48S9XACE7AY9YW2",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00AS9VQ5EFH321T33N",
+      "id": "01KDVDNA00D22NE3GX4J6803BS",
       "name": "v",
       "version": "1.8.0",
       "org_slug": "",
@@ -10882,7 +15230,7 @@
       "upstream_plugin_id": "UP"
      },
      {
-      "id": "01KDVDPD50K14XNG2J2V937D78",
+      "id": "01KDVDPD50G8QJR1955XAV20EG",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -10913,7 +15261,7 @@
       "upstream_plugin_id": "UP"
      },
      {
-      "id": "01KDVDPF3GB0347VFZAD7ZG914",
+      "id": "01KDVDPF3G88HX82P73RRYQ2AJ",
       "name": "w",
       "version": "1.0.0",
       "org_slug": "",
@@ -10944,7 +15292,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDPKZR39SHM40VZTF0HKBH",
+      "id": "01KDVDPKZR6Y3515SE1GMACDF0",
       "name": "broken-x",
       "version": "2.0.0",
       "org_slug": "",
@@ -10975,7 +15323,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDPNY8BSE9RX3854CRM26W",
+      "id": "01KDVDPNY8N043XZ3PESGAZ185",
       "name": "broken-x",
       "version": "1.0.0",
       "org_slug": "",
@@ -11006,7 +15354,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDQK7RA06E9GSBP2B55JT1",
+      "id": "01KDVDQK7R6MWD0FWVV10HXRAS",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -11071,7 +15419,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNEW87FBVRHWP6VK88MTF",
+      "id": "01KDVDNEW8B48S9XACE7AY9YW2",
       "type": "plugin",
       "name": "dep",
       "description": "",
@@ -11087,7 +15435,7 @@
       "updated_at": "2026-01-01T00:00:05.000Z"
      },
      {
-      "id": "01KDVDPG2RA5JAVBQ7PVK4NAYR",
+      "id": "01KDVDPG2R824W5K3146570ZFQ",
       "type": "plugin",
       "name": "v",
       "description": "",

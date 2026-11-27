@@ -14,7 +14,9 @@
 //! JSON columns written by the app are read with `serde_json`. A column the
 //! original's `JSON.parse` rejects is an `Err` here too, with another message.
 
+pub mod cloud_error;
 pub mod dependency;
+pub mod extends;
 pub mod name;
 pub mod origin;
 pub mod upstream;
@@ -143,14 +145,6 @@ pub struct MergedPluginContent {
 /// The plugin services the model calls into, which reach well past the
 /// database (marketplace pins, the cloud API, forks).
 pub trait PluginComposition {
-    /// `getComposedPluginResources` (`plugin-extends.ts`).
-    fn composed_plugin_resources(
-        &self,
-        ctx: &Ctx,
-        plugin_id: &str,
-    ) -> Result<Vec<AttachedResource>>;
-    /// `listComposedDependencies` (`plugin-extends.ts`), as pins.
-    fn composed_dependencies(&self, ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginPin>>;
     /// `listAttachedPluginRefs` (`plugin-composition.ts`).
     fn attached_plugin_refs(&self, ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginRefView>>;
     /// `ensurePluginResource(selector, { versionConstraint })` (`plugin-composition.ts`).
@@ -514,6 +508,21 @@ fn resource_key(resource: &Resource) -> String {
     format!("{}:{}", resource.resource_type, resource.name)
 }
 
+/// `listPluginPins`: the composed dependencies as pins. A non-string
+/// `version_constraint` in the metadata is kept as its JSON text.
+fn list_plugin_pins(ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginPin>> {
+    Ok(extends::list_composed_dependencies(ctx, plugin_id)?
+        .into_iter()
+        .map(|d| PluginPin {
+            reference: d.reference,
+            version_constraint: match d.version_constraint {
+                Value::String(s) => s,
+                other => other.to_string(),
+            },
+        })
+        .collect())
+}
+
 /// `mergePluginsById`: later plugins override earlier ones for resources
 /// (by type:name), plugin pins (by ref) and Claude config.
 pub fn merge_plugins_by_id<S: AsRef<str>>(
@@ -530,7 +539,7 @@ pub fn merge_plugins_by_id<S: AsRef<str>>(
         let Some(plugin) = get_plugin_by_id(ctx, plugin_id)? else {
             return Err(format!("Plugin not found: {plugin_id}"));
         };
-        for resource in composition.composed_plugin_resources(ctx, &plugin.id)? {
+        for resource in extends::get_composed_plugin_resources(ctx, &plugin.id)? {
             if resource.resource.resource_type == "plugin" {
                 continue;
             }
@@ -540,7 +549,7 @@ pub fn merge_plugins_by_id<S: AsRef<str>>(
                 None => resources.push((key, resource)),
             }
         }
-        for pin in composition.composed_dependencies(ctx, &plugin.id)? {
+        for pin in list_plugin_pins(ctx, &plugin.id)? {
             match pins.iter_mut().find(|p| p.reference == pin.reference) {
                 Some(slot) => *slot = pin,
                 None => pins.push(pin),

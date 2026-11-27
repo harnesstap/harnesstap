@@ -8,7 +8,9 @@ use db_rs::connection::Db;
 use db_rs::schema::{InitializeSchemaOptions, initialize_schema};
 use models_rs::resource::{Resource, map_resource_row};
 use models_rs::{Clock, Ctx, Ids, Result, iso_from_millis};
+use plugin_model_rs::cloud_error::{self, CloudApiError, CloudFailure};
 use plugin_model_rs::dependency::{self, AddDependencyOptions};
+use plugin_model_rs::extends;
 use plugin_model_rs::origin::{self, AuthoredCapability};
 use plugin_model_rs::upstream::{self, PluginUpstream, UpstreamRow};
 use plugin_model_rs::versioning::{self, NameVersion, ResolveComposition};
@@ -55,22 +57,6 @@ impl Stand {
 }
 
 impl PluginComposition for Stand {
-    fn composed_plugin_resources(
-        &self,
-        ctx: &Ctx,
-        plugin_id: &str,
-    ) -> Result<Vec<AttachedResource>> {
-        get_plugin_resources(ctx, plugin_id)
-    }
-    fn composed_dependencies(&self, ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginPin>> {
-        Ok(Stand::refs(ctx, plugin_id)?
-            .into_iter()
-            .map(|r| PluginPin {
-                reference: r.dependency_name,
-                version_constraint: r.version_constraint,
-            })
-            .collect())
-    }
     fn attached_plugin_refs(&self, ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginRefView>> {
         Stand::refs(ctx, plugin_id)
     }
@@ -137,6 +123,38 @@ impl ResolveComposition for Stand {
             })
             .collect())
     }
+}
+
+/// A plugin argument: an id to load, or a literal (missing fields defaulted).
+fn plugin_arg(ctx: &Ctx, v: &Value) -> Result<Plugin> {
+    if let Some(id) = v.as_str() {
+        return get_plugin_by_id(ctx, id)?.ok_or_else(|| "undefined plugin".to_owned());
+    }
+    let mut full = json!({
+        "id": "", "name": "", "version": "", "org_slug": "", "catalog_slug": "",
+        "origin": "authored", "description": "", "tags": [], "dirty": false,
+        "created_at": "", "updated_at": ""
+    });
+    for (k, val) in v.as_object().unwrap() {
+        full[k] = val.clone();
+    }
+    from(&full)
+}
+
+/// `{ $cloud: [prefix, status, body?, header?] }`, `{ $error: message }`, or a thrown string.
+fn cloud_arg(v: &Value) -> CloudFailure {
+    if let Some(c) = v.get("$cloud").and_then(Value::as_array) {
+        return CloudFailure::Api(Box::new(CloudApiError::new(
+            c[0].as_str().unwrap(),
+            c[1].as_u64().unwrap() as u16,
+            c.get(2),
+            c.get(3).and_then(Value::as_str),
+        )));
+    }
+    if let Some(m) = v.get("$error").and_then(Value::as_str) {
+        return CloudFailure::Other(m.to_owned());
+    }
+    CloudFailure::Other(v.as_str().unwrap().to_owned())
 }
 
 fn capability(v: &Value) -> AuthoredCapability {
@@ -448,6 +466,59 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
         )?)),
         "listDependencies" => to_value(dependency::list_dependencies(ctx, s(0))?),
         "removeDependency" => json!(dependency::remove_dependency(ctx, &Stand, s(0), s(1))?),
+        "parseExcludeEntry" => to_value(extends::parse_exclude_entry(s(0))?),
+        "normalizeExcludeEntries" => json!(extends::normalize_exclude_entries(&strs(0))?),
+        "listPluginExcludes" => json!(extends::list_plugin_excludes(ctx, s(0))?),
+        "writePluginExcludes" => json!(extends::write_plugin_excludes(ctx, s(0), &strs(1))?),
+        "setPluginExcludes" => json!(extends::set_plugin_excludes(ctx, &Stand, s(0), &strs(1))?),
+        "resolveUpstreamParent" => to_value(extends::resolve_upstream_parent(
+            ctx,
+            &plugin_arg(ctx, &a[0])?,
+            a.get(1).is_some_and(|o| o["includeSelf"] == true),
+        )?),
+        "parentMissingError" => json!(extends::parent_missing_error(&plugin_arg(ctx, &a[0])?)),
+        "listInheritedItems" => to_value(extends::list_inherited_items(ctx, s(0))?),
+        "listComposedItems" => to_value(extends::list_composed_items(ctx, s(0))?),
+        "getComposedPluginResources" => {
+            to_value(extends::get_composed_plugin_resources(ctx, s(0))?)
+        }
+        "listComposedDependencies" => to_value(extends::list_composed_dependencies(ctx, s(0))?),
+        "catalogUpstreamBase" => to_value(extends::catalog_upstream_base(&plugin_arg(ctx, &a[0])?)),
+        "portableUpstream" => to_value(extends::portable_upstream(ctx, &plugin_arg(ctx, &a[0])?)?),
+        "parseExcludeList" => json!(extends::parse_exclude_list(&a[0])),
+        "assertNoExtendsCycle" => {
+            extends::assert_no_extends_cycle(
+                ctx,
+                &plugin_arg(ctx, &a[0])?,
+                &from(&a[1])?,
+                a.get(2).and_then(Value::as_str),
+            )?;
+            Value::Null
+        }
+        "assertParentPublished" => {
+            extends::assert_parent_published(ctx, &plugin_arg(ctx, &a[0])?)?;
+            Value::Null
+        }
+        "cloudPublishErrorMessage" => to_value(extends::cloud_publish_error_message(
+            &plugin_arg(ctx, &a[0])?,
+            &cloud_arg(&a[1]),
+        )),
+        "upstreamUnpublishedFromCloud" => to_value(extends::upstream_unpublished_from_cloud(
+            &plugin_arg(ctx, &a[0])?,
+            s(1),
+        )),
+        "parseCloudErrorBody" => to_value(cloud_error::parse_cloud_error_body(
+            a.first(),
+            a.get(1).and_then(Value::as_str),
+        )),
+        "parseCloudErrorText" => to_value(cloud_error::parse_cloud_error_text(s(0))),
+        "cloudApiError" => match cloud_arg(&a[0]) {
+            CloudFailure::Api(e) => {
+                json!({ "message": e.message, "status": e.status, "detail": to_value(e.detail) })
+            }
+            CloudFailure::Other(_) => unreachable!(),
+        },
+        "cloudErrorDetail" => to_value(cloud_error::cloud_error_detail(&cloud_arg(&a[0]))),
         "__query" => {
             let mut stmt = ctx.db.conn.prepare(s(0)).unwrap();
             let n = stmt.column_count();
