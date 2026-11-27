@@ -1,0 +1,18 @@
+[package]
+name = "serializer-services-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "Services the harness writers (src/platforms/*.ts) call: mcp-target, skill-command-metadata"
+
+[dependencies]
+collate-rs = { path = "../collate-rs" }
+emit-rs = { path = "../emit-rs" }
+frontmatter-rs = { path = "../frontmatter-rs" }
+harness-scope-rs = { path = "../harness-scope-rs" }
+platforms-rs = { path = "../platforms-rs" }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
