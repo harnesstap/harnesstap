@@ -12,7 +12,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+      "id": "01KDVDNA00WBK6AAE4CHXM154E",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -53,7 +53,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -91,7 +91,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+      "id": "01KDVDNBYGJPEY286C8SZQ13E7",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -114,7 +114,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNCXRNN22C485PW4JRQTX",
+      "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -136,7 +136,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
+      "id": "01KDVDNDX06XK0WPZFGBHXKFYC",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -158,7 +158,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
+      "id": "01KDVDNEW8DFXJ13Y53BN2E7FV",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -182,7 +182,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -227,7 +227,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+      "id": "01KDVDNA00WBK6AAE4CHXM154E",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -246,7 +246,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+      "id": "01KDVDNBYGJPEY286C8SZQ13E7",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -265,7 +265,7 @@
       "alpha@1.0.0"
      ],
      "result": {
-      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+      "id": "01KDVDNA00WBK6AAE4CHXM154E",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -284,7 +284,7 @@
       "alpha@^1.0.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -317,7 +317,7 @@
       "alpha@>=2.0.0-0"
      ],
      "result": {
-      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+      "id": "01KDVDNBYGJPEY286C8SZQ13E7",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -336,7 +336,7 @@
       "alpha@latest"
      ],
      "result": {
-      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+      "id": "01KDVDNBYGJPEY286C8SZQ13E7",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -355,7 +355,7 @@
       "alpha@ 1.2.0 "
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -409,7 +409,7 @@
       "beta@latest"
      ],
      "result": {
-      "id": "01KDVDNCXRNN22C485PW4JRQTX",
+      "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -428,7 +428,7 @@
       "beta@1.0"
      ],
      "result": {
-      "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
+      "id": "01KDVDNDX06XK0WPZFGBHXKFYC",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -447,7 +447,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRNN22C485PW4JRQTX",
+      "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -480,7 +480,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+      "id": "01KDVDNBYGJPEY286C8SZQ13E7",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -500,7 +500,7 @@
       "1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -534,7 +534,7 @@
       ""
      ],
      "result": {
-      "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+      "id": "01KDVDNBYGJPEY286C8SZQ13E7",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -566,7 +566,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -599,7 +599,7 @@
       "alpha@1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -639,7 +639,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRNN22C485PW4JRQTX",
+      "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -658,7 +658,7 @@
       "default"
      ],
      "result": {
-      "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
+      "id": "01KDVDNEW8DFXJ13Y53BN2E7FV",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -690,7 +690,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+       "id": "01KDVDNA00WBK6AAE4CHXM154E",
        "name": "alpha",
        "version": "1.0.0",
        "org_slug": "",
@@ -703,7 +703,7 @@
        "updated_at": "2026-01-01T00:00:00.000Z"
       },
       {
-       "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+       "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -730,7 +730,7 @@
        "updated_at": "2026-01-01T00:00:01.000Z"
       },
       {
-       "id": "01KDVDNBYGX1GD4SSQRKBKDNWF",
+       "id": "01KDVDNBYGJPEY286C8SZQ13E7",
        "name": "alpha",
        "version": "2.0.0-beta.1",
        "org_slug": "",
@@ -743,7 +743,7 @@
        "updated_at": "2026-01-01T00:00:02.000Z"
       },
       {
-       "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
+       "id": "01KDVDNDX06XK0WPZFGBHXKFYC",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -756,7 +756,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRNN22C485PW4JRQTX",
+       "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -769,7 +769,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
+       "id": "01KDVDNEW8DFXJ13Y53BN2E7FV",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -981,7 +981,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+      "id": "01KDVDNA00WBK6AAE4CHXM154E",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1060,7 +1060,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+       "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -1087,7 +1087,7 @@
        "updated_at": "2026-01-01T00:00:49.000Z"
       },
       {
-       "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
+       "id": "01KDVDNDX06XK0WPZFGBHXKFYC",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -1100,7 +1100,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRNN22C485PW4JRQTX",
+       "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -1113,7 +1113,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
+       "id": "01KDVDNEW8DFXJ13Y53BN2E7FV",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -1126,7 +1126,7 @@
        "updated_at": "2026-01-01T00:00:05.000Z"
       },
       {
-       "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+       "id": "01KDVDNA00WBK6AAE4CHXM154E",
        "name": "renamed",
        "version": "1.0.0",
        "org_slug": "",
@@ -1173,7 +1173,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00FFHMPQKV1M3SXR9N",
+      "id": "01KDVDNA00WBK6AAE4CHXM154E",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1204,7 +1204,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8FG83NNSDXSW4ZKVB",
+      "id": "01KDVDNAZ8EDZ0E4NKC8KX275N",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -1235,7 +1235,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNCXRNN22C485PW4JRQTX",
+      "id": "01KDVDNCXRZ4MXW81N7XG9PQHE",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -1266,7 +1266,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNDX0QQB05N8PMT7E2WXV",
+      "id": "01KDVDNDX06XK0WPZFGBHXKFYC",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -1297,7 +1297,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNEW8FS0T4SBWXZGR37C2",
+      "id": "01KDVDNEW8DFXJ13Y53BN2E7FV",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -3700,7 +3700,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3741,7 +3741,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3805,7 +3805,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3854,7 +3854,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3924,7 +3924,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3984,7 +3984,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4053,7 +4053,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4143,7 +4143,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00F39M7S0GREDGSNSV",
+       "id": "01KDVDNA00HF214BSN743C0EMW",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4363,7 +4363,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00F39M7S0GREDGSNSV",
+       "id": "01KDVDNA00HF214BSN743C0EMW",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4584,7 +4584,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00F39M7S0GREDGSNSV",
+      "id": "01KDVDNA00HF214BSN743C0EMW",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4907,7 +4907,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -4961,7 +4961,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5028,7 +5028,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5127,7 +5127,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5174,7 +5174,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5220,7 +5220,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5266,7 +5266,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5495,7 +5495,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00GDTSVM603J6RXA89",
+      "id": "01KDVDNA005ZHP6TM5WHGW49W5",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5561,7 +5561,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "id": "01KDVDNA00H8QZX4ACY6P8GCCX",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -5624,7 +5624,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8TF9QZER255M9EV7C",
+      "id": "01KDVDNAZ8PNYNT99K4EC6B38V",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -5811,13 +5811,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+       "plugin_id": "01KDVDNA00H8QZX4ACY6P8GCCX",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+       "plugin_id": "01KDVDNA00H8QZX4ACY6P8GCCX",
        "dependency_name": "dep-two",
        "version_constraint": "latest",
        "order": 1
@@ -5836,13 +5836,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
+       "plugin_id": "01KDVDNAZ8PNYNT99K4EC6B38V",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
+       "plugin_id": "01KDVDNAZ8PNYNT99K4EC6B38V",
        "dependency_name": "dep-three",
        "version_constraint": "latest",
        "order": 1
@@ -5904,7 +5904,7 @@
        }
       },
       {
-       "id": "01KDVDNJS8J3H5V2GZX018M3KG",
+       "id": "01KDVDNJS8YJ2CB43HTF6KV1PD",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -5926,7 +5926,7 @@
        }
       },
       {
-       "id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
+       "id": "01KDVDNKRG8385EJK1H3603M5P",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -5968,7 +5968,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+        "id": "01KDVDNA00H8QZX4ACY6P8GCCX",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6001,7 +6001,7 @@
         "updated_at": "2026-01-01T00:00:00.000Z"
        },
        {
-        "id": "01KDVDNAZ8TF9QZER255M9EV7C",
+        "id": "01KDVDNAZ8PNYNT99K4EC6B38V",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6171,7 +6171,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNAZ8TF9QZER255M9EV7C",
+        "id": "01KDVDNAZ8PNYNT99K4EC6B38V",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6205,7 +6205,7 @@
         "updated_at": "2026-01-01T00:00:01.000Z"
        },
        {
-        "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+        "id": "01KDVDNA00H8QZX4ACY6P8GCCX",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6402,7 +6402,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNXH030BP9NK076TCJCY3",
+      "id": "01KDVDNXH0CT8NDYSFWH9A00D3",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -6533,7 +6533,7 @@
        }
       },
       {
-       "id": "01KDVDNJS8J3H5V2GZX018M3KG",
+       "id": "01KDVDNJS8YJ2CB43HTF6KV1PD",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -6555,7 +6555,7 @@
        }
       },
       {
-       "id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
+       "id": "01KDVDNKRG8385EJK1H3603M5P",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -6575,7 +6575,7 @@
        }
       },
       {
-       "id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
+       "id": "01KDVDNNQ0MS7Z834X0JD94XQJ",
        "type": "plugin",
        "name": "dep-three",
        "description": "",
@@ -6606,7 +6606,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNZFGTR26C17X7HT3QAWT",
+      "id": "01KDVDNZFGDCJPE8P8KFQBJFYX",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -6636,7 +6636,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "id": "01KDVDNA00H8QZX4ACY6P8GCCX",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6687,7 +6687,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "id": "01KDVDNA00H8QZX4ACY6P8GCCX",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6738,7 +6738,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
+      "id": "01KDVDP2D8PHFQKZDEEMC37H3S",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -6875,7 +6875,7 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+       "plugin_id": "01KDVDNA00H8QZX4ACY6P8GCCX",
        "dependency_name": "dep-two",
        "version_constraint": "1.0.0",
        "order": 0
@@ -6916,111 +6916,111 @@
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "plugin_id": "01KDVDNA00H8QZX4ACY6P8GCCX",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "plugin_id": "01KDVDNA00H8QZX4ACY6P8GCCX",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
+      "plugin_id": "01KDVDNAZ8PNYNT99K4EC6B38V",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
+      "plugin_id": "01KDVDNAZ8PNYNT99K4EC6B38V",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
-      "resource_id": "01KDVDNJS8J3H5V2GZX018M3KG",
+      "plugin_id": "01KDVDNAZ8PNYNT99K4EC6B38V",
+      "resource_id": "01KDVDNJS8YJ2CB43HTF6KV1PD",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8TF9QZER255M9EV7C",
-      "resource_id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
+      "plugin_id": "01KDVDNAZ8PNYNT99K4EC6B38V",
+      "resource_id": "01KDVDNNQ0MS7Z834X0JD94XQJ",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
+      "plugin_id": "01KDVDNXH0CT8NDYSFWH9A00D3",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
+      "plugin_id": "01KDVDNXH0CT8NDYSFWH9A00D3",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
+      "plugin_id": "01KDVDNXH0CT8NDYSFWH9A00D3",
       "resource_id": "R2",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
-      "resource_id": "01KDVDNJS8J3H5V2GZX018M3KG",
+      "plugin_id": "01KDVDNXH0CT8NDYSFWH9A00D3",
+      "resource_id": "01KDVDNJS8YJ2CB43HTF6KV1PD",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
-      "resource_id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
+      "plugin_id": "01KDVDNXH0CT8NDYSFWH9A00D3",
+      "resource_id": "01KDVDNKRG8385EJK1H3603M5P",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH030BP9NK076TCJCY3",
-      "resource_id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
+      "plugin_id": "01KDVDNXH0CT8NDYSFWH9A00D3",
+      "resource_id": "01KDVDNNQ0MS7Z834X0JD94XQJ",
       "order": 5,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
+      "plugin_id": "01KDVDP2D8PHFQKZDEEMC37H3S",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
+      "plugin_id": "01KDVDP2D8PHFQKZDEEMC37H3S",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
-      "resource_id": "01KDVDNJS8J3H5V2GZX018M3KG",
+      "plugin_id": "01KDVDP2D8PHFQKZDEEMC37H3S",
+      "resource_id": "01KDVDNJS8YJ2CB43HTF6KV1PD",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
-      "resource_id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
+      "plugin_id": "01KDVDP2D8PHFQKZDEEMC37H3S",
+      "resource_id": "01KDVDNKRG8385EJK1H3603M5P",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00V3DWNHGYTZHVSHTG",
-      "resource_id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
+      "plugin_id": "01KDVDNA00H8QZX4ACY6P8GCCX",
+      "resource_id": "01KDVDNKRG8385EJK1H3603M5P",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00V3DWNHGYTZHVSHTG",
+      "id": "01KDVDNA00H8QZX4ACY6P8GCCX",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -7051,7 +7051,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8TF9QZER255M9EV7C",
+      "id": "01KDVDNAZ8PNYNT99K4EC6B38V",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -7082,7 +7082,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNXH030BP9NK076TCJCY3",
+      "id": "01KDVDNXH0CT8NDYSFWH9A00D3",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -7113,7 +7113,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNZFGTR26C17X7HT3QAWT",
+      "id": "01KDVDNZFGDCJPE8P8KFQBJFYX",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -7144,7 +7144,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDP2D8JHVTQ6A2D8FP3GR5",
+      "id": "01KDVDP2D8PHFQKZDEEMC37H3S",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -7225,7 +7225,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNJS8J3H5V2GZX018M3KG",
+      "id": "01KDVDNJS8YJ2CB43HTF6KV1PD",
       "type": "plugin",
       "name": "dep-one",
       "description": "",
@@ -7241,7 +7241,7 @@
       "updated_at": "2026-01-01T00:00:11.000Z"
      },
      {
-      "id": "01KDVDNKRGFJKZ40PC0X5CQ33Q",
+      "id": "01KDVDNKRG8385EJK1H3603M5P",
       "type": "plugin",
       "name": "dep-two",
       "description": "",
@@ -7257,7 +7257,7 @@
       "updated_at": "2026-01-01T00:00:31.000Z"
      },
      {
-      "id": "01KDVDNNQ0MGT6XBQGRXX1ZKYM",
+      "id": "01KDVDNNQ0MS7Z834X0JD94XQJ",
       "type": "plugin",
       "name": "dep-three",
       "description": "",
@@ -7587,7 +7587,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -7608,7 +7608,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP3CG1P58CCBRB045DAPS",
+      "id": "01KDVDP3CGE7DQWS20Q1VZH86H",
       "name": "host",
       "version": "1.0.0",
       "org_slug": "",
@@ -7627,7 +7627,7 @@
       "dep@mk"
      ],
      "result": {
-      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
+      "id": "01KDVDP4BR2BV86TSTWSBM0YRA",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7654,7 +7654,7 @@
       "dep@mk"
      ],
      "result": {
-      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
+      "id": "01KDVDP4BR2BV86TSTWSBM0YRA",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7684,7 +7684,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP6A8ARKJR65WKAVNXBHH",
+      "id": "01KDVDP6A8EFQJH9NP59WATGBP",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7716,7 +7716,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP79G9ED216R5G8JE7STX",
+      "id": "01KDVDP79G0YX3E7SPB1H1CC75",
       "type": "plugin",
       "name": "thing",
       "description": "Dependency: ./local/thing",
@@ -7746,7 +7746,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP88RSDVH9P72AJRXX2FA",
+      "id": "01KDVDP88RY87A9T723DKKRK5F",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -7773,7 +7773,7 @@
       "https://github.com/o/gitdep.git"
      ],
      "result": {
-      "id": "01KDVDP980T73TQTTZV95PB94E",
+      "id": "01KDVDP980X7N8KWH8Z00VCCZ4",
       "type": "plugin",
       "name": "gitdep",
       "description": "Dependency: https://github.com/o/gitdep.git",
@@ -7799,7 +7799,7 @@
       "  padded@mk  "
      ],
      "result": {
-      "id": "01KDVDPA78BBBQ0FDT4FBY0BSV",
+      "id": "01KDVDPA78G2XV8Z612WK04J94",
       "type": "plugin",
       "name": "padded",
       "description": "Dependency:   padded@mk  ",
@@ -7832,7 +7832,7 @@
       "dep@mk"
      ],
      "result": {
-      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
+      "id": "01KDVDP4BR2BV86TSTWSBM0YRA",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -7864,7 +7864,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -7906,7 +7906,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPE48CH1J2AN8ABMZB6EV",
+      "id": "01KDVDPE48C76SH5RGBTP9929Y",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -7943,7 +7943,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP79G9ED216R5G8JE7STX",
+      "id": "01KDVDP79G0YX3E7SPB1H1CC75",
       "type": "plugin",
       "name": "thing",
       "description": "Dependency: ./local/thing",
@@ -7976,7 +7976,7 @@
       "plain"
      ],
      "result": {
-      "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
+      "id": "01KDVDPG2RR8JQH810B09QRWAW",
       "type": "plugin",
       "name": "plain",
       "description": "Dependency: plain",
@@ -8008,7 +8008,7 @@
       "host@mk"
      ],
      "result": {
-      "id": "01KDVDPH20FDD2544C10DKZ5WV",
+      "id": "01KDVDPH206S9XYANG6NDPVHNV",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: host@mk",
@@ -8044,7 +8044,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP980T73TQTTZV95PB94E",
+      "id": "01KDVDP980X7N8KWH8Z00VCCZ4",
       "type": "plugin",
       "name": "gitdep",
       "description": "Dependency: https://github.com/o/gitdep.git",
@@ -8090,7 +8090,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
+        "id": "01KDVDP4BR2BV86TSTWSBM0YRA",
         "type": "plugin",
         "name": "dep",
         "description": "Dependency: dep@mk",
@@ -8122,7 +8122,7 @@
        "version_constraint": "~1.2",
        "embed_on_export": true,
        "resource": {
-        "id": "01KDVDPE48CH1J2AN8ABMZB6EV",
+        "id": "01KDVDPE48C76SH5RGBTP9929Y",
         "type": "plugin",
         "name": "cp",
         "description": "Dependency: org/cat/cp",
@@ -8155,7 +8155,7 @@
        "version_constraint": "2",
        "embed_on_export": true,
        "resource": {
-        "id": "01KDVDP79G9ED216R5G8JE7STX",
+        "id": "01KDVDP79G0YX3E7SPB1H1CC75",
         "type": "plugin",
         "name": "thing",
         "description": "Dependency: ./local/thing",
@@ -8187,7 +8187,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
+        "id": "01KDVDPG2RR8JQH810B09QRWAW",
         "type": "plugin",
         "name": "plain",
         "description": "Dependency: plain",
@@ -8218,7 +8218,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPH20FDD2544C10DKZ5WV",
+        "id": "01KDVDPH206S9XYANG6NDPVHNV",
         "type": "plugin",
         "name": "host",
         "description": "Dependency: host@mk",
@@ -8250,7 +8250,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDP980T73TQTTZV95PB94E",
+        "id": "01KDVDP980X7N8KWH8Z00VCCZ4",
         "type": "plugin",
         "name": "gitdep",
         "description": "Dependency: https://github.com/o/gitdep.git",
@@ -8300,7 +8300,7 @@
       "host@mk"
      ],
      "result": {
-      "id": "01KDVDPH20FDD2544C10DKZ5WV",
+      "id": "01KDVDPH206S9XYANG6NDPVHNV",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: host@mk",
@@ -8333,7 +8333,7 @@
       "org/cat/host"
      ],
      "result": {
-      "id": "01KDVDPPXGDTB8WAVMQT9KPJ29",
+      "id": "01KDVDPPXGVT7HG1R3G5XY4JEW",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: org/cat/host",
@@ -8366,7 +8366,7 @@
       "../host"
      ],
      "result": {
-      "id": "01KDVDPQWR6TSTTRSDFPGMA9W9",
+      "id": "01KDVDPQWR3X5JMVAF177G7XTE",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: ../host",
@@ -8404,7 +8404,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPPXGDTB8WAVMQT9KPJ29",
+        "id": "01KDVDPPXGVT7HG1R3G5XY4JEW",
         "type": "plugin",
         "name": "host",
         "description": "Dependency: org/cat/host",
@@ -8673,7 +8673,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -8769,7 +8769,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
+        "id": "01KDVDPG2RR8JQH810B09QRWAW",
         "type": "plugin",
         "name": "plain",
         "description": "Dependency: plain",
@@ -8800,7 +8800,7 @@
        "version_constraint": "",
        "embed_on_export": false,
        "resource": {
-        "id": "01KDVDPH20FDD2544C10DKZ5WV",
+        "id": "01KDVDPH206S9XYANG6NDPVHNV",
         "type": "plugin",
         "name": "host",
         "description": "Dependency: host@mk",
@@ -8838,7 +8838,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -8878,39 +8878,39 @@
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDP2D8Y7R4C006927HSMKE",
-      "resource_id": "01KDVDPG2R5N2JS24ZR97QBCGP",
+      "plugin_id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
+      "resource_id": "01KDVDPG2RR8JQH810B09QRWAW",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8Y7R4C006927HSMKE",
-      "resource_id": "01KDVDPH20FDD2544C10DKZ5WV",
+      "plugin_id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
+      "resource_id": "01KDVDPH206S9XYANG6NDPVHNV",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP3CG1P58CCBRB045DAPS",
-      "resource_id": "01KDVDPH20FDD2544C10DKZ5WV",
+      "plugin_id": "01KDVDP3CGE7DQWS20Q1VZH86H",
+      "resource_id": "01KDVDPH206S9XYANG6NDPVHNV",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP3CG1P58CCBRB045DAPS",
-      "resource_id": "01KDVDPQWR6TSTTRSDFPGMA9W9",
+      "plugin_id": "01KDVDP3CGE7DQWS20Q1VZH86H",
+      "resource_id": "01KDVDPQWR3X5JMVAF177G7XTE",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugin_working_snapshots": [
      {
-      "plugin_id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "plugin_id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
       "source_version": "1.0.0",
-      "payload": "{\"resource_ids\":[\"01KDVDP4BRJXR2ENW1SF2NKCYP\",\"01KDVDPE48CH1J2AN8ABMZB6EV\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"latest\"},{\"name\":\"cp\",\"version\":\"~1.2\"}],\"excludes\":[]}",
+      "payload": "{\"resource_ids\":[\"01KDVDP4BR2BV86TSTWSBM0YRA\",\"01KDVDPE48C76SH5RGBTP9929Y\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"latest\"},{\"name\":\"cp\",\"version\":\"~1.2\"}],\"excludes\":[]}",
       "created_at": "2026-01-01T00:00:38.000Z"
      },
      {
-      "plugin_id": "01KDVDP3CG1P58CCBRB045DAPS",
+      "plugin_id": "01KDVDP3CGE7DQWS20Q1VZH86H",
       "source_version": "1.0.0",
       "payload": "{\"resource_ids\":[],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"1.0.0\",\"resolved_set\":[],\"excludes\":[]}",
       "created_at": "2026-01-01T00:00:45.000Z"
@@ -8918,7 +8918,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDP2D8Y7R4C006927HSMKE",
+      "id": "01KDVDP2D8NYCXR54PQ4HGQ5YM",
       "name": "p",
       "version": "1.0.0",
       "org_slug": "",
@@ -8949,7 +8949,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDP3CG1P58CCBRB045DAPS",
+      "id": "01KDVDP3CGE7DQWS20Q1VZH86H",
       "name": "host",
       "version": "1.0.0",
       "org_slug": "",
@@ -8982,7 +8982,7 @@
     ],
     "resources": [
      {
-      "id": "01KDVDP4BRJXR2ENW1SF2NKCYP",
+      "id": "01KDVDP4BR2BV86TSTWSBM0YRA",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -8998,7 +8998,7 @@
       "updated_at": "2026-01-01T00:00:27.000Z"
      },
      {
-      "id": "01KDVDP6A8ARKJR65WKAVNXBHH",
+      "id": "01KDVDP6A8EFQJH9NP59WATGBP",
       "type": "plugin",
       "name": "dep",
       "description": "Dependency: dep@mk",
@@ -9014,7 +9014,7 @@
       "updated_at": "2026-01-01T00:00:29.000Z"
      },
      {
-      "id": "01KDVDP79G9ED216R5G8JE7STX",
+      "id": "01KDVDP79G0YX3E7SPB1H1CC75",
       "type": "plugin",
       "name": "thing",
       "description": "Dependency: ./local/thing",
@@ -9030,7 +9030,7 @@
       "updated_at": "2026-01-01T00:00:30.000Z"
      },
      {
-      "id": "01KDVDP88RSDVH9P72AJRXX2FA",
+      "id": "01KDVDP88RY87A9T723DKKRK5F",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -9046,7 +9046,7 @@
       "updated_at": "2026-01-01T00:00:31.000Z"
      },
      {
-      "id": "01KDVDP980T73TQTTZV95PB94E",
+      "id": "01KDVDP980X7N8KWH8Z00VCCZ4",
       "type": "plugin",
       "name": "gitdep",
       "description": "Dependency: https://github.com/o/gitdep.git",
@@ -9062,7 +9062,7 @@
       "updated_at": "2026-01-01T00:00:32.000Z"
      },
      {
-      "id": "01KDVDPA78BBBQ0FDT4FBY0BSV",
+      "id": "01KDVDPA78G2XV8Z612WK04J94",
       "type": "plugin",
       "name": "padded",
       "description": "Dependency:   padded@mk  ",
@@ -9078,7 +9078,7 @@
       "updated_at": "2026-01-01T00:00:33.000Z"
      },
      {
-      "id": "01KDVDPE48CH1J2AN8ABMZB6EV",
+      "id": "01KDVDPE48C76SH5RGBTP9929Y",
       "type": "plugin",
       "name": "cp",
       "description": "Dependency: org/cat/cp",
@@ -9094,7 +9094,7 @@
       "updated_at": "2026-01-01T00:00:37.000Z"
      },
      {
-      "id": "01KDVDPG2R5N2JS24ZR97QBCGP",
+      "id": "01KDVDPG2RR8JQH810B09QRWAW",
       "type": "plugin",
       "name": "plain",
       "description": "Dependency: plain",
@@ -9110,7 +9110,7 @@
       "updated_at": "2026-01-01T00:00:39.000Z"
      },
      {
-      "id": "01KDVDPH20FDD2544C10DKZ5WV",
+      "id": "01KDVDPH206S9XYANG6NDPVHNV",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: host@mk",
@@ -9126,7 +9126,7 @@
       "updated_at": "2026-01-01T00:00:40.000Z"
      },
      {
-      "id": "01KDVDPPXGDTB8WAVMQT9KPJ29",
+      "id": "01KDVDPPXGVT7HG1R3G5XY4JEW",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: org/cat/host",
@@ -9142,7 +9142,7 @@
       "updated_at": "2026-01-01T00:00:46.000Z"
      },
      {
-      "id": "01KDVDPQWR6TSTTRSDFPGMA9W9",
+      "id": "01KDVDPQWR3X5JMVAF177G7XTE",
       "type": "plugin",
       "name": "host",
       "description": "Dependency: ../host",
@@ -10417,7 +10417,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.0.0",
       "org_slug": "",
@@ -10539,7 +10539,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "name": "kid",
       "version": "0.1.0",
       "org_slug": "",
@@ -11195,7 +11195,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "name": "kid",
       "version": "0.1.0",
       "org_slug": "",
@@ -11257,7 +11257,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "name": "kid",
       "version": "0.1.0",
       "org_slug": "",
@@ -11456,7 +11456,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+        "id": "01KDVDQ5J8QTG4HS0WWMMDK474",
         "name": "kid",
         "version": "0.1.0",
         "org_slug": "",
@@ -11534,7 +11534,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+        "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
         "name": "base",
         "version": "1.0.0",
         "org_slug": "",
@@ -11547,7 +11547,7 @@
         "updated_at": "2026-01-01T00:00:50.000Z"
        },
        {
-        "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+        "id": "01KDVDQ5J8QTG4HS0WWMMDK474",
         "name": "kid",
         "version": "0.1.0",
         "org_slug": "",
@@ -11701,7 +11701,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.0.0",
       "org_slug": "",
@@ -11800,7 +11800,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.1.0",
       "org_slug": "",
@@ -11824,7 +11824,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.1.0",
       "org_slug": "",
@@ -12192,7 +12192,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.1.0",
       "org_slug": "o",
@@ -12395,7 +12395,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.1.0",
       "org_slug": "o",
@@ -12447,7 +12447,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDSPM0RCWKZ5SYY77DMW1W",
+      "id": "01KDVDSPM0DC2CKW2EKDYF0DWT",
       "name": "gkid",
       "version": "1.0.0",
       "org_slug": "",
@@ -13066,100 +13066,100 @@
     ],
     "plugin_excludes": [
      {
-      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "plugin_id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "entry": "rule:r1",
       "created_at": "2026-01-01T00:01:21.000Z"
      },
      {
-      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "plugin_id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "entry": "skill:nothing",
       "created_at": "2026-01-01T00:01:21.000Z"
      },
      {
-      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "plugin_id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "entry": "skill:s2",
       "created_at": "2026-01-01T00:01:21.000Z"
      },
      {
-      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "plugin_id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "entry": "skill:s1",
       "created_at": "2026-01-01T00:01:34.000Z"
      },
      {
-      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "plugin_id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "entry": "skill:s1",
       "created_at": "2026-01-01T00:01:44.000Z"
      }
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "plugin_id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "resource_id": "S1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "plugin_id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "resource_id": "S2",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "plugin_id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "resource_id": "R1",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "plugin_id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "resource_id": "HP",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "plugin_id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "resource_id": "DP",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "plugin_id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "resource_id": "S1K",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "plugin_id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "resource_id": "KP",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "plugin_id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "resource_id": "S1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "plugin_id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "resource_id": "S2",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "plugin_id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "resource_id": "R1",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "plugin_id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "resource_id": "HP",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "plugin_id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "resource_id": "DP",
       "order": 4,
       "harness_scope": "all"
@@ -13167,7 +13167,7 @@
     ],
     "plugin_working_snapshots": [
      {
-      "plugin_id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "plugin_id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "source_version": "0.1.0",
       "payload": "{\"resource_ids\":[\"S1K\",\"KP\"],\"description\":\"\",\"tags\":[],\"claude_config\":\"{}\",\"needs_config\":\"[]\",\"default_environment_id\":null,\"source_version\":\"0.1.0\",\"resolved_set\":[{\"name\":\"kid\",\"version\":\"latest\"}],\"excludes\":[]}",
       "created_at": "2026-01-01T00:01:21.000Z"
@@ -13175,7 +13175,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDPTTGG11J13GSZEMF75ZJ",
+      "id": "01KDVDPTTG9Z6F98Q18SG76FQ3",
       "name": "base",
       "version": "1.1.0",
       "org_slug": "o",
@@ -13206,7 +13206,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDQ5J8W11A6WXYFNTTJY8M",
+      "id": "01KDVDQ5J8QTG4HS0WWMMDK474",
       "name": "kid",
       "version": "0.1.0",
       "org_slug": "",
@@ -13237,7 +13237,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDRFJ0KJVKTEBK5DE3GB6S",
+      "id": "01KDVDRFJ0HNJ90GQE5BZG9M16",
       "name": "base",
       "version": "1.0.0",
       "org_slug": "o",
@@ -13361,7 +13361,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDSPM0RCWKZ5SYY77DMW1W",
+      "id": "01KDVDSPM0DC2CKW2EKDYF0DWT",
       "name": "gkid",
       "version": "1.0.0",
       "org_slug": "",
@@ -13509,6 +13509,1225 @@
    }
   },
   {
+   "name": "claude-pins",
+   "calls": [
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "superpowers"
+     ],
+     "result": [
+      "superpowers@claude-plugins-official",
+      "superpowers@superpowers-dev",
+      "superpowers"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "superpowers@obra"
+     ],
+     "result": [
+      "superpowers@claude-plugins-official",
+      "superpowers@superpowers-dev",
+      "superpowers@obra"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x@anthropics"
+     ],
+     "result": [
+      "x@anthropics",
+      "x@claude-plugins-official"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x@obra"
+     ],
+     "result": [
+      "x@obra",
+      "x@claude-plugins-official",
+      "x@superpowers-dev"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x@multica-ai"
+     ],
+     "result": [
+      "x@multica-ai",
+      "x@karpathy-skills"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x@other"
+     ],
+     "result": [
+      "x@other",
+      "x@claude-plugins-official"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x"
+     ],
+     "result": [
+      "x"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "@m"
+     ],
+     "result": [
+      "@m"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "context7@claude-plugins-official"
+     ],
+     "result": [
+      "context7@claude-plugins-official"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "andrej-karpathy-skills@foo"
+     ],
+     "result": [
+      "andrej-karpathy-skills@karpathy-skills",
+      "andrej-karpathy-skills@foo",
+      "andrej-karpathy-skills@claude-plugins-official"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x@"
+     ],
+     "result": [
+      "x@"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "a@b@anthropics"
+     ],
+     "result": [
+      "a@b@anthropics",
+      "a@b@claude-plugins-official"
+     ]
+    },
+    {
+     "fn": "resolveCatalogPluginMarketplaceBootstrap",
+     "args": [
+      "andrej-karpathy-skills@x"
+     ],
+     "result": [
+      {
+       "name": "karpathy-skills",
+       "repo": "forrestchang/andrej-karpathy-skills"
+      }
+     ]
+    },
+    {
+     "fn": "resolveCatalogPluginMarketplaceBootstrap",
+     "args": [
+      "superpowers"
+     ],
+     "result": []
+    },
+    {
+     "fn": "resolveCatalogPluginMarketplaceBootstrap",
+     "args": [
+      "constructor"
+     ],
+     "result": []
+    },
+    {
+     "fn": "resolveCatalogPluginMarketplaceBootstrap",
+     "args": [
+      "toString@m"
+     ],
+     "result": []
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "listConfiguredMarketplaceNames",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "superpowers"
+     ],
+     "result": "superpowers@claude-plugins-official"
+    },
+    {
+     "fn": "claudeConfigFromPluginPins",
+     "args": [
+      []
+     ],
+     "result": null
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"version\": 2, \"plugins\": {\"superpowers@superpowers-dev\": [{\"scope\": \"user\", \"installPath\": \"/x\", \"version\": \"1\"}], \"x@claude-plugins-official\": [{\"scope\": \"project\", \"installPath\": \"rel\", \"version\": \"1\"}, {\"scope\": \"user\", \"installPath\": \"\", \"version\": \"1\"}], \"2\": [{\"scope\": \"user\", \"installPath\": \"a\"}], \"1\": [], \"y@local\": [{\"scope\": \"user\", \"installPath\": \"p\"}], \"empty\": \"\", \"noscope@m\": [{\"installPath\": \"q\"}]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": [
+      {
+       "ref": "2",
+       "scope": "user"
+      },
+      {
+       "ref": "superpowers@superpowers-dev",
+       "scope": "user"
+      },
+      {
+       "ref": "x@claude-plugins-official",
+       "scope": "project"
+      },
+      {
+       "ref": "x@claude-plugins-official",
+       "scope": "user"
+      },
+      {
+       "ref": "y@local",
+       "scope": "user"
+      },
+      {
+       "ref": "noscope@m"
+      }
+     ]
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "superpowers"
+     ],
+     "result": "superpowers@superpowers-dev"
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "x@anthropics"
+     ],
+     "result": "x@claude-plugins-official"
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "x@obra"
+     ],
+     "result": "x@claude-plugins-official"
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "z"
+     ],
+     "result": "z"
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "y"
+     ],
+     "result": "y"
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "y@local"
+     ],
+     "result": "y@local"
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "2"
+     ],
+     "result": "2"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "y"
+     ],
+     "result": "y@local"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "y",
+      "user"
+     ],
+     "result": "y@local"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "y",
+      "project"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "x@anthropics",
+      "project"
+     ],
+     "result": "x@claude-plugins-official"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "x@anthropics",
+      "nope"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "superpowers"
+     ],
+     "result": "superpowers@superpowers-dev"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "noscope@m"
+     ],
+     "result": "noscope@m"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "noscope@m",
+      "user"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "y@other"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      ""
+     ],
+     "result": null
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "{\"plugins\": [{\"name\": \"z\"}, {\"name\": \"\"}, null, [1], {\"name\": 5}, \"s\", {\"name\": \"x\"}]}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "listConfiguredMarketplaceNames",
+     "args": [],
+     "result": [
+      "mk1"
+     ]
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": true
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      ""
+     ],
+     "result": false
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk2",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "z"
+     ],
+     "result": [
+      "z",
+      "z@mk1"
+     ]
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "x@anthropics"
+     ],
+     "result": [
+      "x@anthropics",
+      "x@claude-plugins-official",
+      "x@mk1"
+     ]
+    },
+    {
+     "fn": "resolveClaudeEnabledPluginRef",
+     "args": [
+      "z"
+     ],
+     "result": "z"
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "z"
+     ],
+     "result": null
+    },
+    {
+     "fn": "claudeConfigFromPluginPins",
+     "args": [
+      [
+       {
+        "ref": "z",
+        "version_constraint": "1"
+       },
+       {
+        "ref": "superpowers",
+        "version_constraint": ""
+       },
+       {
+        "ref": "x@anthropics",
+        "version_constraint": "^2"
+       }
+      ]
+     ],
+     "result": {
+      "plugins": [
+       {
+        "id": "z",
+        "version": "1",
+        "enabled": true
+       },
+       {
+        "id": "superpowers@superpowers-dev",
+        "version": "",
+        "enabled": true
+       },
+       {
+        "id": "x@claude-plugins-official",
+        "version": "^2",
+        "enabled": true
+       }
+      ]
+     }
+    },
+    {
+     "fn": "__mkdir",
+     "args": [
+      ".claude/plugins/marketplaces/mk2"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/afile",
+      "x"
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk2",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "z"
+     ],
+     "result": [
+      "z",
+      "z@mk1"
+     ]
+    },
+    {
+     "fn": "__rm",
+     "args": [
+      ".claude/plugins/marketplaces/mk2"
+     ],
+     "result": null
+    },
+    {
+     "fn": "listConfiguredMarketplaceNames",
+     "args": [],
+     "result": [
+      "mk1"
+     ]
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "{bad json"
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "null"
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "{\"plugins\":\"x\"}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "[1,2,3]"
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "\"str\""
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json",
+      "{\"plugins\":[{\"name\":\"z\"}]}  "
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__rm",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__mkdir",
+     "args": [
+      ".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json"
+     ],
+     "result": null
+    },
+    {
+     "fn": "marketplaceHasPlugin",
+     "args": [
+      "mk1",
+      "z"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\": {\"a\": [{\"scope\":\"user\"}]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":\"ab\"}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":[]}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":5}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "5"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":\"x\"}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":\"\"}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":[null]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":{}}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":[{\"installPath\":5}]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{bad"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":[[{\"installPath\":\"x\",\"scope\":\"s\"}]]}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": [
+      {
+       "ref": "0",
+       "scope": "s"
+      }
+     ]
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":[{\"installPath\":\"x\",\"scope\":{\"k\":1}}],\"10\":[{\"installPath\":\"y\",\"scope\":null}],\"01\":[{\"installPath\":\"z\"}]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": [
+      {
+       "ref": "10",
+       "scope": null
+      },
+      {
+       "ref": "a",
+       "scope": {
+        "k": 1
+       }
+      },
+      {
+       "ref": "01"
+      }
+     ]
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":[[\"installPath\"]]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":5}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":null}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":null}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":\"\"}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listInstalledRefScopes"
+     ],
+     "result": false
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeEnabledPluginRef",
+      "q"
+     ],
+     "result": false
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"a\":[{\"installPath\":\"x\",\"scope\":{\"k\":1}}]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "a"
+     ],
+     "result": "a"
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/installed_plugins.json",
+      "{\"plugins\":{\"@local\":[{\"installPath\":\"x\"}]}}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      ""
+     ],
+     "result": null
+    },
+    {
+     "fn": "findInstalledRefForCatalogPin",
+     "args": [
+      "@local"
+     ],
+     "result": "@local"
+    },
+    {
+     "fn": "__rm",
+     "args": [
+      ".claude/plugins/marketplaces"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude/plugins/marketplaces",
+      "not a dir"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "resolveClaudeInstallRefCandidates",
+      "z"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__throws",
+     "args": [
+      "listConfiguredMarketplaceNames"
+     ],
+     "result": true
+    },
+    {
+     "fn": "__rm",
+     "args": [
+      ".claude"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__writeFile",
+     "args": [
+      ".claude",
+      "file"
+     ],
+     "result": null
+    },
+    {
+     "fn": "listInstalledRefScopes",
+     "args": [],
+     "result": []
+    },
+    {
+     "fn": "resolveClaudeInstallRefCandidates",
+     "args": [
+      "z"
+     ],
+     "result": [
+      "z"
+     ]
+    }
+   ],
+   "dump": {
+    "environments": [
+     {
+      "id": "env1",
+      "name": "one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e1",
+      "name": "e-one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e2",
+      "name": "e-two",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    ]
+   }
+  },
+  {
    "name": "versioning",
    "calls": [
     {
@@ -13535,7 +14754,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.0.0",
       "org_slug": "",
@@ -13664,7 +14883,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.0.0",
       "org_slug": "",
@@ -13705,7 +14924,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -13794,7 +15013,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -13803,7 +15022,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNKRG7BP40YP5CW8NRWX5",
+       "id": "01KDVDNKRG6T1P1065NDM22E4D",
        "name": "v",
        "version": "1.0.0",
        "dirty": false,
@@ -13864,7 +15083,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -13946,7 +15165,7 @@
        }
       },
       {
-       "id": "01KDVDNEW8B48S9XACE7AY9YW2",
+       "id": "01KDVDNEW8BP7FE9C5JX8J00DC",
        "type": "plugin",
        "name": "dep",
        "description": "",
@@ -14063,7 +15282,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNKRG7BP40YP5CW8NRWX5",
+       "id": "01KDVDNKRG6T1P1065NDM22E4D",
        "name": "v",
        "version": "1.0.0",
        "org_slug": "",
@@ -14091,7 +15310,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.1.0",
        "org_slug": "",
@@ -14143,7 +15362,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNKRG7BP40YP5CW8NRWX5",
+       "id": "01KDVDNKRG6T1P1065NDM22E4D",
        "name": "v",
        "version": "1.0.0",
        "org_slug": "",
@@ -14171,7 +15390,7 @@
        "updated_at": "2026-01-01T00:00:10.000Z"
       },
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.1.0",
        "org_slug": "",
@@ -14250,7 +15469,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.2.0",
       "org_slug": "",
@@ -14297,7 +15516,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.3.0",
       "org_slug": "",
@@ -14338,7 +15557,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPF3G88HX82P73RRYQ2AJ",
+      "id": "01KDVDPF3GZWKSDJQWJGBC6KK3",
       "name": "w",
       "version": "1.0.0",
       "org_slug": "",
@@ -14379,7 +15598,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.4.0",
       "org_slug": "",
@@ -14426,7 +15645,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.5.0",
       "org_slug": "",
@@ -14466,7 +15685,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.5.0",
        "dirty": false,
@@ -14475,7 +15694,7 @@
        "updated_at": "2026-01-01T00:00:41.000Z"
       },
       {
-       "id": "01KDVDPJ18JA9GZ7JZ16K5ACVW",
+       "id": "01KDVDPJ18THJ1JCTVM0NX39HB",
        "name": "v",
        "version": "1.4.0",
        "dirty": false,
@@ -14484,7 +15703,7 @@
        "updated_at": "2026-01-01T00:00:41.000Z"
       },
       {
-       "id": "01KDVDPD50G8QJR1955XAV20EG",
+       "id": "01KDVDPD50QNDP0N066FTVGZ7W",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -14502,7 +15721,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPKZR6Y3515SE1GMACDF0",
+      "id": "01KDVDPKZR8A4Y5HRWX0G7JYQX",
       "name": "broken-x",
       "version": "1.0.0",
       "org_slug": "",
@@ -14541,7 +15760,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDPKZR6Y3515SE1GMACDF0",
+      "id": "01KDVDPKZR8A4Y5HRWX0G7JYQX",
       "name": "broken-x",
       "version": "2.0.0",
       "org_slug": "",
@@ -14723,7 +15942,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.5.0",
       "org_slug": "",
@@ -14777,7 +15996,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.6.0",
       "org_slug": "",
@@ -14817,7 +16036,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.6.0",
        "dirty": false,
@@ -14826,7 +16045,7 @@
        "updated_at": "2026-01-01T00:01:03.000Z"
       },
       {
-       "id": "01KDVDQ7GRB07ZZW8VQRM7P5KK",
+       "id": "01KDVDQ7GRFN8KYCX74K4QSF6T",
        "name": "v",
        "version": "1.5.0",
        "dirty": false,
@@ -14835,7 +16054,7 @@
        "updated_at": "2026-01-01T00:01:03.000Z"
       },
       {
-       "id": "01KDVDPD50G8QJR1955XAV20EG",
+       "id": "01KDVDPD50QNDP0N066FTVGZ7W",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -14880,7 +16099,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -14920,7 +16139,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.7.0",
        "dirty": false,
@@ -14929,7 +16148,7 @@
        "updated_at": "2026-01-01T00:01:08.000Z"
       },
       {
-       "id": "01KDVDPD50G8QJR1955XAV20EG",
+       "id": "01KDVDPD50QNDP0N066FTVGZ7W",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -14960,7 +16179,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -15000,9 +16219,9 @@
      ],
      "result": [
       [
-       "01KDVDNA00D22NE3GX4J6803BS",
+       "01KDVDNA0014G1E1EB2XREQGEC",
        "1.7.0",
-       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW8B48S9XACE7AY9YW2\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
+       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW8BP7FE9C5JX8J00DC\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
       ]
      ]
     },
@@ -15037,7 +16256,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.8.0",
       "org_slug": "",
@@ -15077,7 +16296,7 @@
      ],
      "result": [
       {
-       "id": "01KDVDNA00D22NE3GX4J6803BS",
+       "id": "01KDVDNA0014G1E1EB2XREQGEC",
        "name": "v",
        "version": "1.8.0",
        "dirty": false,
@@ -15086,7 +16305,7 @@
        "updated_at": "2026-01-01T00:01:15.000Z"
       },
       {
-       "id": "01KDVDQK7R6MWD0FWVV10HXRAS",
+       "id": "01KDVDQK7REC7S872PQQ9DPCGF",
        "name": "v",
        "version": "1.7.0",
        "dirty": false,
@@ -15095,7 +16314,7 @@
        "updated_at": "2026-01-01T00:01:15.000Z"
       },
       {
-       "id": "01KDVDPD50G8QJR1955XAV20EG",
+       "id": "01KDVDPD50QNDP0N066FTVGZ7W",
        "name": "v",
        "version": "1.1.0",
        "dirty": false,
@@ -15132,74 +16351,74 @@
     ],
     "plugin_excludes": [
      {
-      "plugin_id": "01KDVDNA00D22NE3GX4J6803BS",
+      "plugin_id": "01KDVDNA0014G1E1EB2XREQGEC",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "plugin_id": "01KDVDPD50G8QJR1955XAV20EG",
+      "plugin_id": "01KDVDPD50QNDP0N066FTVGZ7W",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:00:36.000Z"
      },
      {
-      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
+      "plugin_id": "01KDVDQK7REC7S872PQQ9DPCGF",
       "entry": "skill:x",
       "created_at": "2026-01-01T00:01:15.000Z"
      }
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDPD50G8QJR1955XAV20EG",
+      "plugin_id": "01KDVDPD50QNDP0N066FTVGZ7W",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDPD50G8QJR1955XAV20EG",
-      "resource_id": "01KDVDNEW8B48S9XACE7AY9YW2",
+      "plugin_id": "01KDVDPD50QNDP0N066FTVGZ7W",
+      "resource_id": "01KDVDNEW8BP7FE9C5JX8J00DC",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDPF3G88HX82P73RRYQ2AJ",
-      "resource_id": "01KDVDPG2R824W5K3146570ZFQ",
+      "plugin_id": "01KDVDPF3GZWKSDJQWJGBC6KK3",
+      "resource_id": "01KDVDPG2RK2N5K40P90TZ5Y9R",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00D22NE3GX4J6803BS",
+      "plugin_id": "01KDVDNA0014G1E1EB2XREQGEC",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNA00D22NE3GX4J6803BS",
-      "resource_id": "01KDVDNEW8B48S9XACE7AY9YW2",
+      "plugin_id": "01KDVDNA0014G1E1EB2XREQGEC",
+      "resource_id": "01KDVDNEW8BP7FE9C5JX8J00DC",
       "order": 1,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
+      "plugin_id": "01KDVDQK7REC7S872PQQ9DPCGF",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
+      "plugin_id": "01KDVDQK7REC7S872PQQ9DPCGF",
       "resource_id": "R2",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDQK7R6MWD0FWVV10HXRAS",
-      "resource_id": "01KDVDNEW8B48S9XACE7AY9YW2",
+      "plugin_id": "01KDVDQK7REC7S872PQQ9DPCGF",
+      "resource_id": "01KDVDNEW8BP7FE9C5JX8J00DC",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00D22NE3GX4J6803BS",
+      "id": "01KDVDNA0014G1E1EB2XREQGEC",
       "name": "v",
       "version": "1.8.0",
       "org_slug": "",
@@ -15230,7 +16449,7 @@
       "upstream_plugin_id": "UP"
      },
      {
-      "id": "01KDVDPD50G8QJR1955XAV20EG",
+      "id": "01KDVDPD50QNDP0N066FTVGZ7W",
       "name": "v",
       "version": "1.1.0",
       "org_slug": "",
@@ -15261,7 +16480,7 @@
       "upstream_plugin_id": "UP"
      },
      {
-      "id": "01KDVDPF3G88HX82P73RRYQ2AJ",
+      "id": "01KDVDPF3GZWKSDJQWJGBC6KK3",
       "name": "w",
       "version": "1.0.0",
       "org_slug": "",
@@ -15292,7 +16511,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDPKZR6Y3515SE1GMACDF0",
+      "id": "01KDVDPKZR8A4Y5HRWX0G7JYQX",
       "name": "broken-x",
       "version": "2.0.0",
       "org_slug": "",
@@ -15323,7 +16542,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDPNY8N043XZ3PESGAZ185",
+      "id": "01KDVDPNY8YM480CK8BMH1Q3VX",
       "name": "broken-x",
       "version": "1.0.0",
       "org_slug": "",
@@ -15354,7 +16573,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDQK7R6MWD0FWVV10HXRAS",
+      "id": "01KDVDQK7REC7S872PQQ9DPCGF",
       "name": "v",
       "version": "1.7.0",
       "org_slug": "",
@@ -15419,7 +16638,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNEW8B48S9XACE7AY9YW2",
+      "id": "01KDVDNEW8BP7FE9C5JX8J00DC",
       "type": "plugin",
       "name": "dep",
       "description": "",
@@ -15435,7 +16654,7 @@
       "updated_at": "2026-01-01T00:00:05.000Z"
      },
      {
-      "id": "01KDVDPG2R824W5K3146570ZFQ",
+      "id": "01KDVDPG2RK2N5K40P90TZ5Y9R",
       "type": "plugin",
       "name": "v",
       "description": "",

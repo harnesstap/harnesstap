@@ -14,6 +14,7 @@
 //! JSON columns written by the app are read with `serde_json`. A column the
 //! original's `JSON.parse` rejects is an `Err` here too, with another message.
 
+pub mod claude_pins;
 pub mod cloud_error;
 pub mod dependency;
 pub mod extends;
@@ -154,8 +155,6 @@ pub trait PluginComposition {
         selector: &str,
         version_constraint: Option<&str>,
     ) -> Result<Resource>;
-    /// `claudeConfigFromPluginPins` (`claude-plugin-pins.ts`).
-    fn claude_config_from_plugin_pins(&self, ctx: &Ctx, pins: &[PluginPin]) -> Option<Value>;
 }
 
 // ---------------------------------------------------------------------------
@@ -527,7 +526,6 @@ fn list_plugin_pins(ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginPin>> {
 /// (by type:name), plugin pins (by ref) and Claude config.
 pub fn merge_plugins_by_id<S: AsRef<str>>(
     ctx: &Ctx,
-    composition: &dyn PluginComposition,
     plugin_ids: &[S],
 ) -> Result<MergedPluginContent> {
     let mut plugins = Vec::new();
@@ -558,7 +556,9 @@ pub fn merge_plugins_by_id<S: AsRef<str>>(
         claude = merge_claude_config(claude.as_ref(), plugin.claude.as_ref());
         plugins.push(plugin);
     }
-    let from_pins = composition.claude_config_from_plugin_pins(ctx, &pins);
+    let home_root = claude_pins::resolve_home_root(ctx.env);
+    let from_pins =
+        claude_pins::claude_config_from_plugin_pins(&claude_pins::FsClaudeHost, &pins, &home_root)?;
     claude = merge_claude_config(claude.as_ref(), from_pins.as_ref());
     Ok(MergedPluginContent {
         plugins,
@@ -1492,11 +1492,7 @@ pub struct FromSourcesInput {
 }
 
 /// `createPluginFromSources`.
-pub fn create_plugin_from_sources(
-    ctx: &Ctx,
-    composition: &dyn PluginComposition,
-    input: &FromSourcesInput,
-) -> Result<Plugin> {
+pub fn create_plugin_from_sources(ctx: &Ctx, input: &FromSourcesInput) -> Result<Plugin> {
     let environment_id = non_empty(input.environment_id.clone());
     if input.source_plugin_ids.is_empty() {
         return create_plugin(
@@ -1526,7 +1522,7 @@ pub fn create_plugin_from_sources(
                 .ok_or_else(|| format!("Plugin {source_id} not found after update"));
         }
     }
-    let merged = merge_plugins_by_id(ctx, composition, &input.source_plugin_ids)?;
+    let merged = merge_plugins_by_id(ctx, &input.source_plugin_ids)?;
     let tags = unique(merged.plugins.iter().flat_map(|p| p.tags.iter()));
     let needs = unique(merged.plugins.iter().flat_map(|p| p.needs.iter().flatten()));
     let description = input

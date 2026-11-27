@@ -18,6 +18,9 @@ import { mapResourceRow } from "../../../src/models/resource.ts";
 import * as composition from "../../../src/services/plugin-composition.ts";
 import * as extendsSvc from "../../../src/services/plugin-extends.ts";
 import * as pins from "../../../src/services/claude-plugin-pins.ts";
+import * as claudeRef from "../../../src/plugins/claude-plugin-ref.ts";
+import * as claudeInstalled from "../../../src/plugins/claude-installed.ts";
+import { clearMarketplaceManifestCache } from "../../../src/services/marketplace-manifest-cache.ts";
 import * as upstream from "../../../src/services/plugin-upstream.ts";
 import * as fork from "../../../src/services/plugin-fork.ts";
 import * as names from "../../../src/services/agent-plugins/name.ts";
@@ -27,7 +30,7 @@ import * as cloudError from "../../../src/services/cloud-api-error.ts";
 import * as dependency from "../../../src/services/plugin-dependency.ts";
 import * as resolveIndex from "../../../src/services/resolve/index.ts";
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const HOME = "/tmp/ht-plugin-model-fixture";
 const BASE = Date.parse("2026-01-01T00:00:00.000Z");
@@ -58,9 +61,6 @@ spyOn(composition, "ensurePluginResource").mockImplementation(((selector: string
   }
   return mapResourceRow(db.prepare("SELECT * FROM resources WHERE type = 'plugin' AND name = ?").get(name) as never);
 }) as never);
-spyOn(pins, "claudeConfigFromPluginPins").mockImplementation(((p: Array<{ ref: string; version_constraint: string }>) =>
-  p.length === 0 ? undefined : { plugins: p.map((x) => ({ id: x.ref, version: x.version_constraint, enabled: true })) }) as never);
-
 // resolveComposition until services/resolve is ported: the root's plugin-typed
 // attachments at depth 1; a root named broken* does not resolve.
 spyOn(resolveIndex, "resolveComposition").mockImplementation(((input: { rootSelectors: string[] }) => {
@@ -196,6 +196,19 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   parseCloudErrorText: cloudError.parseCloudErrorText,
   cloudApiError: ((e: unknown) => { const x = C(e) as InstanceType<typeof cloudError.CloudApiError>; return { message: x.message, status: x.status, detail: x.detail }; }) as never,
   cloudErrorDetail: ((e: unknown) => cloudError.cloudErrorDetail(C(e))) as never,
+  resolveClaudeInstallRefCandidates: ((ref: string) => claudeRef.resolveClaudeInstallRefCandidates(ref, HOME)) as never,
+  resolveCatalogPluginMarketplaceBootstrap: claudeRef.resolveCatalogPluginMarketplaceBootstrap,
+  resolveClaudeEnabledPluginRef: ((ref: string) => claudeRef.resolveClaudeEnabledPluginRef(ref, HOME)) as never,
+  findInstalledRefForCatalogPin: ((ref: string, scope?: string) => claudeRef.findInstalledRefForCatalogPin(ref, HOME, scope)) as never,
+  claudeConfigFromPluginPins: ((p: never) => pins.claudeConfigFromPluginPins(p)) as never,
+  listInstalledRefScopes: (() => claudeInstalled.listInstalledRefScopes(HOME).map((r) => ({ ref: r.ref, scope: r.scope }))) as never,
+  listConfiguredMarketplaceNames: (() => claudeRef.listConfiguredMarketplaceNames(HOME)) as never,
+  marketplaceHasPlugin: ((m: string, n: string) => claudeRef.marketplaceHasPlugin(HOME, m, n)) as never,
+  // Whether the call throws: the messages come from the JS engine.
+  __throws: ((fn: string, ...args: never[]) => { try { fns[fn]!(...args); return false; } catch { return true; } }) as never,
+  __writeFile: ((rel: string, text: string) => { mkdirSync(dirname(join(HOME, rel)), { recursive: true }); writeFileSync(join(HOME, rel), text); }) as never,
+  __mkdir: ((rel: string) => { mkdirSync(join(HOME, rel), { recursive: true }); }) as never,
+  __rm: ((rel: string) => { rmSync(join(HOME, rel), { recursive: true, force: true }); }) as never,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
   __query: ((sql: string) => (getDb().prepare(sql).all() as Record<string, unknown>[]).map((row) => Object.values(row))) as never,
   __writeConfig: ((text: string) => {
@@ -760,6 +773,157 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
     ],
   },
   {
+    name: "claude-pins",
+    ops: [
+      { fn: "resolveClaudeInstallRefCandidates", args: ["superpowers"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["superpowers@obra"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x@anthropics"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x@obra"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x@multica-ai"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x@other"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["@m"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["context7@claude-plugins-official"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["andrej-karpathy-skills@foo"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x@"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["a@b@anthropics"] },
+      { fn: "resolveCatalogPluginMarketplaceBootstrap", args: ["andrej-karpathy-skills@x"] },
+      { fn: "resolveCatalogPluginMarketplaceBootstrap", args: ["superpowers"] },
+      { fn: "resolveCatalogPluginMarketplaceBootstrap", args: ["constructor"] },
+      { fn: "resolveCatalogPluginMarketplaceBootstrap", args: ["toString@m"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "listConfiguredMarketplaceNames", args: [] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["superpowers"] },
+      { fn: "claudeConfigFromPluginPins", args: [[]] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"version\": 2, \"plugins\": {\"superpowers@superpowers-dev\": [{\"scope\": \"user\", \"installPath\": \"/x\", \"version\": \"1\"}], \"x@claude-plugins-official\": [{\"scope\": \"project\", \"installPath\": \"rel\", \"version\": \"1\"}, {\"scope\": \"user\", \"installPath\": \"\", \"version\": \"1\"}], \"2\": [{\"scope\": \"user\", \"installPath\": \"a\"}], \"1\": [], \"y@local\": [{\"scope\": \"user\", \"installPath\": \"p\"}], \"empty\": \"\", \"noscope@m\": [{\"installPath\": \"q\"}]}}"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["superpowers"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["x@anthropics"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["x@obra"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["z"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["y"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["y@local"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["2"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["y"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["y", "user"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["y", "project"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["x@anthropics", "project"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["x@anthropics", "nope"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["superpowers"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["noscope@m"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["noscope@m", "user"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["y@other"] },
+      { fn: "findInstalledRefForCatalogPin", args: [""] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "{\"plugins\": [{\"name\": \"z\"}, {\"name\": \"\"}, null, [1], {\"name\": 5}, \"s\", {\"name\": \"x\"}]}"] },
+      { fn: "listConfiguredMarketplaceNames", args: [] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", ""] },
+      { fn: "marketplaceHasPlugin", args: ["mk2", "z"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["z"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["x@anthropics"] },
+      { fn: "resolveClaudeEnabledPluginRef", args: ["z"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["z"] },
+      { fn: "claudeConfigFromPluginPins", args: [[{"ref": "z", "version_constraint": "1"}, {"ref": "superpowers", "version_constraint": ""}, {"ref": "x@anthropics", "version_constraint": "^2"}]] },
+      { fn: "__mkdir", args: [".claude/plugins/marketplaces/mk2"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/afile", "x"] },
+      { fn: "marketplaceHasPlugin", args: ["mk2", "z"] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["z"] },
+      { fn: "__rm", args: [".claude/plugins/marketplaces/mk2"] },
+      { fn: "listConfiguredMarketplaceNames", args: [] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "{bad json"] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "null"] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "{\"plugins\":\"x\"}"] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "[1,2,3]"] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "\"str\""] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json", "{\"plugins\":[{\"name\":\"z\"}]}  "] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__rm", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json"] },
+      { fn: "__mkdir", args: [".claude/plugins/marketplaces/mk1/.claude-plugin/marketplace.json"] },
+      { fn: "marketplaceHasPlugin", args: ["mk1", "z"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\": {\"a\": [{\"scope\":\"user\"}]}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":\"ab\"}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":[]}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":5}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "5"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":\"x\"}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":\"\"}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":[null]}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":{}}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":[{\"installPath\":5}]}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{bad"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":[[{\"installPath\":\"x\",\"scope\":\"s\"}]]}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":[{\"installPath\":\"x\",\"scope\":{\"k\":1}}],\"10\":[{\"installPath\":\"y\",\"scope\":null}],\"01\":[{\"installPath\":\"z\"}]}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":[[\"installPath\"]]}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":5}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":null}}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":null}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":\"\"}"] },
+      { fn: "__throws", args: ["listInstalledRefScopes"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "__throws", args: ["resolveClaudeEnabledPluginRef", "q"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"a\":[{\"installPath\":\"x\",\"scope\":{\"k\":1}}]}}"] },
+      { fn: "findInstalledRefForCatalogPin", args: ["a"] },
+      { fn: "__writeFile", args: [".claude/plugins/installed_plugins.json", "{\"plugins\":{\"@local\":[{\"installPath\":\"x\"}]}}"] },
+      { fn: "findInstalledRefForCatalogPin", args: [""] },
+      { fn: "findInstalledRefForCatalogPin", args: ["@local"] },
+      { fn: "__rm", args: [".claude/plugins/marketplaces"] },
+      { fn: "__writeFile", args: [".claude/plugins/marketplaces", "not a dir"] },
+      { fn: "__throws", args: ["resolveClaudeInstallRefCandidates", "z"] },
+      { fn: "__throws", args: ["listConfiguredMarketplaceNames"] },
+      { fn: "__rm", args: [".claude"] },
+      { fn: "__writeFile", args: [".claude", "file"] },
+      { fn: "listInstalledRefScopes", args: [] },
+      { fn: "resolveClaudeInstallRefCandidates", args: ["z"] },
+    ],
+  },
+  {
     name: "versioning",
     ops: [
       { fn: "createPlugin", args: [{ name: "v", version: "1.0.0", tags: ["t"], claude: { plugins: [{ id: "a@m", version: "1", enabled: true }] }, needs: ["N"] }] },
@@ -886,9 +1050,11 @@ for (let i = 0; i < 400; i += 1) {
 scenarios.push({ name: "names", ops: nameOps });
 
 process.env.HARNESSTAP_HOME = HOME;
+process.env.HOME = HOME;
 const out = scenarios.map(({ name, ops }) => {
   closeDb();
   rmSync(HOME, { recursive: true, force: true });
+  clearMarketplaceManifestCache();
   initializeSchema(getDb());
   getDb().exec(SETUP);
   const results: unknown[] = [];
