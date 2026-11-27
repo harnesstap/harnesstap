@@ -1,10 +1,12 @@
 //! The version side of `src/services/resolve`: `plugin-constraints.ts`, `version-mediation.ts` and
-//! the `UnsatisfiableConstraintError` from `types.ts`. Replayed against recordings of the
+//! the `UnsatisfiableConstraintError` and resolution types from `types.ts`, and the key and
+//! fingerprint helpers of `resource-resolution.ts`. Replayed against recordings of the
 //! TypeScript by `tests/make-fixtures.ts`.
 
 #![forbid(unsafe_code)]
 
 pub mod plugin_constraints;
+pub mod resource_resolution;
 pub mod types;
 pub mod version_mediation;
 

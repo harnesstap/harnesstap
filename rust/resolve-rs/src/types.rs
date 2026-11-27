@@ -1,4 +1,5 @@
-//! The constraint records and `UnsatisfiableConstraintError` from `src/services/resolve/types.ts`.
+//! The constraint records, `UnsatisfiableConstraintError` and resolution result types from
+//! `src/services/resolve/types.ts`.
 
 use serde::{Deserialize, Serialize};
 
@@ -367,4 +368,81 @@ pub fn hint_for_action(action: &RecoveryAction) -> String {
             ..
         } => format!("ht plugin edit {root_name} --clear-override plugin:{plugin_name}"),
     }
+}
+
+/// `SelectedPlugin`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectedPlugin {
+    pub name: String,
+    pub version: String,
+    pub plugin_id: String,
+    /// Root is 0; a direct dependency of the root is 1.
+    pub depth: f64,
+    pub declaration_index: f64,
+    pub constraints: Vec<ConstraintRecord>,
+    pub reason: SelectionReason,
+    pub path: Vec<String>,
+    pub source: DependencySourceKind,
+}
+
+/// `ResourceDecisionReason`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ResourceDecisionReason {
+    OnlyCandidate,
+    NearestToRoot,
+    IdenticalContent,
+    DeclarationOrder,
+    RootOverride,
+}
+
+/// `ResourceSide`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceSide {
+    pub plugin_name: String,
+    pub plugin_version: String,
+    pub depth: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview: Option<String>,
+}
+
+/// `ResourceDecision`: one `type:name` outcome.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ResourceDecision {
+    pub key: String,
+    pub winner: ResourceSide,
+    pub losers: Vec<ResourceSide>,
+    pub reason: ResourceDecisionReason,
+}
+
+/// `ResolutionRoot`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolutionRoot {
+    pub name: String,
+    pub version: String,
+    pub plugin_id: String,
+    pub ephemeral: bool,
+}
+
+/// `ResolutionResult`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ResolutionResult {
+    pub root: ResolutionRoot,
+    /// Root first (depth 0), then dependencies by depth, then declaration.
+    pub selected: Vec<SelectedPlugin>,
+    /// Winning material resources, one per resolution key.
+    pub resources: Vec<models_rs::resource::Resource>,
+    pub decisions: Vec<ResourceDecision>,
+    pub warnings: Vec<String>,
 }
