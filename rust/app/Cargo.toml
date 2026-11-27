@@ -19,6 +19,7 @@ cli-rs = { path = "../cli-rs" }
 db-rs = { path = "../db-rs" }
 models-rs = { path = "../models-rs" }
 plugin-model-rs = { path = "../plugin-model-rs" }
+self-update-rs = { path = "../self-update-rs", features = ["http"] }
 
 [build-dependencies]
 version-rs = { path = "../version-rs" }

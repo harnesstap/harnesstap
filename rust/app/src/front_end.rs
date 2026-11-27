@@ -54,6 +54,30 @@ fn profile_names() -> Result<Vec<String>, String> {
     Ok(profiles)
 }
 
+/// `maybeNotifyCliUpdate({ argv })` after an action, as `runHarnesstapCli` does. The install
+/// channel is read from this binary's path, where the original reads the script's.
+fn notify_cli_update(program: &str, args: &[String], version: &str, code: u8) {
+    let env: self_update_rs::Env = std::env::vars().collect();
+    let dir = db_rs::paths::harnesstap_dir(&db_rs::paths::ProcessEnv);
+    let mut argv = vec![program.to_string(), program.to_string()];
+    argv.extend(args.iter().cloned());
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
+    let options = self_update_rs::NotifyOptions {
+        argv: &argv,
+        env: &env,
+        harnesstap_dir: std::path::Path::new(&dir),
+        current_version: version,
+        package_version: version,
+        now_ms,
+        exit_code: Some(i32::from(code)),
+    };
+    self_update_rs::maybe_notify_cli_update(&options, &self_update_rs::HttpFetch, &mut |m| {
+        eprintln!("{m}");
+    });
+}
+
 pub fn run(argv: &[OsString]) -> Option<ExitCode> {
     if std::env::var("RUST_ANYTHING_UNIT_CLI").is_ok_and(|v| v == "original") {
         return None;
@@ -75,6 +99,16 @@ pub fn run(argv: &[OsString]) -> Option<ExitCode> {
         } => {
             let _ = std::io::stdout().write_all(stdout.as_bytes());
             let _ = std::io::stderr().write_all(stderr.as_bytes());
+            Some(ExitCode::from(code))
+        }
+        Outcome::Acted {
+            stdout,
+            stderr,
+            code,
+        } => {
+            let _ = std::io::stdout().write_all(stdout.as_bytes());
+            let _ = std::io::stderr().write_all(stderr.as_bytes());
+            notify_cli_update(program, &args, &version, code);
             Some(ExitCode::from(code))
         }
     }

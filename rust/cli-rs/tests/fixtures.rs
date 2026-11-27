@@ -54,7 +54,13 @@ fn answers_match_the_original() {
     for run in &runs {
         match cli_rs::run(&mut Sandbox, "dist/bin.js", &run.args, &version) {
             Outcome::Original => {}
+            // The recorder skips the update check, so an action adds nothing after it.
             Outcome::Answer {
+                stdout,
+                stderr,
+                code,
+            }
+            | Outcome::Acted {
                 stdout,
                 stderr,
                 code,
