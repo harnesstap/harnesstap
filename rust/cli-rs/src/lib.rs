@@ -32,6 +32,12 @@ pub trait Host {
     /// Opens the database (creating and migrating it like `getDb` + `initializeSchema`) and
     /// lists the profile plugin names (`listProfilePluginsCommand`).
     fn profile_names(&mut self) -> ProfileNames;
+    /// `process.cwd()`.
+    fn cwd(&self) -> Option<String> {
+        std::env::current_dir()
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned())
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -390,7 +396,13 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
             if args.iter().any(|a| a == "-v" || a == "--verbose") {
                 return Outcome::Original;
             }
-            let Some(printed) = actions::run(&call) else {
+            let ctx = actions::Ctx {
+                host: &*host,
+                args,
+                success_answered: skips_update_notice(&*host, args),
+                plain: root_help_is_plain(&*host, args),
+            };
+            let Some(printed) = actions::run(&call, &ctx) else {
                 return Outcome::Original;
             };
             // After a successful action the original may print an update notice.
