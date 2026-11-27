@@ -56,3 +56,12 @@ also:
    columns.
 
 The `parseFrontmatterLenient` fallback is plain string work and ports directly.
+
+## Status
+
+Reading is done in `rust/frontmatter-rs`, with one change to the plan above: instead of
+saphyr plus conversions, the js-yaml 3.14 loader is ported line by line. Callers branch on
+whether a read throws (the lenient fallback, the importers' error reports), and a saphyr
+based reader accepted or rejected different inputs and gave different messages and marks.
+The port is about 1700 lines and replays 9176 recorded cases (see the MAP.md row).
+Writing (`matter.stringify`, step 3) is still open.
