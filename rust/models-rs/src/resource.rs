@@ -121,11 +121,11 @@ pub fn format_resource_selector(
     }
 }
 
-struct RawRow {
-    resource: Resource,
+pub(crate) struct RawRow {
+    pub(crate) resource: Resource,
 }
 
-fn read_row(row: &Row<'_>) -> rusqlite::Result<RawRow> {
+pub(crate) fn read_row(row: &Row<'_>) -> rusqlite::Result<RawRow> {
     let metadata: String = row.get("metadata")?;
     let metadata = serde_json::from_str(&metadata).map_err(|e| {
         rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
@@ -151,7 +151,7 @@ fn read_row(row: &Row<'_>) -> rusqlite::Result<RawRow> {
 }
 
 /// `mapResourceRow`: overflow content comes back from the blob store.
-fn hydrate(ctx: &Ctx, raw: RawRow) -> Resource {
+pub(crate) fn hydrate(ctx: &Ctx, raw: RawRow) -> Resource {
     let mut resource = raw.resource;
     if resource.content.is_empty() {
         let hash = js_trim(&resource.content_hash);
