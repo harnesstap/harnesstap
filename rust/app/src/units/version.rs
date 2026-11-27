@@ -29,26 +29,13 @@ fn is_root_version_request(args: &[OsString]) -> bool {
     saw_version
 }
 
-/// The version `PACKAGE_VERSION` holds in a build made from the same commit and environment.
-fn package_version() -> Result<String, String> {
-    let options = serde_json::json!({
-        "isRelease": env!("HT_BUILD_RELEASE") == "1",
-        "gitSha": env!("HT_BUILD_GIT_SHA"),
-    });
-    let manifest: serde_json::Value =
-        serde_json::from_str(include_str!("../../../../package.json"))
-            .map_err(|e| e.to_string())?;
-    let version = manifest["version"].as_str().unwrap_or_default().to_string();
-    version_rs::port::format_dev_build_version(version, Some(options))
-}
-
 pub fn run(_command: &str, _matches: &ArgMatches) -> ExitCode {
     let argv: Vec<OsString> = std::env::args_os().collect();
     let args = argv.get(1..).unwrap_or_default();
     if !is_root_version_request(args) {
         return crate::original::run(args);
     }
-    match package_version() {
+    match crate::front_end::package_version() {
         Ok(version) => {
             println!("{version}");
             ExitCode::SUCCESS

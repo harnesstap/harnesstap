@@ -45,7 +45,8 @@ rust-anything app record . --name ht --timeout 30 --inputs rust/app-inputs/cases
   --normalize timestamps --normalize uuids -- bash rust/run-sandboxed.sh node dist/bin.js
 rust-anything app replay .                                     # the original
 HT_RELEASE=1 cargo build --manifest-path rust/app/Cargo.toml   # bakes 1.6.3 like the original
-rust-anything app replay . --build "bash rust/run-sandboxed.sh rust/app/target/debug/ht"
+ln -f rust/app/target/debug/ht rust/app/target/debug/harnesstap   # ADR-018
+rust-anything app replay . --build "bash rust/run-sandboxed.sh rust/app/target/debug/harnesstap"
 ```
 
 Always replay a Rust build through `run-sandboxed.sh`. `app front-door` and
@@ -199,6 +200,10 @@ current `main`.
 
 `src/cli/commands/` and handlers, wizards, completion, export, wired command by
 command (ADR-007).
+
+| Unit | State | Notes |
+| --- | --- | --- |
+| CLI front end: `src/bin.ts`, `runHarnesstapCli` and `renderCliError` (`src/cli/runtime.ts`), `root-flags.ts`, `command-catalog.ts`, `command-loaders.ts` (which loader a first word loads), `help.ts` output, `fail`/`ensureErrorPrefix`, npm `commander` 13.1.0 parsing (`parseOptions`, `_parseCommand`, dispatch, help command and flags, argument and option checks, `suggestSimilar`) | done, wired | `rust/cli-rs`, a plain crate, called by `rust/app/src/front_end.rs` before the per-command units (kill switch `RUST_ANYTHING_UNIT_CLI=original`). The command tree is not re-declared: `tests/dump-tree.ts` (bun) loads every lazy loader into a fresh root, as `ensureCommandsForArgv` would, and writes `data/tree.json`: each command's options, arguments, flags, the suggestion candidates commander builds, which actions are `configureCommandGroup`'s help, and the help text itself. Re-dump whenever a command, option or help entry changes. It answers root help, the `uninstall`/`version` guards, `-h`/`--help` and the help command anywhere, a group's own help, and every commander error (unknown command, unknown option with suggestions, missing and excess arguments, the grouped-command rewrite, missing option values, bad choices, required options), with the profile shorthand read on the real database (`db-rs`, `plugin-model-rs`). Anything that runs an action goes to the original. ADR-018 lists when it hands back on purpose: colored help, telemetry not switched off, the update check after a group's help, `--verbose`. `tests/make-fixtures.mjs` runs the original under `run-sandboxed.sh` on 1815 argv generated from the tree; the port answers 1722 of them and all match byte for byte. Replay: 564/564, fallback 78.2% (441/564, was 99.8%) |
 
 ### Wave 3: agent
 

@@ -103,3 +103,9 @@ Consequences: Wave 0 cases run with network calls refused; effect cases come wit
 Status: accepted (2026-11-22)
 Decision: Every one of the 44 registered harnesses is ported. No feature is dropped.
 Consequences: The harness writers (`src/platforms/`) are ported whole.
+
+## ADR-018: Invocation name and the front end's hand-back rules
+Status: accepted (2026-11-27)
+Context: `resolveInvocationName` prints `ht` when the script is launched as `ht` and `harnesstap` otherwise. The cases were recorded through `node dist/bin.js`, so they show `harnesstap`, while the front door binary is named `ht`. The front end (`cli-rs`) also meets output it cannot reproduce yet: chalk colors, the telemetry notice and startup event, the CLI update check, and `--verbose` stacks.
+Decision: The Rust front door reads its own argv[0] the same way (`ht` only when launched as `ht`), and replay runs it through a `harnesstap` hard link, which is the npm package's other bin name. `cli-rs` answers only when the original's output is plain text and has no side effect it does not reproduce: help when commander's or chalk's color rules give no color, any run only when `HARNESSTAP_TELEMETRY` is off, a command group's own help only when the update check is skipped, errors only without `-v`/`--verbose`. Everything else runs the original.
+Consequences: Real interactive runs (TTY, telemetry not switched off) still reach the original until the theme, telemetry and self-update are ported; the recorded cases run in Rust. Porting those three units widens the front end without changing its parser.

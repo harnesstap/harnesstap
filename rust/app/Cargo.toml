@@ -15,6 +15,10 @@ path = "src/main.rs"
 clap = "4"
 serde_json = "1"
 version-rs = { path = "../version-rs" }
+cli-rs = { path = "../cli-rs" }
+db-rs = { path = "../db-rs" }
+models-rs = { path = "../models-rs" }
+plugin-model-rs = { path = "../plugin-model-rs" }
 
 [build-dependencies]
 version-rs = { path = "../version-rs" }
