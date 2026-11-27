@@ -1,6 +1,5 @@
-//! `apm-manifest.ts`, the reading half: `apm.yml` parsing and field extraction. The writing
-//! half (`apmDocumentFromProjectConfig`, `formatApmManifest`) needs `ProjectConfig` from
-//! `project-config.ts`, which is not ported yet.
+//! `apm-manifest.ts`: `apm.yml` parsing and field extraction, and writing a `ProjectConfig`
+//! back as an `apm.yml` document.
 
 use std::fs;
 use std::path::Path;
@@ -14,11 +13,13 @@ use crate::dependencies::{
 };
 use crate::overlay::{ApmOverlayInfo, inspect_apm_overlay};
 use crate::policy::{PolicyPin, parse_apm_policy_pin};
+use crate::project_config::ProjectConfig;
 use crate::targets::{collect_apm_target_tokens, map_apm_targets};
 
 pub const APM_MANIFEST_FILENAME: &str = "apm.yml";
 
 const HT_TOP_LEVEL_KEYS: [&str; 4] = ["default_profile", "environments", "profiles", "plugins"];
+const STRIP_TOP_LEVEL_KEYS: [&str; 3] = ["x-harnesstap", "default_environment", "environment"];
 const RESERVED_TOP_LEVEL: [&str; 10] = [
     "name",
     "version",
@@ -233,6 +234,127 @@ pub fn extract_apm_manifest_fields(
         warnings,
         rest,
     })
+}
+
+/// `basename(projectPath).trim()`, or `project` when that is empty.
+fn sanitize_package_name(project_path: &str) -> String {
+    let trimmed_end = project_path.trim_end_matches('/');
+    let base = trimmed_end.rsplit('/').next().unwrap_or("");
+    let base = trim(base);
+    if base.is_empty() {
+        "project".to_owned()
+    } else {
+        base.to_owned()
+    }
+}
+
+/// `serializeEnvironmentBlock(config)`.
+pub fn serialize_environment_block(config: &ProjectConfig) -> Option<Map<String, Value>> {
+    let default_environment = config
+        .default_environment
+        .as_deref()
+        .filter(|e| !e.is_empty());
+    if default_environment.is_none() && config.environments.is_empty() {
+        return None;
+    }
+    let mut block = Map::new();
+    if let Some(default) = default_environment {
+        block.insert("default".into(), Value::String(default.to_owned()));
+    }
+    for environment in &config.environments {
+        let mut entry = Map::new();
+        if !environment.values.is_empty() {
+            let values: Map<String, Value> = environment
+                .values
+                .iter()
+                .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+                .collect();
+            entry.insert("values".into(), Value::Object(values));
+        }
+        if let Some(refs) = environment.secret_refs.as_ref().filter(|r| !r.is_empty()) {
+            let refs: Map<String, Value> = refs
+                .iter()
+                .map(|(k, r)| {
+                    let mut o = Map::new();
+                    o.insert("provider".into(), Value::String(r.provider.clone()));
+                    o.insert("ref".into(), Value::String(r.reference.clone()));
+                    (k.clone(), Value::Object(o))
+                })
+                .collect();
+            entry.insert("secret_refs".into(), Value::Object(refs));
+        }
+        block.insert(environment.name.clone(), Value::Object(entry));
+    }
+    Some(block)
+}
+
+/// `apmDocumentFromProjectConfig(config, projectPath)`.
+pub fn apm_document_from_project_config(
+    config: &ProjectConfig,
+    project_path: &str,
+) -> Map<String, Value> {
+    let name = config
+        .apm_name
+        .clone()
+        .unwrap_or_else(|| sanitize_package_name(project_path));
+    let version = config
+        .apm_version
+        .clone()
+        .unwrap_or_else(|| "1.0.0".to_owned());
+    let mut document = config.apm_document.clone().unwrap_or_default();
+    for key in STRIP_TOP_LEVEL_KEYS.iter().chain(HT_TOP_LEVEL_KEYS.iter()) {
+        document.shift_remove(*key);
+    }
+    let mut set = |key: &str, value: Value| {
+        document.insert(key.to_owned(), value);
+    };
+    set("name", Value::String(name));
+    set("version", Value::String(version));
+    let truthy = |v: &Option<String>| v.as_deref().filter(|s| !s.is_empty()).map(str::to_owned);
+    if let Some(description) = truthy(&config.apm_description) {
+        set("description", Value::String(description));
+    }
+    if let Some(profile) = truthy(&config.default_profile) {
+        set("default_profile", Value::String(profile));
+    }
+    if let Some(environments) = serialize_environment_block(config) {
+        set("environments", Value::Object(environments));
+    }
+    if !config.profiles.is_empty() {
+        let profiles = config
+            .profiles
+            .iter()
+            .map(|p| {
+                let mut o = Map::new();
+                o.insert("name".into(), Value::String(p.name.clone()));
+                o.insert("source".into(), Value::String(p.source.as_str().to_owned()));
+                for (k, v) in [
+                    ("selector", &p.selector),
+                    ("plugin", &p.plugin),
+                    ("environment", &p.environment),
+                ] {
+                    if let Some(v) = truthy(v) {
+                        o.insert(k.into(), Value::String(v));
+                    }
+                }
+                Value::Object(o)
+            })
+            .collect();
+        set("profiles", Value::Array(profiles));
+    }
+    if !config.plugins.is_empty() {
+        let plugins = config.plugins.iter().cloned().map(Value::Object).collect();
+        set("plugins", Value::Array(plugins));
+    }
+    document
+}
+
+/// `formatApmManifest(config, projectPath)`.
+pub fn format_apm_manifest(config: &ProjectConfig, project_path: &str) -> String {
+    yaml_rs::stringify(&Value::Object(apm_document_from_project_config(
+        config,
+        project_path,
+    )))
 }
 
 /// `parseApmManifestContents(raw, filePath, rootPath)`.
