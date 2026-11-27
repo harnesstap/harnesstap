@@ -200,6 +200,15 @@ current `main`.
 `src/cli/commands/` and handlers, wizards, completion, export, wired command by
 command (ADR-007).
 
+#### Runtime services
+
+What `runHarnesstapCli` (`src/cli/runtime.ts`) runs around an action, needed
+before the front door can keep a command's action in Rust.
+
+| Unit | State | Notes |
+| --- | --- | --- |
+| `src/services/self-update.ts` (CLI update notice) | done | `rust/self-update-rs`, a plain crate: `maybeNotifyCliUpdate` (exit code as a parameter, swallow-all catch), `shouldSkipCliUpdateNotice`, `detectCliInstallChannel`, `isHomebrewCliInstall`, `resolvePublishedRelease` (without `forceRefresh`), the npm and GitHub lookups, `isNewerPublishedVersion` (on `node-semver-rs`), `cliInstallHint`, `formatCliUpdateNotice`, `loadUpdateCheckCache`/`saveUpdateCheckCache`. HTTP goes through the `UpdateFetch` trait; `HttpFetch` (ureq, feature `http`) is the real one. `tests/make-fixtures.mjs` drives the original under Node (`TZ=UTC`) with a scripted `fetchFn`: 700 notify scenarios (110 print a notice, 255 fetch) and 300 resolve scenarios over fresh, stale, notified, corrupt, directory and missing caches, plus 1502 helper calls; the Rust test compares result, notice text, fetch calls (URL, headers, timeout, in order) and `update-check.json` byte for byte. Known differences: a `lastLookupAt` V8 only accepts through its legacy date parser (`2026-11-27 10:00:00Z`, `+0200` offsets, `Fri Nov 27 2026`) reads as invalid, so the port looks up again (pinned in the test); a date-time with no offset is read as UTC, not local time; `JSON.parse` inputs serde_json rejects (numbers beyond `f64`, lone surrogate escapes, nesting over 128) read as a corrupt cache or a failed lookup; `HttpFetch`'s timeout covers the body too. The desktop update functions of the same file are not ported |
+
 ### Wave 3: agent
 
 `src/agent/` and `parity-handlers/`, recorded with `app record --http`, wired by
