@@ -151,3 +151,235 @@ pub fn parse_hooks_json_content(content: &str, display_path: &str) -> Vec<HookRe
     }
     resources
 }
+
+// ---- Writing half: buildHooksJson and the plugin-root filters ----
+
+use serde_json::Map;
+
+fn command_of(value: Option<&Value>) -> Option<&str> {
+    value.and_then(Value::as_str)
+}
+
+/// `hookRequiresPluginRoot(hook)` for a `HookMetadata` object.
+pub fn hook_requires_plugin_root(hook: &Value) -> bool {
+    hook.get("requires_plugin_root") == Some(&Value::Bool(true))
+        || command_references_plugin_root(command_of(hook.get("script")))
+        || command_references_plugin_root(command_of(
+            hook.get("hook_entry").and_then(|e| e.get("command")),
+        ))
+}
+
+/// `userHooksForHostConfig(hooks)`: `(hooks, skipped)`, the second holding those that need a
+/// plugin root.
+pub fn user_hooks_for_host_config(hooks: &[Value]) -> (Vec<&Value>, Vec<&Value>) {
+    hooks.iter().partition(|h| !hook_requires_plugin_root(h))
+}
+
+/// `scanHooksFile(filePath, displayPath)`.
+pub fn scan_hooks_file(file_path: &std::path::Path, display_path: &str) -> Vec<HookResource> {
+    match std::fs::read(file_path) {
+        Ok(bytes) => parse_hooks_json_content(&String::from_utf8_lossy(&bytes), display_path),
+        Err(_) => Vec::new(),
+    }
+}
+
+/// `{ ...value }`: own keys of an object, indexes of an array or string, nothing for the rest.
+fn spread(value: &Value) -> Map<String, Value> {
+    match value {
+        Value::Object(map) => emit_rs::js::ordered_entries(map)
+            .into_iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i.to_string(), v.clone()))
+            .collect(),
+        Value::String(s) => s
+            .chars()
+            .enumerate()
+            .map(|(i, c)| (i.to_string(), Value::String(c.to_string())))
+            .collect(),
+        _ => Map::new(),
+    }
+}
+
+/// `obj[key] = value` on a plain object: `__proto__` sets the prototype, not an own key.
+fn assign(map: &mut Map<String, Value>, key: String, value: Value) {
+    if key != "__proto__" {
+        map.insert(key, value);
+    }
+}
+
+fn truthy(value: Option<&Value>) -> bool {
+    value.is_some_and(emit_rs::js::truthy)
+}
+
+fn is_hook_wrapper(entry: &Value) -> bool {
+    matches!(entry.get("hooks"), Some(Value::Array(_)))
+        || str_prop(entry, "matcher").is_some_and(|m| !m.is_empty())
+}
+
+fn wrapped_hooks(hook: &Value) -> Option<&Value> {
+    let entry = hook.get("hook_entry").filter(|e| truthy(Some(e)))?;
+    entry.get("hooks").filter(|h| h.is_array()).map(|_| entry)
+}
+
+fn build_flat_hook_entry(hook: &Value) -> Map<String, Value> {
+    let script = hook.get("script");
+    let mut entry = match hook.get("hook_entry") {
+        Some(e) if truthy(Some(e)) && !is_hook_wrapper(e) => spread(e),
+        _ => {
+            let mut m = Map::new();
+            if let Some(s) = script {
+                m.insert("command".into(), s.clone());
+            }
+            m
+        }
+    };
+    if !truthy(entry.get("command")) {
+        match script {
+            Some(s) => {
+                entry.insert("command".into(), s.clone());
+            }
+            // `entry.command = undefined`: JSON drops the key.
+            None => {
+                entry.shift_remove("command");
+            }
+        }
+    }
+    if let Some(w) = hook.get("commandWindows").filter(|w| w.is_string()) {
+        entry.insert("commandWindows".into(), w.clone());
+    }
+    if let Some(t) = hook.get("timeout").filter(|t| t.is_number()) {
+        entry.insert("timeout".into(), t.clone());
+    }
+    entry
+}
+
+fn flatten_hook_commands(hook: &Value) -> Vec<Value> {
+    match wrapped_hooks(hook)
+        .and_then(|e| e.get("hooks"))
+        .and_then(Value::as_array)
+    {
+        Some(items) => items.iter().filter(|i| i.is_object()).cloned().collect(),
+        None => vec![Value::Object(build_flat_hook_entry(hook))],
+    }
+}
+
+fn wrap_event_entries(hooks: &[&Value]) -> Vec<Value> {
+    let mut result = Vec::new();
+    let mut groups: Vec<(String, Vec<Value>)> = Vec::new();
+    for hook in hooks {
+        if let Some(entry) = wrapped_hooks(hook) {
+            result.push(Value::Object(spread(entry)));
+            continue;
+        }
+        let entry = Value::Object(build_flat_hook_entry(hook));
+        match str_prop(hook, "matcher").filter(|m| !m.is_empty()) {
+            Some(matcher) => match groups.iter_mut().find(|(m, _)| m == matcher) {
+                Some((_, group)) => group.push(entry),
+                None => groups.push((matcher.to_owned(), vec![entry])),
+            },
+            None => result.push(serde_json::json!({ "hooks": [entry] })),
+        }
+    }
+    for (matcher, entries) in groups {
+        result.push(serde_json::json!({ "matcher": matcher, "hooks": entries }));
+    }
+    result
+}
+
+/// `HooksJsonShape`: Claude-style events wrap each entry in `{ hooks: [...] }`; Cursor's
+/// `hooks.json` is flat.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HooksJsonShape {
+    #[default]
+    Wrapped,
+    Flat,
+}
+
+/// `BuildHooksJsonOptions`.
+#[derive(Clone, Debug, Default)]
+pub struct BuildHooksJsonOptions {
+    pub version: Option<Value>,
+    pub shape: HooksJsonShape,
+    /// Keep hooks whose commands reference a plugin root (a plugin package keeps them).
+    pub include_plugin_root: bool,
+}
+
+/// `buildHooksJson(hookResources, options)`: `{ hooks, version? }` from `HookMetadata` objects.
+pub fn build_hooks_json(hook_resources: &[Value], options: &BuildHooksJsonOptions) -> Value {
+    let usable: Vec<&Value> = if options.include_plugin_root {
+        hook_resources.iter().collect()
+    } else {
+        user_hooks_for_host_config(hook_resources).0
+    };
+    // A `Map` keyed by `hook.event`; the object key is its `String()`.
+    let mut by_event: Vec<(String, Vec<&Value>)> = Vec::new();
+    for hook in usable {
+        let event = hook
+            .get("event")
+            .map_or_else(|| "undefined".to_owned(), emit_rs::js::to_string);
+        match by_event.iter_mut().find(|(e, _)| *e == event) {
+            Some((_, hooks)) => hooks.push(hook),
+            None => by_event.push((event, vec![hook])),
+        }
+    }
+    let mut serialized = Map::new();
+    for (event, hooks) in by_event {
+        let entries = match options.shape {
+            HooksJsonShape::Flat => hooks
+                .iter()
+                .flat_map(|h| flatten_hook_commands(h))
+                .collect(),
+            HooksJsonShape::Wrapped => wrap_event_entries(&hooks),
+        };
+        assign(&mut serialized, event, Value::Array(entries));
+    }
+    let mut document = Map::new();
+    document.insert("hooks".into(), Value::Object(serialized));
+    if let Some(version) = &options.version {
+        document.insert("version".into(), version.clone());
+    }
+    Value::Object(document)
+}
+
+fn command_from_unknown_entry(entry: &Value) -> Option<&str> {
+    let Value::Object(record) = entry else {
+        return None;
+    };
+    if let Some(Value::String(command)) = record.get("command") {
+        return Some(command);
+    }
+    let Some(Value::Array(inner)) = record.get("hooks") else {
+        return None;
+    };
+    inner
+        .iter()
+        .filter_map(command_from_unknown_entry)
+        .find(|c| !c.is_empty())
+}
+
+/// `stripPluginRootCommandsFromHooksObject(hooks)`: drop user-config hook entries that only work
+/// with `CLAUDE_PLUGIN_ROOT`.
+pub fn strip_plugin_root_commands_from_hooks_object(
+    hooks: &Map<String, Value>,
+) -> Map<String, Value> {
+    let mut next = Map::new();
+    for (event, entries) in emit_rs::js::ordered_entries(hooks) {
+        let Value::Array(entries) = entries else {
+            assign(&mut next, event.clone(), entries.clone());
+            continue;
+        };
+        let kept: Vec<Value> = entries
+            .iter()
+            .filter(|e| !command_references_plugin_root(command_from_unknown_entry(e)))
+            .cloned()
+            .collect();
+        if !kept.is_empty() {
+            assign(&mut next, event.clone(), Value::Array(kept));
+        }
+    }
+    next
+}
