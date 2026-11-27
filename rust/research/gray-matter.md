@@ -64,4 +64,5 @@ saphyr plus conversions, the js-yaml 3.14 loader is ported line by line. Callers
 whether a read throws (the lenient fallback, the importers' error reports), and a saphyr
 based reader accepted or rejected different inputs and gave different messages and marks.
 The port is about 1700 lines and replays 9176 recorded cases (see the MAP.md row).
-Writing (`matter.stringify`, step 3) is still open.
+Writing (step 3) is done too: the js-yaml 3 dumper is ported line by line next to the loader
+(`src/dumper.rs`), pinned by 7047 recorded `matter.stringify` cases (see the MAP.md row).
