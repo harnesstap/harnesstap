@@ -10,6 +10,7 @@ description = "Rust port of the apm services in src/services/apm-*.ts"
 collate-rs = { path = "../collate-rs" }
 db-rs = { path = "../db-rs" }
 emit-rs = { path = "../emit-rs" }
+frontmatter-rs = { path = "../frontmatter-rs" }
 lockfile-rs = { path = "../lockfile-rs" }
 models-rs = { path = "../models-rs" }
 node-semver-rs = { path = "../node-semver-rs" }

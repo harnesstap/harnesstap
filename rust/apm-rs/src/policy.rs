@@ -1,11 +1,12 @@
 //! `apm-policy.ts`: the `apm-policy.yml` document, the install plan it is checked against, and
 //! the evaluation.
 //!
-//! Two inputs come from code not ported yet, so the caller passes them in:
-//! - `overlayPrimitives(projectRoot)` (it needs `inspectApmOverlay`, which needs gray-matter):
-//!   [`build_audit_install_plan`] takes the overlay's primitives;
-//! - `getPluginById` plus `recoverOriginLocator` (the plugin model): [`build_apply_install_plan`]
-//!   takes a function from a plugin id to its [`PluginLocator`].
+//! [`build_audit_install_plan`] takes the overlay's primitives; [`overlay_primitives`] reads
+//! them from a project as `overlayPrimitives(projectRoot)` does.
+//!
+//! One input comes from code not ported yet, so the caller passes it in: `getPluginById` plus
+//! `recoverOriginLocator` (the plugin model). [`build_apply_install_plan`] takes a function from
+//! a plugin id to its [`PluginLocator`].
 
 use std::path::Path;
 
@@ -1030,6 +1031,22 @@ fn merge_sources(sources: Vec<PlanSource>) -> Vec<PlanSource> {
     let mut out: Vec<PlanSource> = by_key.into_iter().map(|(_, s)| s).collect();
     out.sort_by(|a, b| collate_rs::locale_compare(&a.identity, &b.identity));
     out
+}
+
+/// `overlayPrimitives(projectRoot)`: the primitive kinds the project's apm overlay publishes;
+/// none when there is no overlay or it cannot be read.
+pub fn overlay_primitives(project_root: &Path) -> Vec<Primitive> {
+    match crate::overlay::inspect_apm_overlay(project_root, &[]) {
+        Ok(Some(overlay)) => unique_primitives(
+            overlay.skills.iter().map(|_| Some(Primitive::Skill)).chain(
+                overlay
+                    .primitives
+                    .iter()
+                    .map(|p| primitive_from_resource_type(p.resource_type)),
+            ),
+        ),
+        _ => Vec::new(),
+    }
 }
 
 fn unique_primitives(values: impl IntoIterator<Item = Option<Primitive>>) -> Vec<Primitive> {
