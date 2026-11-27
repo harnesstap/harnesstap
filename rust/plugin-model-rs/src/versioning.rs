@@ -4,10 +4,10 @@
 //! `PluginVersionError` is an `Err` with its message.
 //!
 //! A working snapshot records the plugins the head's composition resolves to
-//! (`resolveComposition`). That comes through [`ResolveComposition`] until
-//! `services/resolve/index.ts` is ported (see `rust/MAP.md`).
+//! ([`crate::resolve::resolve_composition`]).
 
 use crate::origin::{AuthoredCapability, assert_authored};
+use crate::resolve::resolve_composition;
 use crate::upstream::upstream_from_row;
 use crate::{
     Plugin, PluginRow, all_scope, delete_plugin, err, get_plugin_by_published_identity,
@@ -27,12 +27,6 @@ use serde_json::{Map, Value, json};
 pub struct NameVersion {
     pub name: String,
     pub version: String,
-}
-
-/// `resolveComposition({ rootSelectors: [root] }).selected`, the plugins
-/// below the root (`depth > 0`).
-pub trait ResolveComposition {
-    fn resolved_set(&self, ctx: &Ctx, root_selector: &str) -> Result<Vec<NameVersion>>;
 }
 
 fn read_exclude_entries(ctx: &Ctx, plugin_id: &str) -> Result<Vec<String>> {
@@ -111,19 +105,25 @@ fn harness_scopes(ctx: &Ctx, plugin_id: &str) -> Result<(Vec<String>, Map<String
 }
 
 /// `captureWorkingSnapshot`.
-fn capture_working_snapshot(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-) -> Result<()> {
+fn capture_working_snapshot(ctx: &Ctx, plugin_id: &str) -> Result<()> {
     let Some(row) = get_plugin_row_by_id(ctx, plugin_id)? else {
         return Err(format!("Plugin not found: {plugin_id}"));
     };
     let (resource_ids, scopes) = harness_scopes(ctx, plugin_id)?;
     // A plugin that does not resolve can still be cut; record nothing.
-    let resolved_set = resolver
-        .resolved_set(ctx, &format!("{}@{}", row.name, row.version))
-        .unwrap_or_default();
+    let resolved_set: Vec<NameVersion> =
+        resolve_composition(ctx, &[format!("{}@{}", row.name, row.version)], None)
+            .map(|r| {
+                r.selected
+                    .into_iter()
+                    .filter(|p| p.depth > 0.0)
+                    .map(|p| NameVersion {
+                        name: p.name,
+                        version: p.version,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
     let tags: Value = serde_json::from_str(&row.tags).map_err(|e| format!("tags: {e}"))?;
     let mut payload = Map::new();
     payload.insert("resource_ids".into(), json!(resource_ids));
@@ -152,11 +152,7 @@ fn capture_working_snapshot(
 }
 
 /// `ensureWorkingSnapshot`.
-fn ensure_working_snapshot(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-) -> Result<()> {
+fn ensure_working_snapshot(ctx: &Ctx, plugin_id: &str) -> Result<()> {
     let existing: Option<String> = ctx
         .db
         .conn
@@ -168,7 +164,7 @@ fn ensure_working_snapshot(
         .optional()
         .map_err(err)?;
     if existing.is_none() {
-        capture_working_snapshot(ctx, resolver, plugin_id)?;
+        capture_working_snapshot(ctx, plugin_id)?;
     }
     Ok(())
 }
@@ -312,11 +308,7 @@ pub fn mark_plugin_clean(ctx: &Ctx, plugin_id: &str) -> Result<()> {
 }
 
 /// `markPluginDirty`.
-pub fn mark_plugin_dirty(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-) -> Result<()> {
+pub fn mark_plugin_dirty(ctx: &Ctx, plugin_id: &str) -> Result<()> {
     let Some(row) = get_plugin_row_by_id(ctx, plugin_id)? else {
         return Err(format!("Plugin not found: {plugin_id}"));
     };
@@ -330,7 +322,7 @@ pub fn mark_plugin_dirty(
         return Ok(());
     }
     transaction(ctx, || {
-        capture_working_snapshot(ctx, resolver, plugin_id)?;
+        capture_working_snapshot(ctx, plugin_id)?;
         ctx.db.run(
             "UPDATE plugins SET dirty = 1, updated_at = ? WHERE id = ?",
             params![ctx.clock.now_iso(), plugin_id],
@@ -340,12 +332,7 @@ pub fn mark_plugin_dirty(
 }
 
 /// `cutPluginVersion`.
-pub fn cut_plugin_version(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-    new_version: &str,
-) -> Result<Plugin> {
+pub fn cut_plugin_version(ctx: &Ctx, plugin_id: &str, new_version: &str) -> Result<Plugin> {
     let Some(head) = get_plugin_row_by_id(ctx, plugin_id)? else {
         return Err(format!("Plugin not found: {plugin_id}"));
     };
@@ -375,7 +362,7 @@ pub fn cut_plugin_version(
     {
         return Err(format!("Plugin {}@{new_version} already exists", head.name));
     }
-    ensure_working_snapshot(ctx, resolver, &head.id)?;
+    ensure_working_snapshot(ctx, &head.id)?;
     let cut = transaction(ctx, || {
         let snapshot: Option<String> = ctx
             .db
@@ -537,12 +524,7 @@ pub fn format_plugin_rollback_confirm_message(
 }
 
 /// `rollbackPluginVersion`.
-pub fn rollback_plugin_version(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    selector: &str,
-    to_version: &str,
-) -> Result<Plugin> {
+pub fn rollback_plugin_version(ctx: &Ctx, selector: &str, to_version: &str) -> Result<Plugin> {
     let Some(resolved) = resolve_plugin_selector(ctx, selector)? else {
         return Err(format!("Plugin not found: {selector}"));
     };
@@ -571,7 +553,7 @@ pub fn rollback_plugin_version(
     };
     let rolled = transaction(ctx, || {
         if !head.dirty {
-            capture_working_snapshot(ctx, resolver, &head.id)?;
+            capture_working_snapshot(ctx, &head.id)?;
         }
         let (ids, scopes) = harness_scopes(ctx, &frozen_row.id)?;
         ctx.db.run(

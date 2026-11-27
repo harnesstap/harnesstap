@@ -4,10 +4,10 @@
 // Same harness as rust/models-rs/tests/make-fixtures.ts: each scenario is a
 // list of calls against a fresh database, the clock is pinned per call, ULIDs
 // are renamed in order of appearance, and arguments can refer to earlier
-// results. The plugin-composition, plugin-extends and claude-plugin-pins
-// functions the model calls are replaced (spyOn) by small database-only
-// versions; tests/fixtures.rs implements the same ones behind
-// `PluginComposition`.
+// results. What composition hands to code that is not ported (the marketplace
+// catalog, the pin cache, resource sync) is replaced (spyOn) by stand-ins that
+// tests/fixtures.rs implements behind `CompositionHost`. Resolution
+// (services/resolve) runs for real.
 import { setSystemTime, spyOn } from "bun:test";
 import { rmSync, writeFileSync } from "node:fs";
 import { closeDb, getDb } from "../../../src/db/connection.ts";
@@ -34,6 +34,10 @@ import * as origin from "../../../src/services/plugin-origin.ts";
 import * as cloudError from "../../../src/services/cloud-api-error.ts";
 import * as dependency from "../../../src/services/plugin-dependency.ts";
 import * as resolveIndex from "../../../src/services/resolve/index.ts";
+import * as dependencyGraph from "../../../src/services/resolve/dependency-graph.ts";
+import * as pluginOverrides from "../../../src/services/plugin-overrides.ts";
+import * as pluginSelector from "../../../src/services/plugin-selector.ts";
+import * as marketplaceRegistry from "../../../src/services/marketplace-registry.ts";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -41,17 +45,7 @@ const HOME = "/tmp/ht-plugin-model-fixture";
 const BASE = Date.parse("2026-01-01T00:00:00.000Z");
 type Op = { fn: string; args: unknown[] };
 
-// --- The composition stand-ins (mirrored in tests/fixtures.rs) ---
-type Res = ReturnType<typeof model.getPluginResources>[number];
-const refs = (pluginId: string) =>
-  model
-    .getPluginResources(pluginId)
-    .filter((r: Res) => r.type === "plugin")
-    .map((r: Res) => ({
-      dependency_name: r.name,
-      version_constraint: String((r.metadata as Record<string, unknown>).version_constraint ?? "latest"),
-      resource: r,
-    }));
+// --- The composition host stand-ins (mirrored in tests/fixtures.rs) ---
 // What composition hands to code that is not ported (the marketplace
 // catalog, the pin cache, resource sync): logged, and failing on cue.
 const hostLog: string[] = [];
@@ -71,18 +65,6 @@ spyOn(resourceSync, "syncPluginResource").mockImplementation((async (resource: {
   hostLog.push(`sync:${resource.name}`);
   if (resource.name.startsWith("nosync")) throw new Error(`cannot sync ${resource.name}`);
   return {};
-}) as never);
-// resolveComposition until services/resolve is ported: the root's plugin-typed
-// attachments at depth 1; a root named broken* does not resolve.
-spyOn(resolveIndex, "resolveComposition").mockImplementation(((input: { rootSelectors: string[] }) => {
-  const root = model.resolvePluginSelector(input.rootSelectors[0]!);
-  if (!root || root.name.startsWith("broken")) throw new Error("unresolvable");
-  return {
-    selected: [
-      { name: root.name, version: root.version, depth: 0 },
-      ...refs(root.id).map((r) => ({ name: r.dependency_name, version: r.version_constraint, depth: 1 })),
-    ],
-  };
 }) as never);
 spyOn(console, "error").mockImplementation(() => {});
 
@@ -106,7 +88,27 @@ const fullResource = (r: Record<string, unknown>) => ({
   content_hash: "", content_blob_ref: "", created_at: T, updated_at: T, ...r,
 });
 
+// A resolution's result, or the error it throws with the fields its class adds.
+const ERROR_FIELDS = ["name", "message", "pluginName", "requirers", "available", "reason", "actions", "hints", "key", "sides"];
+const outcome = (run: () => unknown) => {
+  try {
+    return { result: run() };
+  } catch (error) {
+    const x = error as Record<string, unknown>;
+    return { error: Object.fromEntries(ERROR_FIELDS.filter((k) => x[k] !== undefined).map((k) => [k, x[k]])) };
+  }
+};
+const lockedMap = (locked?: Record<string, string>) =>
+  locked ? { lockedVersions: new Map(Object.entries(locked)) } : {};
+
 const fns: Record<string, (...args: never[]) => unknown> = {
+  resolveComposition: ((rootSelectors: string[], locked?: Record<string, string>) =>
+    outcome(() => resolveIndex.resolveComposition({ rootSelectors, ...lockedMap(locked) }))) as never,
+  walkDependencyGraph: ((rootPluginId: string, locked?: Record<string, string>) =>
+    outcome(() => dependencyGraph.walkDependencyGraph({ rootPluginId, ...lockedMap(locked) }))) as never,
+  getPluginOverrides: pluginOverrides.getPluginOverrides,
+  parsePluginSelector: pluginSelector.parsePluginSelector,
+  isLocalFilesystemSource: marketplaceRegistry.isLocalFilesystemSource,
   isFrozenPlugin: model.isFrozenPlugin,
   mergePluginsById: model.mergePluginsById,
   createPlugin: model.createPlugin,
@@ -262,13 +264,15 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   }) as never,
 };
 
-/** `{"$ref": [i, "field"]}` is field of result i ("" for the whole result). */
+/** `{"$ref": [i, "field"]}` is field of result i ("" for the whole result); -1 is the latest. */
 function resolve(value: unknown, results: unknown[]): unknown {
   if (Array.isArray(value)) return value.map((v) => resolve(v, results));
   if (value && typeof value === "object") {
     const o = value as Record<string, unknown>;
     if ("$ref" in o) {
-      const [i, field] = o.$ref as [number, string];
+      const [at, field] = o.$ref as [number, string];
+      // A negative index counts back from the latest result.
+      const i = at < 0 ? results.length + at : at;
       if (field === "") return results[i];
       return field.split(".").reduce<unknown>(
         (acc, key) => (acc as Record<string, unknown> | undefined)?.[key],
@@ -1296,6 +1300,326 @@ for (let i = 0; i < 400; i += 1) {
   nameOps.push({ fn: pick(["isValidApName", "isValidAgentSkillName", "isCatalogUpstreamRef", "upstreamRefBase", "upstreamRange"]), args: [source.toLowerCase().replaceAll(" ", pick(["/", "@", " ", "\u00a0", "\u0085", "\ufeff"]))] });
 }
 scenarios.push({ name: "names", ops: nameOps });
+
+
+// --- Resolution (services/resolve) over plugin graphs ---
+const q = (v: string) => `'${v.replaceAll("'", "''")}'`;
+const mat = (id: string, type: string, name: string, content: string, extra: Record<string, string> = {}) => {
+  const cols: Record<string, string> = { id, type, name, content, metadata: "{}", created_at: T, updated_at: T, ...extra };
+  return { fn: "__exec", args: [`INSERT INTO resources (${Object.keys(cols).join(", ")}) VALUES (${Object.values(cols).map(q).join(", ")})`] };
+};
+const att = (pluginId: string, resourceId: string, scope?: unknown) =>
+  ({ fn: "addResourceToPlugin", args: scope === undefined ? [pluginId, resourceId] : [pluginId, resourceId, scope] });
+const dep = (pluginId: string, reference: string, versionConstraint?: string) =>
+  ({ fn: "addDependency", args: [pluginId, reference, { ...(versionConstraint ? { versionConstraint } : {}), markDirty: false }] });
+const rc = (selectors: string[], locked?: Record<string, string>) =>
+  ({ fn: "resolveComposition", args: locked ? [selectors, locked] : [selectors] });
+const walk = (id: string, locked?: Record<string, string>) =>
+  ({ fn: "walkDependencyGraph", args: locked ? [id, locked] : [id] });
+const overrides = (id: string, json: string) =>
+  ({ fn: "__exec", args: [`UPDATE plugins SET overrides = ${q(json)} WHERE id = ${q(id)}`] });
+const rawDep = (id: string, name: string, metadata: Record<string, unknown>, originRef = name, namespace = "") =>
+  mat(id, "plugin", name, "{}", { metadata: JSON.stringify(metadata), origin_ref: originRef, namespace, source: "composition:plugin" });
+const subset = (...harnesses: string[]) => ({ kind: "subset", harnesses });
+
+scenarios.push({
+  name: "resolve graphs",
+  ops: [
+    insertPlugin("r1", "r", "1.0.0"),
+    insertPlugin("a100", "a", "1.0.0", { frozen_at: T }),
+    insertPlugin("a120", "a", "1.2.0"),
+    insertPlugin("a200", "a", "2.0.0"),
+    insertPlugin("b100", "b", "1.0.0"),
+    insertPlugin("b200", "b", "2.0.0"),
+    insertPlugin("c100", "c", "1.0.0"),
+    insertPlugin("c110", "c", "1.1.0"),
+    insertPlugin("c150", "c", "1.5.0"),
+    insertPlugin("c200", "c", "2.0.0"),
+    // A diamond (r -> a, b -> c) with a cycle back to the root and another a -> c -> a.
+    dep("r1", "a", "^1.0.0"),
+    dep("r1", "b"),
+    dep("a120", "c", "^1"),
+    dep("b200", "c", ">=1.1.0"),
+    dep("c150", "r"),
+    dep("c150", "a", "^1"),
+    rc(["r"]),
+    rc(["r@1.0.0"]),
+    rc(["r1"]),
+    walk("r1"),
+    walk("a120"),
+    walk("c150"),
+    // Lockfile pins, a missing one, and pins that change the graph.
+    rc(["r"], { c: "1.0.0" }),
+    rc(["r"], { c: "9.9.9" }),
+    rc(["r"], { a: "1.0.0", b: "1.0.0" }),
+    walk("r1", { a: "2.0.0" }),
+    // A constraint the root declares beats mediation.
+    insertPlugin("r2", "r2", "1.0.0"),
+    dep("r2", "c", "=1.1.0"),
+    dep("r2", "a", "^1"),
+    rc(["r2"]),
+    // Root overrides: honored, missing, cleared.
+    overrides("r1", '{"versions":{"c":"1.0.0"}}'),
+    rc(["r"]),
+    { fn: "getPluginOverrides", args: ["r1"] },
+    overrides("r1", '{"versions":{"c":"7.0.0"}}'),
+    rc(["r"]),
+    overrides("r1", '{"versions":{"zz":"1.0.0"},"resources":{"skill:x":"a"}}'),
+    rc(["r"]),
+    { fn: "getPluginOverrides", args: ["r1"] },
+    overrides("r1", "{}"),
+    { fn: "getPluginOverrides", args: ["r1"] },
+    { fn: "getPluginOverrides", args: ["nope"] },
+    // Source kinds: catalog, marketplace (non-semver fallback), git refs and ranges.
+    insertPlugin("p100", "p", "1.0.0", { org_slug: "o", catalog_slug: "cat" }),
+    insertPlugin("p110", "p", "1.1.0", { org_slug: "o", catalog_slug: "cat" }),
+    insertPlugin("p300", "p", "3.0.0"),
+    insertPlugin("pz", "p", "zeta", { org_slug: "o", catalog_slug: "cat" }),
+    insertPlugin("web", "web", "abc"),
+    insertPlugin("g010", "gitdep", "0.1.0"),
+    insertPlugin("g100", "gitdep", "1.0.0"),
+    insertPlugin("s1", "src", "1.0.0"),
+    dep("s1", "o/cat/p", "^1"),
+    dep("s1", "web@mkt"),
+    dep("s1", "https://github.com/o/gitdep.git", "main"),
+    rc(["src"]),
+    walk("s1"),
+    insertPlugin("s2", "src2", "1.0.0"),
+    rawDep("rawpub", "o/cat/p", { source_kind: "catalog", version_constraint: "^1" }, "o/cat/p", "o/cat"),
+    att("s2", "rawpub"),
+    rawDep("rawbad", "@bad", { source_kind: "local" }),
+    att("s2", "rawbad"),
+    dep("s2", "https://github.com/o/gitdep.git", "^1"),
+    rc(["src2"]),
+    insertPlugin("s3", "src3", "1.0.0"),
+    dep("s3", "git@github.com:o/gitdep.git", "0123456789abcdef0123456789abcdef01234567"),
+    dep("s3", "web@mkt", "^2"),
+    rc(["src3"]),
+    insertPlugin("s4", "src4", "1.0.0"),
+    rawDep("rawkind", "c", { source_kind: "local", version_constraint: "^1" }, "c", "k"),
+    att("s4", "rawkind"),
+    rawDep("rawnokind", "b", {}, "", "nk"),
+    att("s4", "rawnokind"),
+    rc(["src4"]),
+    // A version cycle that never settles.
+    insertPlugin("o1", "osc", "1.0.0"),
+    insertPlugin("A1", "A", "1.0.0"),
+    insertPlugin("A2", "A", "2.0.0"),
+    insertPlugin("B1", "B", "1.0.0"),
+    insertPlugin("B2", "B", "2.0.0"),
+    dep("o1", "A"),
+    dep("o1", "B"),
+    dep("A2", "B", "=1.0.0"),
+    dep("B1", "A", "=1.0.0"),
+    rc(["osc"]),
+    rc(["osc"], { A: "1.0.0" }),
+    // Conflicting ranges.
+    insertPlugin("k1", "k", "1.0.0"),
+    insertPlugin("x1", "x", "1.0.0"),
+    insertPlugin("x2", "x", "2.0.0"),
+    insertPlugin("y1", "y", "1.0.0"),
+    dep("k1", "x", "^1"),
+    dep("k1", "y"),
+    dep("y1", "x", "^2"),
+    rc(["k"]),
+    walk("k1"),
+    insertPlugin("k2", "k2", "1.0.0"),
+    insertPlugin("z1", "z", "1.0.0"),
+    dep("k2", "y"),
+    dep("k2", "z"),
+    dep("z1", "x", "^1"),
+    rc(["k2"]),
+    // Missing dependencies, by source kind.
+    insertPlugin("m1", "m1", "1.0.0"),
+    dep("m1", "ghost"),
+    rc(["m1"]),
+    insertPlugin("m2", "m2", "1.0.0"),
+    dep("m2", "ghost@mkt", "^1"),
+    rc(["m2"]),
+    insertPlugin("m3", "m3", "1.0.0"),
+    dep("m3", "https://github.com/o/ghost.git", "v1.2.0"),
+    rc(["m3"]),
+    insertPlugin("m4", "m4", "1.0.0"),
+    dep("m4", "o/c/ghost"),
+    rc(["m4"]),
+    insertPlugin("m5", "m5", "1.0.0"),
+    insertPlugin("gu", "ghost", "unknown"),
+    dep("m5", "ghost", "^1"),
+    rc(["m5"]),
+    insertPlugin("m6", "m6", "1.0.0"),
+    dep("m6", "https://github.com/o/ghost.git"),
+    overrides("m6", '{"versions":{"ghost":"1.0.0"}}'),
+    rc(["m6"]),
+    insertPlugin("m7", "m7", "1.0.0"),
+    dep("m7", "ghost@mkt"),
+    overrides("m7", '{"versions":{"ghost":"1.0.0"}}'),
+    rc(["m7"]),
+    insertPlugin("m8", "m8", "1.0.0"),
+    dep("m8", "o/c/ghost"),
+    overrides("m8", '{"versions":{"ghost":"2.0.0"}}'),
+    rc(["m8"]),
+    insertPlugin("m9", "m9", "1.0.0"),
+    dep("m9", "c"),
+    overrides("m9", '{"versions":{"c":"3.0.0"}}'),
+    rc(["m9"]),
+    // Invalid constraints.
+    insertPlugin("i1", "i1", "1.0.0"),
+    dep("i1", "c", "not a range"),
+    rc(["i1"]),
+    insertPlugin("i2", "i2", "1.0.0"),
+    dep("i2", "c", "abcdef1"),
+    rc(["i2"]),
+    // Roots that do not resolve.
+    rc(["nope"]),
+    rc([]),
+    rc(["r@9.9.9"]),
+    walk("missing"),
+    // The working snapshot records the real resolved set (empty when it fails).
+    { fn: "markPluginDirty", args: ["r1"] },
+    { fn: "markPluginDirty", args: ["o1"] },
+    { fn: "getFrozenResolvedSet", args: ["r1"] },
+    ...["a", " a@1 ", "@a", "a@", "a@b@c", "o/c/n", "o/c/n@1", "/o//c/n/", "o/c", "o/c/n/x", "", "  ", "o/c/@1", "o/c/n@"]
+      .map((selector) => ({ fn: "parsePluginSelector", args: [selector] })),
+    ...["file:x", "/abs", "./r", "../r", "~/r", "C:\\x", "c:/x", "1:/x", "C:x", "https://x", "", "~x", ".", "C:"]
+      .map((value) => ({ fn: "isLocalFilesystemSource", args: [value] })),
+  ],
+});
+
+scenarios.push({
+  name: "resolve resources",
+  ops: [
+    insertPlugin("R", "root", "1.0.0"),
+    insertPlugin("D1", "d1", "1.0.0"),
+    insertPlugin("D2", "d2", "1.0.0"),
+    insertPlugin("D3", "d3", "1.0.0"),
+    dep("R", "d1"),
+    dep("R", "d2"),
+    dep("D1", "d3"),
+    mat("k0", "skill", "k", "root copy", { namespace: "n0" }),
+    att("R", "k0"),
+    mat("k1", "skill", "k", "d1 copy", { namespace: "n1" }),
+    att("D1", "k1"),
+    mat("same1", "skill", "same", "same body", { namespace: "s1" }),
+    att("D1", "same1"),
+    mat("same2", "skill", "same", "same body", { namespace: "s2" }),
+    att("D2", "same2"),
+    mat("sk1", "skill", "sk", "one", { namespace: "a" }),
+    att("D1", "sk1"),
+    mat("sk2", "skill", "sk", "two", { namespace: "b" }),
+    att("D2", "sk2"),
+    mat("sk3", "skill", "sk", "three", { namespace: "c" }),
+    att("D2", "sk3"),
+    mat("deep", "rule", "deep", "deep rule"),
+    att("D3", "deep"),
+    mat("ev1", "env_var", "TOKEN_A", "x", { metadata: '{"key":"TOKEN"}' }),
+    att("D1", "ev1"),
+    mat("ev2", "env_var", "TOKEN_B", "x", { metadata: '{"key":"OTHER"}' }),
+    att("D2", "ev2"),
+    mat("ev3", "env_var", "PLAIN", "x", { metadata: '{"key":""}' }),
+    att("D2", "ev3"),
+    mat("mcp", "mcp_server", "srv", "{}", { content_hash: "sha256:fixed" }),
+    att("D3", "mcp"),
+    mat("mcp2", "mcp_server", "srv", "{\"other\":1}", { namespace: "x", content_hash: "sha256:fixed" }),
+    att("D3", "mcp2"),
+    mat("pin", "plugin_pin", "pinned", "{}"),
+    att("D1", "pin"),
+    rc(["root"]),
+    // Singleton conflicts at the same depth.
+    mat("i1", "instruction", "shared", "A\n".repeat(20), { namespace: "x1", source: "src-one" }),
+    att("D1", "i1"),
+    mat("i2", "instruction", "shared", "B", { namespace: "x2", source: "src-two" }),
+    att("D2", "i2"),
+    rc(["root"]),
+    rc(["d1", "d2"]),
+    rc(["d2", "d1"]),
+    rc(["d1", "nope"]),
+    overrides("R", '{"resources":{"instruction:shared":"d2"}}'),
+    rc(["root"]),
+    overrides("R", '{"resources":{"instruction:shared":"i1"}}'),
+    rc(["root"]),
+    overrides("R", '{"resources":{"instruction:shared":"nobody","skill:k":"d1"}}'),
+    rc(["root"]),
+    // One plugin owning several copies of one singleton.
+    insertPlugin("S", "solo", "1.0.0"),
+    insertPlugin("T", "twin", "1.0.0"),
+    dep("S", "twin"),
+    mat("t1", "permission", "perm", "allow a", { namespace: "p1", source: "same" }),
+    att("T", "t1"),
+    mat("t2", "permission", "perm", "allow b", { namespace: "p2", source: "same" }),
+    att("T", "t2"),
+    rc(["solo"]),
+    insertPlugin("E", "envs", "1.0.0"),
+    insertPlugin("F", "fam", "1.0.0"),
+    dep("E", "fam"),
+    mat("e1", "env_var", "ONE", "1", { metadata: '{"key":"K"}', content_hash: "abcdefg-1", source: " " }),
+    att("F", "e1"),
+    mat("e2", "env_var", "TWO", "2", { metadata: '{"key":"K"}', content_hash: "abcdefg-2", source: " " }),
+    att("F", "e2"),
+    rc(["envs"]),
+    insertPlugin("G", "gen", "1.0.0"),
+    insertPlugin("G1", "g1", "1.0.0"),
+    insertPlugin("G2", "g2", "1.0.0"),
+    dep("G", "g1"),
+    dep("G", "g2"),
+    mat("m1", "model_config", "model", "m one", { source: "same", namespace: "q" }),
+    att("G1", "m1"),
+    mat("m2", "model_config", "model", "m two", { source: "same", namespace: "q2" }),
+    att("G2", "m2"),
+    rc(["gen"]),
+    // Harness scopes through nested plugin refs.
+    insertPlugin("H", "scoped", "1.0.0"),
+    insertPlugin("HC", "child", "1.0.0"),
+    insertPlugin("HG", "grand", "1.0.0"),
+    dep("H", "child"),
+    { fn: "setPluginResourceHarnessScope", args: ["H", { $ref: [-1, "id"] }, subset("cursor", "claude-code")] },
+    dep("HC", "grand"),
+    { fn: "setPluginResourceHarnessScope", args: ["HC", { $ref: [-1, "id"] }, subset("cursor")] },
+    dep("H", "grand"),
+    { fn: "setPluginResourceHarnessScope", args: ["H", { $ref: [-1, "id"] }, subset("codex")] },
+    mat("hs1", "skill", "hs", "x"),
+    att("HC", "hs1", subset("claude-code", "codex")),
+    mat("hs2", "rule", "hr", "y"),
+    att("HG", "hs2"),
+    mat("hs3", "rule", "hr3", "z"),
+    att("H", "hs3", subset("cursor")),
+    rc(["scoped"]),
+  ],
+});
+
+scenarios.push({
+  name: "resolve pins",
+  ops: [
+    { fn: "__writeConfig", args: [JSON.stringify({ plugins: { marketplaces: [
+      { name: "mkta", url: " /tmp/mkta ", platforms: ["claude-code"] },
+      { name: "mktr", url: "https://example.com/m.git", platforms: ["claude-code"] },
+      { name: "mktw", url: "C:\\\\mkt", platforms: ["claude-code"] },
+    ] } })] },
+    insertPlugin("HP", "hp", "1.0.0"),
+    dep("HP", "hp@local"),
+    insertPlugin("DUP", "dup", "1.0.0", { origin_locator: "dup@mkta" }),
+    insertPlugin("REM", "rem", "1.0.0", { origin_locator: "rem@mktr" }),
+    insertPlugin("WIN", "win", "1.0.0", { origin_locator: "win@mktw" }),
+    insertPlugin("SP", "superpowers", "2.0.0", { origin_locator: "superpowers@claude-plugins-official" }),
+    insertPlugin("CP", "cpp", "1.0.0", { origin_locator: "cpp@cursor-public" }),
+    insertPlugin("UNK", "unk", "1.0.0", { origin_locator: "unk@nowhere" }),
+    insertPlugin("NOAT", "noat", "1.0.0", { origin_locator: "noat" }),
+    insertPlugin("OTHER", "other", "1.0.0", { origin_locator: "other@mkta" }),
+    dep("HP", "dup@mkta"),
+    dep("HP", "rem@mktr"),
+    dep("HP", "win@mktw"),
+    dep("HP", "superpowers@claude-plugins-official"),
+    dep("HP", "cpp@cursor-public"),
+    dep("HP", "unk@nowhere"),
+    dep("HP", "noat@x"),
+    dep("HP", "other"),
+    { fn: "setPluginResourceHarnessScope", args: ["HP", { $ref: [-7, "id"] }, subset("cursor", "claude-code")] },
+    dep("DUP", "dup@mkta"),
+    dep("REM", "rem@elsewhere"),
+    rc(["hp"]),
+    rc(["hp", "dup"]),
+    walk("HP"),
+  ],
+});
 
 process.env.HARNESSTAP_HOME = HOME;
 process.env.HOME = HOME;

@@ -43,8 +43,8 @@ pub enum UnsatisfiableReason {
     OverrideMissing,
 }
 
-/// `RecoveryAction`, the variants an unsatisfiable constraint produces. (`override-resource` and
-/// `tag-as-profile` belong to singleton conflicts and profiles, not ported yet.)
+/// `RecoveryAction`, the variants unsatisfiable constraints and singleton conflicts produce.
+/// (`tag-as-profile` belongs to profiles, not ported yet.)
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "id", rename_all = "kebab-case")]
 pub enum RecoveryAction {
@@ -67,6 +67,23 @@ pub enum RecoveryAction {
         root_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    OverrideResource {
+        label: String,
+        root_name: String,
+        key: String,
+        winner_plugin_name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        winner_resource_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        namespace: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fingerprint: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        preview: Option<String>,
+    },
+    #[serde(rename_all = "camelCase")]
     DetachDependency {
         label: String,
         root_name: String,
@@ -86,6 +103,7 @@ impl RecoveryAction {
             RecoveryAction::SyncInstall { label, .. }
             | RecoveryAction::CreatePlugin { label, .. }
             | RecoveryAction::OverrideVersion { label, .. }
+            | RecoveryAction::OverrideResource { label, .. }
             | RecoveryAction::DetachDependency { label, .. }
             | RecoveryAction::ClearOverride { label, .. } => label,
         }
@@ -327,7 +345,7 @@ fn build_unsatisfiable(
     )
 }
 
-/// `hintForAction` for the variants above.
+/// `hintForAction`.
 pub fn hint_for_action(action: &RecoveryAction) -> String {
     match action {
         RecoveryAction::SyncInstall {
@@ -357,6 +375,16 @@ pub fn hint_for_action(action: &RecoveryAction) -> String {
             root_name,
             ..
         } => format!("ht plugin edit {root_name} --override plugin:{plugin_name}@<version>"),
+        RecoveryAction::OverrideResource {
+            root_name,
+            key,
+            winner_plugin_name,
+            winner_resource_id,
+            ..
+        } => format!(
+            "ht plugin edit {root_name} --override {key}={}",
+            winner_resource_id.as_deref().unwrap_or(winner_plugin_name)
+        ),
         RecoveryAction::DetachDependency {
             plugin_name,
             root_name,
@@ -441,8 +469,210 @@ pub struct ResolutionResult {
     pub root: ResolutionRoot,
     /// Root first (depth 0), then dependencies by depth, then declaration.
     pub selected: Vec<SelectedPlugin>,
-    /// Winning material resources, one per resolution key.
-    pub resources: Vec<models_rs::resource::Resource>,
+    /// Winning material resources, one per resolution key, with their attachment's `order` and
+    /// effective `harness_scope`.
+    pub resources: Vec<models_rs::resource::AttachedResource>,
     pub decisions: Vec<ResourceDecision>,
     pub warnings: Vec<String>,
+}
+
+/// `CONFLICT_PREVIEW_LINES`.
+pub const CONFLICT_PREVIEW_LINES: usize = 12;
+
+/// `previewConflictContent`: the first lines of a conflicting copy.
+pub fn preview_conflict_content(content: &str) -> String {
+    let lines: Vec<&str> = content.split('\n').collect();
+    if lines.len() <= CONFLICT_PREVIEW_LINES {
+        return content.to_owned();
+    }
+    let mut kept = lines[..CONFLICT_PREVIEW_LINES].join("\n");
+    kept.push_str(&format!("\n... ({} lines in content)", lines.len()));
+    kept
+}
+
+/// The first `n` UTF-16 units, as `String.prototype.slice(0, n)`.
+fn js_prefix(s: &str, n: usize) -> String {
+    String::from_utf16_lossy(&s.encode_utf16().take(n).collect::<Vec<u16>>())
+}
+
+/// `new Set(values).size > 1`.
+fn differ<'a>(mut values: impl Iterator<Item = &'a str>) -> bool {
+    let first = values.next();
+    values.any(|v| Some(v) != first)
+}
+
+fn conflict_side_parts(side: &ResourceSide, sides: &[ResourceSide]) -> Vec<String> {
+    let plugin = format!("{}@{}", side.plugin_name, side.plugin_version);
+    let same_plugin = !sides.is_empty()
+        && sides
+            .iter()
+            .all(|o| o.plugin_name == side.plugin_name && o.plugin_version == side.plugin_version);
+    let sources_differ = differ(sides.iter().map(|e| e.source.as_deref().unwrap_or("")));
+    let namespaces_differ = differ(sides.iter().map(|e| e.namespace.as_deref().unwrap_or("")));
+    let mut parts = Vec::new();
+    if !same_plugin {
+        parts.push(plugin.clone());
+    }
+    if let Some(source) = side.source.as_deref().map(crate::js_trim)
+        && !source.is_empty()
+        && (same_plugin || sources_differ)
+    {
+        parts.push(source.to_owned());
+    }
+    if let Some(namespace) = side.namespace.as_deref()
+        && namespaces_differ
+        && !crate::js_trim(namespace).is_empty()
+    {
+        parts.push(format!("@{namespace}"));
+    }
+    if let Some(fingerprint) = side.fingerprint.as_deref().filter(|f| !f.is_empty()) {
+        parts.push(js_prefix(fingerprint, 7));
+    }
+    if parts.is_empty() {
+        parts.push(plugin);
+    }
+    parts
+}
+
+/// `describeConflictSide`: a unique label for one singleton-conflict copy.
+pub fn describe_conflict_side(side: &ResourceSide, sides: &[ResourceSide]) -> String {
+    let base = conflict_side_parts(side, sides).join(" \u{b7} ");
+    let collisions = sides
+        .iter()
+        .filter(|o| conflict_side_parts(o, sides).join(" \u{b7} ") == base)
+        .count();
+    match side.resource_id.as_deref().filter(|id| !id.is_empty()) {
+        Some(id) if collisions > 1 => format!("{base} \u{b7} {}", js_prefix(id, 8)),
+        _ => base,
+    }
+}
+
+/// `overrideWinnerValue`: the plugin name, or the resource id when one plugin owns several copies.
+pub fn override_winner_value(side: &ResourceSide, sides: &[ResourceSide]) -> String {
+    let same_name = sides
+        .iter()
+        .filter(|o| o.plugin_name == side.plugin_name)
+        .count()
+        > 1;
+    match side.resource_id.as_deref().filter(|id| !id.is_empty()) {
+        Some(id) if same_name => id.to_owned(),
+        _ => side.plugin_name.clone(),
+    }
+}
+
+/// `SingletonConflictError`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SingletonConflictError {
+    pub name: &'static str,
+    pub message: String,
+    pub key: String,
+    pub sides: Vec<ResourceSide>,
+    pub hints: Vec<String>,
+    pub actions: Vec<RecoveryAction>,
+}
+
+impl std::fmt::Display for SingletonConflictError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for SingletonConflictError {}
+
+impl SingletonConflictError {
+    pub fn new(key: &str, sides: Vec<ResourceSide>, root_name: &str) -> Self {
+        let non_empty = |v: &Option<String>| v.clone().filter(|s| !s.is_empty());
+        let actions: Vec<RecoveryAction> = sides
+            .iter()
+            .map(|side| {
+                let value = override_winner_value(side, &sides);
+                let winner_resource_id = if value != side.plugin_name {
+                    Some(value)
+                } else {
+                    non_empty(&side.resource_id)
+                };
+                RecoveryAction::OverrideResource {
+                    label: format!("Use {} for {key}", describe_conflict_side(side, &sides)),
+                    root_name: root_name.to_owned(),
+                    key: key.to_owned(),
+                    winner_plugin_name: side.plugin_name.clone(),
+                    winner_resource_id: winner_resource_id.filter(|s| !s.is_empty()),
+                    source: non_empty(&side.source),
+                    namespace: non_empty(&side.namespace),
+                    fingerprint: non_empty(&side.fingerprint),
+                    preview: non_empty(&side.preview),
+                }
+            })
+            .collect();
+        let mut lines = vec![format!("conflicting {key} at the same depth")];
+        for side in &sides {
+            let detail = describe_conflict_side(side, &sides);
+            let plugin = format!("{}@{}", side.plugin_name, side.plugin_version);
+            let suffix = if detail == plugin {
+                String::new()
+            } else {
+                format!(" \u{b7} {detail}")
+            };
+            lines.push(format!("  {plugin} (depth {}){suffix}", side.depth));
+        }
+        lines.push(format!(
+            "  fix: {}",
+            actions
+                .first()
+                .map_or_else(|| format!("override {key}"), |a| a.label().to_owned())
+        ));
+        let hints = actions.iter().map(hint_for_action).collect();
+        SingletonConflictError {
+            name: "SingletonConflictError",
+            message: lines.join("\n"),
+            key: key.to_owned(),
+            sides,
+            hints,
+            actions,
+        }
+    }
+}
+
+/// What `resolveComposition` and `walkDependencyGraph` throw.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResolveError {
+    /// A plain `Error`, by its message.
+    Message(String),
+    Unsatisfiable(Box<UnsatisfiableConstraintError>),
+    SingletonConflict(Box<SingletonConflictError>),
+}
+
+impl std::fmt::Display for ResolveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ResolveError::Message(m) => f.write_str(m),
+            ResolveError::Unsatisfiable(e) => f.write_str(&e.message),
+            ResolveError::SingletonConflict(e) => f.write_str(&e.message),
+        }
+    }
+}
+
+impl std::error::Error for ResolveError {}
+
+impl From<String> for ResolveError {
+    fn from(message: String) -> Self {
+        ResolveError::Message(message)
+    }
+}
+
+impl From<UnsatisfiableConstraintError> for ResolveError {
+    fn from(e: UnsatisfiableConstraintError) -> Self {
+        ResolveError::Unsatisfiable(Box::new(e))
+    }
+}
+
+impl From<crate::version_mediation::MediationError> for ResolveError {
+    fn from(e: crate::version_mediation::MediationError) -> Self {
+        match e {
+            crate::version_mediation::MediationError::Constraint(m) => ResolveError::Message(m),
+            crate::version_mediation::MediationError::Unsatisfiable(u) => {
+                ResolveError::Unsatisfiable(u)
+            }
+        }
+    }
 }

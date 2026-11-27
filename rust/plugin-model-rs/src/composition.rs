@@ -22,7 +22,7 @@ use crate::dependency::{
 };
 use crate::git_constraint::parse_git_dependency_constraint;
 use crate::origin::get_plugin_origin;
-use crate::versioning::{ResolveComposition, mark_plugin_dirty};
+use crate::versioning::mark_plugin_dirty;
 use crate::{
     AttachedResource, Plugin, PluginRefView, Result, add_resource_to_plugin, get_plugin_by_name,
     list_plugin_versions, remove_resource_from_plugin, sync_claude_marketplace_plugins_after_add,
@@ -167,7 +167,6 @@ pub fn list_attached_plugin_pins(ctx: &Ctx, plugin_id: &str) -> Result<Vec<Plugi
 /// `attachPluginPinToPlugin`: `latest` and `*` attach without a constraint.
 pub fn attach_plugin_pin_to_plugin(
     ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
     plugin_id: &str,
     reference: &str,
     version_constraint: &str,
@@ -179,7 +178,6 @@ pub fn attach_plugin_pin_to_plugin(
         .filter(|c| !c.is_empty());
     add_dependency(
         ctx,
-        resolver,
         plugin_id,
         reference,
         &AddDependencyOptions {
@@ -192,13 +190,8 @@ pub fn attach_plugin_pin_to_plugin(
 }
 
 /// `detachPluginPinFromPlugin`.
-pub fn detach_plugin_pin_from_plugin(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-    reference: &str,
-) -> Result<()> {
-    remove_dependency(ctx, resolver, plugin_id, reference)?;
+pub fn detach_plugin_pin_from_plugin(ctx: &Ctx, plugin_id: &str, reference: &str) -> Result<()> {
+    remove_dependency(ctx, plugin_id, reference)?;
     Ok(())
 }
 
@@ -218,13 +211,8 @@ pub fn list_attached_plugin_refs(ctx: &Ctx, plugin_id: &str) -> Result<Vec<Plugi
 }
 
 /// `attachCompositionResource`.
-pub fn attach_composition_resource(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-    resource: &Resource,
-) -> Result<()> {
-    mark_plugin_dirty(ctx, resolver, plugin_id)?;
+pub fn attach_composition_resource(ctx: &Ctx, plugin_id: &str, resource: &Resource) -> Result<()> {
+    mark_plugin_dirty(ctx, plugin_id)?;
     add_resource_to_plugin(ctx, plugin_id, &resource.id, None)
 }
 
@@ -436,7 +424,6 @@ pub struct AddAttachment<'a> {
 /// `addPluginAttachment`: the message it prints.
 pub fn add_plugin_attachment(
     ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
     host: &dyn CompositionHost,
     plugin: &Plugin,
     input: &AddAttachment,
@@ -456,7 +443,7 @@ pub fn add_plugin_attachment(
         }
     }
 
-    mark_plugin_dirty(ctx, resolver, &plugin.id)?;
+    mark_plugin_dirty(ctx, &plugin.id)?;
 
     if attachment_type == "plugin" {
         let reference = strip_type_prefix(&selector);
@@ -469,7 +456,6 @@ pub fn add_plugin_attachment(
         }
         let resource = add_dependency(
             ctx,
-            resolver,
             &plugin.id,
             reference,
             &AddDependencyOptions {
@@ -520,7 +506,6 @@ pub fn add_plugin_attachment(
 /// `removePluginAttachment`: `(message, removed)`.
 pub fn remove_plugin_attachment(
     ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
     plugin: &Plugin,
     selector: &str,
     resource_type: Option<&str>,
@@ -543,7 +528,7 @@ pub fn remove_plugin_attachment(
                 false,
             ));
         };
-        remove_dependency(ctx, resolver, &plugin.id, &pin.reference)?;
+        remove_dependency(ctx, &plugin.id, &pin.reference)?;
         sync_claude_marketplace_plugins_after_remove(ctx, plugin, &pin.reference)?;
         return Ok((
             format!(
@@ -555,7 +540,7 @@ pub fn remove_plugin_attachment(
     }
 
     let resource = resolve_typed_resource(ctx, &selector, &attachment_type)?;
-    mark_plugin_dirty(ctx, resolver, &plugin.id)?;
+    mark_plugin_dirty(ctx, &plugin.id)?;
     remove_resource_from_plugin(ctx, &plugin.id, &resource.id)?;
     Ok((
         format!(

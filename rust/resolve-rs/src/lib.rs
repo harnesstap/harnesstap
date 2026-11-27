@@ -1,7 +1,9 @@
 //! The version side of `src/services/resolve`: `plugin-constraints.ts`, `version-mediation.ts` and
-//! the `UnsatisfiableConstraintError` and resolution types from `types.ts`, and the key and
-//! fingerprint helpers of `resource-resolution.ts`. Replayed against recordings of the
-//! TypeScript by `tests/make-fixtures.ts`.
+//! the errors (`UnsatisfiableConstraintError`, `SingletonConflictError` and its conflict labels)
+//! and resolution types from `types.ts`, and the key and fingerprint helpers of
+//! `resource-resolution.ts`. The passes that read the database (`dependency-graph.ts`,
+//! `resolveResources` and `index.ts`) live in `plugin-model-rs` (`resolve` module). Replayed
+//! against recordings of the TypeScript by `tests/make-fixtures.ts`.
 
 #![forbid(unsafe_code)]
 

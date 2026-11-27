@@ -1,5 +1,6 @@
 //! `resolutionKey` and `resourceFingerprint` from `resource-resolution.ts`. The rest of that
-//! file (the pass that picks winning resources) is not ported yet.
+//! file (the pass that picks winning resources) reads the database and lives in
+//! `plugin-model-rs` (`resolve::resolve_resources`).
 
 use models_rs::resource::Resource;
 use serde_json::Value;

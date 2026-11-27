@@ -10,7 +10,7 @@ use models_rs::resource::{
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
-use crate::versioning::{ResolveComposition, mark_plugin_dirty};
+use crate::versioning::mark_plugin_dirty;
 use crate::{
     AttachedResource, Result, add_resource_to_plugin, get_plugin_by_id, get_plugin_resources,
     remove_resource_from_plugin,
@@ -166,13 +166,12 @@ pub struct AddDependencyOptions<'a> {
 /// `addDependency`.
 pub fn add_dependency(
     ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
     plugin_id: &str,
     reference: &str,
     opts: &AddDependencyOptions,
 ) -> Result<Resource> {
     if opts.mark_dirty != Some(false) {
-        mark_plugin_dirty(ctx, resolver, plugin_id)?;
+        mark_plugin_dirty(ctx, plugin_id)?;
     }
     let resource = ensure_dependency_resource(
         ctx,
@@ -226,12 +225,7 @@ pub fn list_dependencies(ctx: &Ctx, plugin_id: &str) -> Result<Vec<DependencyVie
 }
 
 /// `removeDependency`.
-pub fn remove_dependency(
-    ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
-    plugin_id: &str,
-    name_or_ref: &str,
-) -> Result<bool> {
+pub fn remove_dependency(ctx: &Ctx, plugin_id: &str, name_or_ref: &str) -> Result<bool> {
     let parsed = parse_dependency_ref(name_or_ref);
     let found = list_dependencies(ctx, plugin_id)?
         .into_iter()
@@ -239,7 +233,7 @@ pub fn remove_dependency(
     let Some(found) = found else {
         return Ok(false);
     };
-    mark_plugin_dirty(ctx, resolver, plugin_id)?;
+    mark_plugin_dirty(ctx, plugin_id)?;
     remove_resource_from_plugin(ctx, plugin_id, &found.resource.resource.id)?;
     Ok(true)
 }

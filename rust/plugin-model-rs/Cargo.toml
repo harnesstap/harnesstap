@@ -10,8 +10,10 @@ description = "The port of src/models/plugin-model.ts and the small services it 
 db-rs = { path = "../db-rs" }
 emit-rs = { path = "../emit-rs" }
 harness-scope-rs = { path = "../harness-scope-rs" }
+indexmap = "2"
 models-rs = { path = "../models-rs" }
 node-semver-rs = { path = "../node-semver-rs" }
+platforms-rs = { path = "../platforms-rs" }
 resolve-rs = { path = "../resolve-rs" }
 settings-rs = { path = "../settings-rs" }
 regex = "1"
