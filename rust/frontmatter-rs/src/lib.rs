@@ -6,6 +6,7 @@
 //! like the original; a lone surrogate (only reachable through a `\u` escape, or a split
 //! astral character) comes out as U+FFFD.
 
+mod dumper;
 mod loader;
 mod schema;
 pub mod value;
@@ -40,8 +41,13 @@ pub enum FrontmatterError {
     Yaml(YamlException),
     /// `JSON.parse` failed (a `SyntaxError`). The message is serde_json's, not V8's.
     Json(String),
-    /// `gray-matter engine "<name>" is not registered` (an `Error`).
+    /// A plain `Error`: `gray-matter engine "<name>" is not registered`, or `stringifying
+    /// JavaScript is not supported`.
     Engine(String),
+    /// A `TypeError` (`matter.stringify` with an engine that has no `stringify`).
+    Type(String),
+    /// A `RangeError` (`safeDump` of an invalid `Date`).
+    Range(String),
     /// Something the port does not reproduce: the `javascript` engine (it evaluates the
     /// block), an engine name that is an `Object.prototype` member, or a cyclic alias.
     Unsupported(String),
@@ -54,6 +60,8 @@ impl FrontmatterError {
             FrontmatterError::Yaml(_) => "YAMLException",
             FrontmatterError::Json(_) => "SyntaxError",
             FrontmatterError::Engine(_) => "Error",
+            FrontmatterError::Type(_) => "TypeError",
+            FrontmatterError::Range(_) => "RangeError",
             FrontmatterError::Unsupported(_) => "Unsupported",
         }
     }
@@ -64,6 +72,8 @@ impl FrontmatterError {
             FrontmatterError::Yaml(e) => &e.message,
             FrontmatterError::Json(m)
             | FrontmatterError::Engine(m)
+            | FrontmatterError::Type(m)
+            | FrontmatterError::Range(m)
             | FrontmatterError::Unsupported(m) => m,
         }
     }
@@ -188,22 +198,30 @@ const PROTOTYPE_MEMBERS: [&str; 12] = [
     "__lookupSetter__",
 ];
 
-/// `parse(file.language, file.matter, opts)` with gray-matter's default engines.
-fn run_engine(language: &[u16], matter: &[u16]) -> Result<V, FrontmatterError> {
-    let name = lossy(language);
-    let lower = name.to_lowercase();
-    let aliased = match lower.as_str() {
-        "js" | "javascript" => "javascript".to_owned(),
-        "yaml" | "yml" => "yaml".to_owned(),
-        _ => name.clone(),
+/// gray-matter's `getEngine(name)`: the engine's key in its engines object (the defaults, or an
+/// `Object.prototype` member), `None` when it is not registered.
+fn find_engine(name: &str) -> Option<&str> {
+    let aliased = match name.to_lowercase().as_str() {
+        "js" | "javascript" => "javascript",
+        "yaml" | "yml" => "yaml",
+        _ => name,
     };
-    let engine = [name.as_str(), aliased.as_str()]
+    [name, aliased]
         .into_iter()
-        .find(|n| matches!(*n, "yaml" | "json" | "javascript") || PROTOTYPE_MEMBERS.contains(n));
-    match engine {
-        Some("yaml") => Ok(loader::safe_load_utf16(matter.to_vec())?.unwrap_or(V::Undef)),
+        .find(|n| matches!(*n, "yaml" | "json" | "javascript") || PROTOTYPE_MEMBERS.contains(n))
+}
+
+/// `parse(file.language, file.matter, opts)` with gray-matter's default engines, and the
+/// collections YAML aliases named.
+fn run_engine(language: &[u16], matter: &[u16]) -> Result<(V, Vec<V>), FrontmatterError> {
+    let name = lossy(language);
+    match find_engine(&name) {
+        Some("yaml") => {
+            let (v, shared) = loader::safe_load_shared(matter.to_vec())?;
+            Ok((v.unwrap_or(V::Undef), shared))
+        }
         Some("json") => serde_json::from_str::<serde_json::Value>(&lossy(matter))
-            .map(json_to_v)
+            .map(|v| (json_to_v(v), Vec::new()))
             .map_err(|e| FrontmatterError::Json(e.to_string())),
         Some("javascript") => Err(FrontmatterError::Unsupported(
             "the javascript frontmatter engine (it evaluates the block)".into(),
@@ -233,6 +251,7 @@ struct File {
     excerpt: U16s,
     language: U16s,
     matter: U16s,
+    aliased: Vec<V>,
 }
 
 impl File {
@@ -255,16 +274,24 @@ impl File {
 
 /// `matter(text, {})`, as `parseFrontmatter` calls it.
 pub fn parse_frontmatter(text: &str) -> Result<GrayMatterFile, FrontmatterError> {
+    Ok(parse_file(text)?.0)
+}
+
+/// [`parse_frontmatter`], and the collections YAML aliases named.
+fn parse_file(text: &str) -> Result<(GrayMatterFile, Vec<JsValue>), FrontmatterError> {
     if text.is_empty() {
-        return Ok(GrayMatterFile {
-            data: JsValue::Object(Vec::new()),
-            content: String::new(),
-            excerpt: String::new(),
-            is_empty: None,
-            empty: None,
-            language: None,
-            matter: None,
-        });
+        return Ok((
+            GrayMatterFile {
+                data: JsValue::Object(Vec::new()),
+                content: String::new(),
+                excerpt: String::new(),
+                is_empty: None,
+                empty: None,
+                language: None,
+                matter: None,
+            },
+            Vec::new(),
+        ));
     }
     let mut input = u16s(text);
     if input.first() == Some(&0xFEFF) {
@@ -278,13 +305,14 @@ pub fn parse_frontmatter(text: &str) -> Result<GrayMatterFile, FrontmatterError>
         excerpt: Vec::new(),
         language: u16s("yaml"),
         matter: Vec::new(),
+        aliased: Vec::new(),
     };
     let open = u16s("---");
     if !file.content.starts_with(&open) {
-        return Ok(file.finish());
+        return Ok((file.finish(), Vec::new()));
     }
     if file.content.get(3) == Some(&u16::from(b'-')) {
-        return Ok(file.finish());
+        return Ok((file.finish(), Vec::new()));
     }
     let mut s: U16s = file.content[3..].to_vec();
     let len = s.len();
@@ -311,7 +339,7 @@ pub fn parse_frontmatter(text: &str) -> Result<GrayMatterFile, FrontmatterError>
         file.empty = Some(file.content.clone());
         file.data = V::Obj(Obj::default());
     } else {
-        file.data = run_engine(&file.language, &file.matter)?;
+        (file.data, file.aliased) = run_engine(&file.language, &file.matter)?;
     }
     if close_index == len {
         file.content = Vec::new();
@@ -331,7 +359,8 @@ pub fn parse_frontmatter(text: &str) -> Result<GrayMatterFile, FrontmatterError>
     if let Some(ex) = excerpt(&file.data, &file.content) {
         file.excerpt = ex;
     }
-    Ok(file.finish())
+    let aliased = file.aliased.iter().map(V::to_public).collect();
+    Ok((file.finish(), aliased))
 }
 
 static LENIENT_BLOCK: LazyLock<Regex> = LazyLock::new(|| {
@@ -397,4 +426,180 @@ pub fn parse_frontmatter_lenient(text: &str) -> Result<GrayMatterFile, Frontmatt
         matter: Some(block.to_owned()),
         ..strict
     })
+}
+
+/// `Object.assign(target, source)` for a frontmatter object: own enumerable properties in
+/// `Object.keys` order; `__proto__` goes through the setter, so it never becomes a key.
+fn assign(target: &mut Vec<(String, JsValue)>, source: &JsValue) {
+    let entries: Vec<(String, JsValue)> = match source {
+        JsValue::Object(entries) => entries.clone(),
+        JsValue::Array(items) => items
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i.to_string(), v.clone()))
+            .collect(),
+        JsValue::Buffer(bytes) => bytes
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (i.to_string(), JsValue::Number(f64::from(*b))))
+            .collect(),
+        // ponytail: a string spreads per UTF-16 unit; the halves of an astral character come
+        // out as U+FFFD here (a lone surrogate in the original).
+        JsValue::String(s) => s
+            .encode_utf16()
+            .enumerate()
+            .map(|(i, c)| (i.to_string(), JsValue::String(lossy(&[c]))))
+            .collect(),
+        _ => Vec::new(),
+    };
+    for (key, value) in entries {
+        if key == "__proto__" {
+            continue;
+        }
+        match target.iter_mut().find(|(k, _)| *k == key) {
+            Some((_, v)) => *v = value,
+            None => target.push((key, value)),
+        }
+    }
+}
+
+/// Structural equality, with numbers compared bit for bit (so `NaN` equals itself).
+fn same(a: &JsValue, b: &JsValue) -> bool {
+    match (a, b) {
+        (JsValue::Number(x), JsValue::Number(y)) | (JsValue::Date(x), JsValue::Date(y)) => {
+            x.to_bits() == y.to_bits()
+        }
+        (JsValue::Array(x), JsValue::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(a, b)| same(a, b))
+        }
+        (JsValue::Object(x), JsValue::Object(y)) => {
+            x.len() == y.len()
+                && x.iter()
+                    .zip(y)
+                    .all(|((ka, a), (kb, b))| ka == kb && same(a, b))
+        }
+        _ => a == b,
+    }
+}
+
+fn collections<'a>(v: &'a JsValue, out: &mut Vec<&'a JsValue>) {
+    let children: Box<dyn Iterator<Item = &JsValue>> = match v {
+        JsValue::Array(items) => Box::new(items.iter()),
+        JsValue::Object(entries) => Box::new(entries.iter().map(|(_, v)| v)),
+        _ => return,
+    };
+    out.push(v);
+    for child in children {
+        collections(child, out);
+    }
+}
+
+/// Whether the dumped object holds, twice, a collection an alias named (or one inside it, which
+/// a merge shares too). A `JsValue` has no identity, so equal collections count as the same:
+/// this can report sharing where the original has two equal but distinct objects, never miss
+/// one.
+fn shares_collection(merged: &JsValue, aliased: &[JsValue]) -> bool {
+    let mut candidates = Vec::new();
+    for v in aliased {
+        collections(v, &mut candidates);
+    }
+    let mut nodes = Vec::new();
+    if let JsValue::Object(entries) = merged {
+        for (_, v) in entries {
+            collections(v, &mut nodes);
+        }
+    }
+    candidates
+        .iter()
+        .any(|c| nodes.iter().filter(|n| same(c, n)).count() > 1)
+}
+
+/// `newline(str)` in gray-matter's `stringify`.
+fn newline(s: &str) -> String {
+    if s.ends_with('\n') {
+        s.to_owned()
+    } else {
+        format!("{s}\n")
+    }
+}
+
+/// `matter.stringify(content, data)`: `content` is first read as a file (its own frontmatter
+/// is merged under `data`, its language picks the engine), then the data is written with
+/// js-yaml 3 `safeDump` (or `JSON.stringify(data, null, 2)` for `---json`) between `---` lines.
+///
+/// gray-matter reads `content` through its content cache (no options are passed); this reads
+/// it fresh every time, which is what the original does the first time it sees a text.
+/// `Unsupported` when the content's frontmatter shares a collection through a YAML alias (the
+/// original writes `&ref_N` anchors for it).
+pub fn stringify(content: &str, data: &JsValue) -> Result<String, FrontmatterError> {
+    let (file, aliased) = parse_file(content)?;
+    let language = file.language.as_deref().unwrap_or("yaml");
+    let engine = find_engine(language);
+    match engine {
+        Some("yaml" | "json") => {}
+        Some("javascript") => {
+            return Err(FrontmatterError::Engine(
+                "stringifying JavaScript is not supported".into(),
+            ));
+        }
+        Some(_) => {
+            return Err(FrontmatterError::Type(format!(
+                "expected \"{language}.stringify\" to be a function"
+            )));
+        }
+        None => {
+            return Err(FrontmatterError::Engine(format!(
+                "gray-matter engine \"{language}\" is not registered"
+            )));
+        }
+    }
+    let mut merged = Vec::new();
+    assign(&mut merged, &file.data);
+    assign(&mut merged, data);
+    let (mut indexed, rest): (Vec<_>, Vec<_>) = merged
+        .into_iter()
+        .partition(|(k, _)| loader::array_index(&u16s(k)).is_some());
+    indexed.sort_by_key(|(k, _)| loader::array_index(&u16s(k)));
+    indexed.extend(rest);
+    let merged = JsValue::Object(indexed);
+    let matter = if engine == Some("json") {
+        emit_rs::json::stringify(&merged.to_json(), "  ")
+    } else {
+        let dump = dumper::safe_dump(&merged)?;
+        if shares_collection(&merged, &aliased) {
+            return Err(FrontmatterError::Unsupported(
+                "a collection shared through a YAML alias of the content's frontmatter (the \
+                 original writes &ref_N anchors)"
+                    .into(),
+            ));
+        }
+        dump
+    };
+    let matter = emit_rs::js::trim(&matter);
+    let mut buf = String::new();
+    if matter != "{}" {
+        buf = newline("---") + &newline(matter) + &newline("---");
+    }
+    // The excerpt (`excerpt_separator` in the content's frontmatter) is a prefix of the
+    // content, so gray-matter never adds it again.
+    Ok(buf + &newline(&file.content))
+}
+
+/// `emitFrontmatter(data, content)` (`base-serializer.ts`, `agent-plugins/files.ts`): only the
+/// fields that are not `undefined`, `null` or `""`, and the content unchanged when none is left.
+pub fn emit_frontmatter(
+    data: &[(String, JsValue)],
+    content: &str,
+) -> Result<String, FrontmatterError> {
+    let non_empty: Vec<(String, JsValue)> = data
+        .iter()
+        .filter(|(_, v)| {
+            !matches!(v, JsValue::Undefined | JsValue::Null) && *v != JsValue::String(String::new())
+        })
+        .cloned()
+        .collect();
+    if non_empty.is_empty() {
+        return Ok(content.to_owned());
+    }
+    stringify(content, &JsValue::Object(non_empty))
 }

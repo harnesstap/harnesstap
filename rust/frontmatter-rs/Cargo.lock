@@ -39,6 +39,7 @@ dependencies = [
  "emit-rs",
  "node-semver-rs",
  "regex",
+ "ryu-js",
  "serde_json",
 ]
 

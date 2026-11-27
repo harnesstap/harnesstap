@@ -463,6 +463,9 @@ struct State {
     partials: HashMap<usize, V>,
     /// A cyclic value went through a step the port only approximates (a key or a tag).
     approx: bool,
+    /// The collections aliases named: the original shares each such object (and, through a
+    /// merge, the collections it holds), which `safeDump` writes with `&ref_N` anchors.
+    aliased: Vec<V>,
     tag: Option<U16s>,
     anchor: Option<U16s>,
     kind: Option<Kind>,
@@ -1538,7 +1541,12 @@ impl State {
             // marker, so a later error, or a merge of what the collection holds so far, still
             // comes out as in the original; a marker left in the result is unsupported.
             Some(Anchor::Pending(id, is_seq)) => self.result = V::Cycle(*id, *is_seq),
-            Some(Anchor::Ready(v)) => self.result = v.clone(),
+            Some(Anchor::Ready(v)) => {
+                if matches!(v, V::Arr(_) | V::Obj(_)) {
+                    self.aliased.push(v.clone());
+                }
+                self.result = v.clone();
+            }
         }
         self.skip_separation_space(true)?;
         Ok(true)
@@ -1766,7 +1774,12 @@ pub(crate) fn safe_load(input: &str) -> Result<Option<V>, LoadError> {
     safe_load_utf16(u16s(input))
 }
 
-pub(crate) fn safe_load_utf16(mut input: U16s) -> Result<Option<V>, LoadError> {
+pub(crate) fn safe_load_utf16(input: U16s) -> Result<Option<V>, LoadError> {
+    Ok(safe_load_shared(input)?.0)
+}
+
+/// [`safe_load_utf16`], and the collections aliases named (see `State::aliased`).
+pub(crate) fn safe_load_shared(mut input: U16s) -> Result<(Option<V>, Vec<V>), LoadError> {
     if let Some(&last) = input.last() {
         if last != 0x0A && last != 0x0D {
             input.push(0x0A);
@@ -1790,6 +1803,7 @@ pub(crate) fn safe_load_utf16(mut input: U16s) -> Result<Option<V>, LoadError> {
         next_pending: 0,
         partials: HashMap::new(),
         approx: false,
+        aliased: Vec::new(),
         tag: None,
         anchor: None,
         kind: None,
@@ -1818,10 +1832,11 @@ pub(crate) fn safe_load_utf16(mut input: U16s) -> Result<Option<V>, LoadError> {
     if state.documents.iter().any(contains_cycle) {
         return Err(cyclic);
     }
+    let shared = state.aliased;
     let mut documents = state.documents;
     match documents.len() {
-        0 => Ok(None),
-        1 => Ok(documents.pop()),
+        0 => Ok((None, shared)),
+        1 => Ok((documents.pop(), shared)),
         _ => Err(LoadError::Yaml(make_error(
             "expected a single document in the stream, but found more",
             None,

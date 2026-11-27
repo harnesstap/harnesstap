@@ -308,7 +308,8 @@ fn construct_timestamp(data: &V) -> V {
     })
 }
 
-const BASE64_MAP: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\n\r";
+pub(crate) const BASE64_MAP: &str =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\n\r";
 
 fn base64_code(c: u16) -> Option<u32> {
     (c < 128)

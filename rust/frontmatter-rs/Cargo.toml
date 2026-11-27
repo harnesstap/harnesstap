@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
 publish = false
-description = "gray-matter 4 frontmatter reading with js-yaml 3 safeLoad, as src/utils/frontmatter.ts calls them"
+description = "gray-matter 4 frontmatter reading and writing with js-yaml 3 safeLoad and safeDump, as HarnessTap calls them"
 
 [dependencies]
 emit-rs = { path = "../emit-rs" }
 node-semver-rs = { path = "../node-semver-rs" }
 regex = "1"
+ryu-js = "1"
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 
 [dev-dependencies]
