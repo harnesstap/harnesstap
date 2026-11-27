@@ -5,6 +5,7 @@
 //! and every commander error; for anything else (an action, colored help, telemetry that is
 //! not switched off, `--verbose` errors) it says so and the original runs.
 
+pub mod actions;
 pub mod commander;
 pub mod tree;
 
@@ -381,15 +382,35 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
     let root = data.root_with(first.and_then(|f| data.catalog_loader(f)));
 
     match commander::parse(&root, args) {
-        Stop::Unsupported
-        | Stop::Completed
-        | Stop::Action {
-            group_help: false, ..
-        } => Outcome::Original,
+        Stop::Unsupported | Stop::Completed => Outcome::Original,
         Stop::Action {
-            path,
+            call,
+            group_help: false,
+        } => {
+            if args.iter().any(|a| a == "-v" || a == "--verbose") {
+                return Outcome::Original;
+            }
+            let Some(printed) = actions::run(&call) else {
+                return Outcome::Original;
+            };
+            // After a successful action the original may print an update notice.
+            if printed.code == 0 && !skips_update_notice(host, args) {
+                return Outcome::Original;
+            }
+            if printed.themed && !root_help_is_plain(host, args) {
+                return Outcome::Original;
+            }
+            Outcome::Answer {
+                stdout: printed.stdout,
+                stderr: printed.stderr,
+                code: printed.code,
+            }
+        }
+        Stop::Action {
+            call,
             group_help: true,
         } => {
+            let path = call.path;
             if !skips_update_notice(host, args)
                 || !commander_help_is_plain(host, host.stdout_is_tty())
             {

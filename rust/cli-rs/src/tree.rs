@@ -8,6 +8,11 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 pub struct Opt {
     pub flags: String,
+    pub attribute_name: String,
+    #[serde(default)]
+    pub default_value: Option<serde_json::Value>,
+    pub negate: bool,
+    pub custom_parser: bool,
     pub short: Option<String>,
     pub long: Option<String>,
     /// Takes a value (`<value>`).
@@ -33,6 +38,8 @@ impl Opt {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Argument {
     pub name: String,
+    #[serde(default)]
+    pub default_value: Option<serde_json::Value>,
     pub required: bool,
     pub variadic: bool,
     pub choices: Option<Vec<String>>,

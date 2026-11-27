@@ -2,7 +2,7 @@
 // from data/tree.json: help flags, unknown options and their near misses, excess
 // arguments, unknown subcommands, bad choices, missing option values, and the
 // runtime guards. Each run goes through rust/run-sandboxed.sh (fresh HOME, no color,
-// telemetry off), each in an empty working folder of its own, since some argv run
+// telemetry off, update check skipped), each in an empty working folder of its own, since some argv run
 // real actions. Writes tests/fixtures/runs.json.
 // Run from the repo root: node rust/cli-rs/tests/make-fixtures.mjs
 import { execFile } from "node:child_process";
@@ -53,6 +53,15 @@ function walk(node, path) {
 for (const nodes of Object.values(tree.loaders)) for (const n of nodes) walk(n, [n.name]);
 for (const e of tree.catalog) for (const alias of e.aliases) add([alias, "--nope"]);
 
+// help and help scenario (actions answered in Rust)
+const scenarioIds = JSON.parse(readFileSync(join(here, "..", "data", "scenarios.json"), "utf8")).map((s) => String(s.id));
+for (const fmt of [[], ["--format", "json"], ["--format", "human"], ["--format", ""], ["--format", "xml"], ["--format=json"]]) {
+  add(["help", ...fmt]);
+  for (const id of [...scenarioIds, "0", "99", "x", "11abc", " 7", "+3", "-1", "1e21", "99999999999999999999999", ""]) {
+    add(["help", "scenario", id, ...fmt]);
+  }
+}
+
 const results = new Array(cases.length);
 let next = 0;
 async function worker() {
@@ -62,7 +71,12 @@ async function worker() {
     let stdout = "", stderr = "", code = 0;
     const cwd = mkdtempSync(join(tmpdir(), "cli-rs-case-"));
     try {
-      ({ stdout, stderr } = await run("bash", [sandbox, "node", bin, ...args], { timeout: 60000, cwd }));
+      ({ stdout, stderr } = await run("bash", [sandbox, "node", bin, ...args], {
+        timeout: 60000,
+        cwd,
+        // Successful runs would otherwise go on to the update check.
+        env: { ...process.env, HARNESSTAP_SKIP_UPDATE_CHECK: "1" },
+      }));
     } catch (error) {
       ({ stdout = "", stderr = "" } = error);
       code = error.code ?? 1;

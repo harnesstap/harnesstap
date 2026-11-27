@@ -2,7 +2,8 @@
 // every command each lazy loader registers, with what `parseOptions` and
 // `_parseCommand` read, the suggestion candidates commander would build, and the
 // help text (no colors). Run: NO_COLOR=1 bun rust/cli-rs/tests/dump-tree.ts
-import { writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Command, type Option } from "commander";
 import { COMMAND_LOADER_IDS, COMMAND_CATALOG, topLevelCommandTokens } from "../../../src/cli/command-catalog.ts";
@@ -28,6 +29,9 @@ function option(o: Option) {
   const x = o as Any;
   return {
     flags: o.flags,
+    attribute_name: o.attributeName(),
+    // JSON of the default; absent when undefined
+    default_value: o.defaultValue === undefined ? undefined : o.defaultValue,
     short: o.short ?? null,
     long: o.long ?? null,
     required: o.required,
@@ -79,6 +83,7 @@ function node(cmd: Command): unknown {
     options: cmd.options.map(option),
     arguments: (c.registeredArguments as Any[]).map((a) => ({
       name: a.name(),
+      default_value: a.defaultValue === undefined ? undefined : a.defaultValue,
       required: a.required,
       variadic: a.variadic,
       choices: a.argChoices ?? null,
@@ -121,4 +126,17 @@ const tree = {
   loaders,
 };
 writeFileSync(join(import.meta.dir, "..", "data", "tree.json"), `${JSON.stringify(tree, null, 1)}\n`);
-console.log(`${Object.keys(loaders).length} loaders`);
+// The build regenerates the scenarios from docs/scenarios/details (`bun run build`), so the
+// shipped CLI can differ from the committed src/generated/scenarios.ts. Take them the way
+// the build does, then put the committed file back as it was.
+const generated = join(import.meta.dir, "..", "..", "..", "src", "generated", "scenarios.ts");
+const committed = readFileSync(generated);
+let GENERATED_SCENARIOS: unknown[];
+try {
+  execFileSync("bun", [join(import.meta.dir, "..", "..", "..", "scripts", "generate-scenarios.ts")], { stdio: "ignore" });
+  ({ GENERATED_SCENARIOS } = await import(`${generated}?built`));
+} finally {
+  writeFileSync(generated, committed);
+}
+writeFileSync(join(import.meta.dir, "..", "data", "scenarios.json"), `${JSON.stringify(GENERATED_SCENARIOS, null, 1)}\n`);
+console.log(`${Object.keys(loaders).length} loaders, ${GENERATED_SCENARIOS.length} scenarios`);

@@ -13,14 +13,15 @@ struct Run {
     code: u8,
 }
 
-/// The environment `rust/run-sandboxed.sh` sets, a fresh database and no TTY.
+/// The environment `rust/run-sandboxed.sh` sets (with the update check skipped, as the
+/// recorder does), a fresh database and no TTY.
 struct Sandbox;
 
 impl Host for Sandbox {
     fn var(&self, name: &str) -> Option<String> {
         let value = match name {
             "HARNESSTAP_TELEMETRY" | "FORCE_COLOR" => "0",
-            "NO_COLOR" | "CI" | "HARNESSTAP_NO_INTERACTIVE" => "1",
+            "NO_COLOR" | "CI" | "HARNESSTAP_NO_INTERACTIVE" | "HARNESSTAP_SKIP_UPDATE_CHECK" => "1",
             "TERM" => "dumb",
             _ => return None,
         };

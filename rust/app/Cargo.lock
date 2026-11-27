@@ -130,6 +130,8 @@ name = "cli-rs"
 version = "0.1.0"
 dependencies = [
  "collate-rs",
+ "emit-rs",
+ "regex",
  "serde",
  "serde_json",
 ]

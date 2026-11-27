@@ -4,7 +4,37 @@
 
 use std::collections::HashSet;
 
+use serde_json::{Map, Value};
+
 use crate::tree::Node;
+
+/// What an action handler receives: its arguments (`processedArgs`) and the option values
+/// of the command and each ancestor (`opts()` from the root down, for `optsWithGlobals`).
+#[derive(Debug, PartialEq)]
+pub struct ActionCall {
+    pub path: Vec<String>,
+    pub args: Vec<Value>,
+    pub opts: Vec<Map<String, Value>>,
+}
+
+impl ActionCall {
+    /// `optsWithGlobals()`: ancestors first, the command's own values win.
+    pub fn opts_with_globals(&self) -> Map<String, Value> {
+        let mut all = Map::new();
+        for level in &self.opts {
+            for (k, v) in level {
+                all.insert(k.clone(), v.clone());
+            }
+        }
+        all
+    }
+
+    /// The command's own `opts()`.
+    pub fn opts(&self) -> &Map<String, Value> {
+        // INFALLIBLE: a call always has the root's level.
+        self.opts.last().expect("root level")
+    }
+}
 
 /// Where the parse stopped.
 #[derive(Debug, PartialEq)]
@@ -15,7 +45,7 @@ pub enum Stop {
     /// the runtime swallows (`commander.help` and `commander.helpDisplayed`).
     Help { path: Vec<String>, to_stderr: bool },
     /// An action handler runs (for a command group, it prints the group's help).
-    Action { path: Vec<String>, group_help: bool },
+    Action { call: ActionCall, group_help: bool },
     /// The parse returns without running an action.
     Completed,
     /// Something this port does not reproduce.
@@ -24,18 +54,104 @@ pub enum Stop {
 
 struct Frame<'a> {
     node: &'a Node,
-    /// Options given on the command line, by index in `node.options`.
-    given: HashSet<usize>,
+    /// `getOptionValue` by attribute name.
+    values: Map<String, Value>,
+    /// Attributes still holding their default (`previous === this.defaultValue`).
+    defaulted: HashSet<String>,
+}
+
+impl<'a> Frame<'a> {
+    /// The values `addOption` stores before parsing.
+    fn new(node: &'a Node) -> Self {
+        let mut values = Map::new();
+        let mut defaulted = HashSet::new();
+        for (index, option) in node.options.iter().enumerate() {
+            let value = if option.negate {
+                let positive = option.long.as_deref().map(|l| l.replacen("--no-", "--", 1));
+                let earlier = &node.options[..index];
+                if positive.is_some_and(|p| earlier.iter().any(|o| o.is(&p))) {
+                    None
+                } else {
+                    Some(option.default_value.clone().unwrap_or(Value::Bool(true)))
+                }
+            } else {
+                option.default_value.clone()
+            };
+            if let Some(value) = value {
+                values.insert(option.attribute_name.clone(), value);
+                defaulted.insert(option.attribute_name.clone());
+            }
+        }
+        Frame {
+            node,
+            values,
+            defaulted,
+        }
+    }
+
+    /// `handleOptionValue` for a value from the command line; `None` is `undefined`
+    /// (a flag) and `Some(None)` is `null` (an optional value left out).
+    fn set(&mut self, index: usize, value: Option<Option<&str>>) -> Result<(), Stop> {
+        let option = &self.node.options[index];
+        let name = option.attribute_name.clone();
+        let old = self.values.get(&name).cloned();
+        let concat = |v: &str, old: &Option<Value>, defaulted: bool| match old {
+            Some(Value::Array(items)) if !defaulted => {
+                let mut items = items.clone();
+                items.push(Value::String(v.to_string()));
+                Value::Array(items)
+            }
+            _ => Value::Array(vec![Value::String(v.to_string())]),
+        };
+        let defaulted = self.defaulted.contains(&name);
+        let value = match value {
+            Some(Some(v)) => {
+                if let Some(choices) = &option.choices {
+                    if !choices.iter().any(|c| c == v) {
+                        return Err(error(
+                            format!(
+                                "error: option '{}' argument '{}' is invalid. Allowed choices are {}.",
+                                option.flags,
+                                v,
+                                choices.join(", ")
+                            ),
+                            "commander.invalidArgument",
+                        ));
+                    }
+                    if option.variadic {
+                        concat(v, &old, defaulted)
+                    } else {
+                        Value::String(v.to_string())
+                    }
+                } else if option.custom_parser {
+                    // The only parsers in the tree append: `[...previous, value]`.
+                    let mut items = match old {
+                        Some(Value::Array(items)) => items,
+                        _ => Vec::new(),
+                    };
+                    items.push(Value::String(v.to_string()));
+                    Value::Array(items)
+                } else if option.variadic {
+                    concat(v, &old, defaulted)
+                } else {
+                    Value::String(v.to_string())
+                }
+            }
+            _ if option.negate => Value::Bool(false),
+            _ if !option.required => Value::Bool(true),
+            _ => Value::String(String::new()),
+        };
+        self.values.insert(name.clone(), value);
+        self.defaulted.remove(&name);
+        Ok(())
+    }
 }
 
 pub fn parse(root: &Node, args: &[String]) -> Stop {
     if root.uses_unported_features() {
         return Stop::Unsupported;
     }
-    let mut chain = vec![Frame {
-        node: root,
-        given: HashSet::new(),
-    }];
+    let mut chain = vec![Frame::new(root)];
     parse_command(&mut chain, Vec::new(), args.to_vec())
 }
 
@@ -65,26 +181,6 @@ fn parse_options(frame: &mut Frame<'_>, argv: Vec<String>) -> Result<Parsed, Sto
     let mut args: std::collections::VecDeque<String> = argv.into();
     let mut active_variadic: Option<usize> = None;
 
-    let emit =
-        |given: &mut HashSet<usize>, index: usize, value: Option<&str>| -> Result<(), Stop> {
-            let option = &node.options[index];
-            if let (Some(value), Some(choices)) = (value, &option.choices)
-                && !choices.iter().any(|c| c == value)
-            {
-                return Err(error(
-                    format!(
-                        "error: option '{}' argument '{}' is invalid. Allowed choices are {}.",
-                        option.flags,
-                        value,
-                        choices.join(", ")
-                    ),
-                    "commander.invalidArgument",
-                ));
-            }
-            given.insert(index);
-            Ok(())
-        };
-
     while let Some(arg) = args.pop_front() {
         if arg == "--" {
             let dest = if to_unknown {
@@ -102,7 +198,7 @@ fn parse_options(frame: &mut Frame<'_>, argv: Vec<String>) -> Result<Parsed, Sto
         if let Some(index) = active_variadic
             && !maybe_option(&arg)
         {
-            emit(&mut frame.given, index, Some(&arg))?;
+            frame.set(index, Some(Some(&arg)))?;
             continue;
         }
         active_variadic = None;
@@ -118,15 +214,15 @@ fn parse_options(frame: &mut Frame<'_>, argv: Vec<String>) -> Result<Parsed, Sto
                         "commander.optionMissingArgument",
                     ));
                 };
-                emit(&mut frame.given, index, Some(&value))?;
+                frame.set(index, Some(Some(&value)))?;
             } else if option.optional {
                 let value = match args.front() {
                     Some(next) if !maybe_option(next) => args.pop_front(),
                     _ => None,
                 };
-                emit(&mut frame.given, index, value.as_deref())?;
+                frame.set(index, Some(value.as_deref()))?;
             } else {
-                emit(&mut frame.given, index, None)?;
+                frame.set(index, None)?;
             }
             active_variadic = option.variadic.then_some(index);
             continue;
@@ -143,9 +239,9 @@ fn parse_options(frame: &mut Frame<'_>, argv: Vec<String>) -> Result<Parsed, Sto
             let option = &node.options[index];
             let rest: String = chars.collect();
             if option.required || (option.optional && node.combine_flag_and_optional_value) {
-                emit(&mut frame.given, index, Some(&rest))?;
+                frame.set(index, Some(Some(&rest)))?;
             } else {
-                emit(&mut frame.given, index, None)?;
+                frame.set(index, None)?;
                 args.push_front(format!("-{rest}"));
             }
             continue;
@@ -158,7 +254,7 @@ fn parse_options(frame: &mut Frame<'_>, argv: Vec<String>) -> Result<Parsed, Sto
             && let Some(index) = node.find_option(&arg[..eq])
             && (node.options[index].required || node.options[index].optional)
         {
-            emit(&mut frame.given, index, Some(&arg[eq + 1..]))?;
+            frame.set(index, Some(Some(&arg[eq + 1..])))?;
             continue;
         }
 
@@ -212,10 +308,7 @@ fn parse_command(chain: &mut Vec<Frame<'_>>, operands: Vec<String>, unknown: Vec
     if let Some(first) = operands.first()
         && let Some(sub) = node.find_command(first)
     {
-        chain.push(Frame {
-            node: sub,
-            given: HashSet::new(),
-        });
+        chain.push(Frame::new(sub));
         return parse_command(chain, operands[1..].to_vec(), unknown);
     }
     if let Some(help) = &node.help_command
@@ -237,8 +330,8 @@ fn parse_command(chain: &mut Vec<Frame<'_>>, operands: Vec<String>, unknown: Vec
         };
     }
     for frame in chain.iter().rev() {
-        for (index, option) in frame.node.options.iter().enumerate() {
-            if option.mandatory && !frame.given.contains(&index) {
+        for option in &frame.node.options {
+            if option.mandatory && !frame.values.contains_key(&option.attribute_name) {
                 return error(
                     format!("error: required option '{}' not specified", option.flags),
                     "commander.missingMandatoryOptionValue",
@@ -260,7 +353,11 @@ fn parse_command(chain: &mut Vec<Frame<'_>>, operands: Vec<String>, unknown: Vec
             return stop;
         }
         return Stop::Action {
-            path: path_of(chain),
+            call: ActionCall {
+                path: path_of(chain),
+                args: processed_args(node, &args),
+                opts: chain.iter().map(|f| f.values.clone()).collect(),
+            },
             group_help: node.group_help_action,
         };
     }
@@ -283,6 +380,29 @@ fn parse_command(chain: &mut Vec<Frame<'_>>, operands: Vec<String>, unknown: Vec
         };
     }
     check_arguments(chain, &args).unwrap_or(Stop::Completed)
+}
+
+/// `_processArguments` (no argument has a custom parser in the dumped tree; `undefined`
+/// is `null`).
+fn processed_args(node: &Node, args: &[String]) -> Vec<Value> {
+    node.arguments
+        .iter()
+        .enumerate()
+        .map(|(index, argument)| {
+            let default = argument.default_value.clone();
+            if argument.variadic {
+                if index < args.len() {
+                    Value::Array(args[index..].iter().cloned().map(Value::String).collect())
+                } else {
+                    default.unwrap_or(Value::Array(Vec::new()))
+                }
+            } else if let Some(value) = args.get(index) {
+                Value::String(value.clone())
+            } else {
+                default.unwrap_or(Value::Null)
+            }
+        })
+        .collect()
 }
 
 /// `_dispatchHelpCommand`.
