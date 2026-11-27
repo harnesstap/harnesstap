@@ -115,6 +115,9 @@ run_replay() {
     echo "::error::front-door binary not found at ${bin}"
     return 1
   fi
+  # The cases were recorded as `harnesstap` (ADR-018): run the build under that name.
+  ln -f "${bin}" "${CARGO_TARGET_DIR}/debug/harnesstap"
+  bin="${CARGO_TARGET_DIR}/debug/harnesstap"
 
   echo "::group::rust-anything app replay"
   echo "node $(node --version), rust-anything $(rust-anything --version 2>/dev/null || true)"

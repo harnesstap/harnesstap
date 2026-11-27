@@ -15,6 +15,14 @@ path = "src/main.rs"
 clap = "4"
 serde_json = "1"
 version-rs = { path = "../version-rs" }
+cli-rs = { path = "../cli-rs" }
+db-rs = { path = "../db-rs" }
+models-rs = { path = "../models-rs" }
+plugin-model-rs = { path = "../plugin-model-rs" }
+self-update-rs = { path = "../self-update-rs", features = ["http"] }
+telemetry-rs = { path = "../telemetry-rs" }
+ureq = "3"
+uuid = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 version-rs = { path = "../version-rs" }
