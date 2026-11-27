@@ -5,11 +5,10 @@
 //!
 //! The plugin services the model and each other call live here as modules
 //! (they call each other in a cycle): [`composition`], [`dependency`],
-//! [`extends`], [`versioning`], [`origin`] and [`claude_pins`]. What reaches
-//! past the database goes through traits: [`composition::CompositionHost`]
-//! (marketplace catalog, pin cache, resource sync),
-//! [`claude_pins::ClaudeHost`] (Claude's own files) and, until
-//! `resolve/index.ts` is ported, [`versioning::ResolveComposition`].
+//! [`extends`], [`versioning`], [`resolve`], [`origin`] and [`claude_pins`].
+//! What reaches past the database goes through traits:
+//! [`composition::CompositionHost`] (marketplace catalog, pin cache, resource
+//! sync) and [`claude_pins::ClaudeHost`] (Claude's own files).
 //!
 //! Like the other models, the port runs outside a status computation, so
 //! `computationSlot` is a plain call, and it keeps no statement cache, so the
@@ -26,8 +25,11 @@ pub mod extends;
 pub mod git_constraint;
 pub mod name;
 pub mod origin;
+pub mod resolve;
 pub mod upstream;
 pub mod versioning;
+
+pub use models_rs::resource::AttachedResource;
 
 use harness_scope_rs::js::sort as js_sort;
 use harness_scope_rs::port::{parse_harness_scope, serialize_harness_scope};
@@ -89,28 +91,6 @@ pub struct Plugin {
     pub upstream_plugin_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
-}
-
-/// A resource as a plugin attaches it: the row's `order` and parsed
-/// `harness_scope` ride along (`mapAttachedResource`).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AttachedResource {
-    #[serde(flatten)]
-    pub resource: Resource,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub order: Option<i64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub harness_scope: Option<Value>,
-}
-
-impl From<Resource> for AttachedResource {
-    fn from(resource: Resource) -> Self {
-        AttachedResource {
-            resource,
-            order: None,
-            harness_scope: None,
-        }
-    }
 }
 
 /// `{ ref, version_constraint }`, a plugin pin.

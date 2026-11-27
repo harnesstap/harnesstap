@@ -355,6 +355,15 @@ fn mcp_servers_from_resources(resources: &[Resource]) -> Result<Vec<LockMcpServe
         .collect()
 }
 
+/// The resolved resources without their attachment fields, which the lock does not read.
+fn plain_resources(result: &ResolutionResult) -> Vec<Resource> {
+    result
+        .resources
+        .iter()
+        .map(|r| r.resource.clone())
+        .collect()
+}
+
 /// `lockfileFromResolution`, with `new Date().toISOString()` passed in as `now`.
 pub fn lockfile_from_resolution(
     result: &ResolutionResult,
@@ -362,12 +371,12 @@ pub fn lockfile_from_resolution(
     lookup: &dyn PluginLookup,
     now: &str,
 ) -> Result<Lockfile, LockError> {
-    let mcp_servers = mcp_servers_from_resources(&result.resources)?;
+    let mcp_servers = mcp_servers_from_resources(&plain_resources(result))?;
     let deployed = extras
         .deployed_files
         .as_deref()
         .map(deployed::deployed_file_hashes);
-    let resource_map_hash = resource_map_hash(&result.resources)?;
+    let resource_map_hash = resource_map_hash(&plain_resources(result))?;
     let git_locks = extras.git_locks.as_deref();
     let plugins = result
         .selected
@@ -471,7 +480,7 @@ pub fn lockfile_matches_resolution(
     if lock.root != result.root.name {
         return Ok(false);
     }
-    if lock.resource_map_hash != resource_map_hash(&result.resources)? {
+    if lock.resource_map_hash != resource_map_hash(&plain_resources(result))? {
         return Ok(false);
     }
     let resolved = resolved_by_name(result);
@@ -531,7 +540,7 @@ pub fn compare_lock_to_resolution(
         .filter(|(name, _)| lookup(&locked, name).is_none())
         .map(|(name, _)| (*name).to_owned())
         .collect();
-    let resource_drift = lock.resource_map_hash != resource_map_hash(&result.resources)?;
+    let resource_drift = lock.resource_map_hash != resource_map_hash(&plain_resources(result))?;
     Ok(LockDrift {
         drift: !changes.is_empty() || !added.is_empty() || resource_drift,
         root: lock.root.clone(),

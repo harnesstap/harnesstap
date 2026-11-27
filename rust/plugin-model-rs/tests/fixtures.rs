@@ -2,7 +2,8 @@
 //! plugin model and compares results, errors and the database they leave,
 //! with ULIDs renamed in order of appearance.
 //!
-//! `Stand` is the same database-only composition the recorder swaps in.
+//! `Stand` is the same composition host the recorder swaps in (catalog, pin
+//! cache, resource sync); resolution runs for real.
 
 use db_rs::connection::Db;
 use db_rs::schema::{InitializeSchemaOptions, initialize_schema};
@@ -15,13 +16,16 @@ use plugin_model_rs::dependency::{self, AddDependencyOptions};
 use plugin_model_rs::extends;
 use plugin_model_rs::git_constraint;
 use plugin_model_rs::origin::{self, AuthoredCapability};
+use plugin_model_rs::resolve;
 use plugin_model_rs::upstream::{self, PluginUpstream, UpstreamRow};
-use plugin_model_rs::versioning::{self, NameVersion, ResolveComposition};
+use plugin_model_rs::versioning;
 use plugin_model_rs::*;
+use resolve_rs::types::ResolveError;
 use rusqlite::Connection;
 use rusqlite::types::Value as Sql;
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
+use std::collections::HashMap;
 
 struct StepClock(Cell<i64>);
 impl Clock for StepClock {
@@ -40,24 +44,6 @@ impl Ids for CountIds {
 }
 
 struct Stand;
-
-impl Stand {
-    fn refs(ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginRefView>> {
-        Ok(get_plugin_resources(ctx, plugin_id)?
-            .into_iter()
-            .filter(|r| r.resource.resource_type == "plugin")
-            .map(|r| PluginRefView {
-                dependency_name: r.resource.name.clone(),
-                version_constraint: match r.resource.metadata.get("version_constraint") {
-                    None | Some(Value::Null) => "latest".to_owned(),
-                    Some(Value::String(s)) => s.clone(),
-                    Some(v) => v.to_string(),
-                },
-                resource: r,
-            })
-            .collect())
-    }
-}
 
 thread_local! {
     static HOST_LOG: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
@@ -115,22 +101,6 @@ thread_local! {
     static HOME_ROOT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
 }
 
-impl ResolveComposition for Stand {
-    fn resolved_set(&self, ctx: &Ctx, root_selector: &str) -> Result<Vec<NameVersion>> {
-        let root = resolve_plugin_selector(ctx, root_selector)?;
-        let Some(root) = root.filter(|r| !r.name.starts_with("broken")) else {
-            return Err("unresolvable".to_owned());
-        };
-        Ok(Stand::refs(ctx, &root.id)?
-            .into_iter()
-            .map(|r| NameVersion {
-                name: r.dependency_name,
-                version: r.version_constraint,
-            })
-            .collect())
-    }
-}
-
 /// A plugin argument: an id to load, or a literal (missing fields defaulted).
 fn plugin_arg(ctx: &Ctx, v: &Value) -> Result<Plugin> {
     if let Some(id) = v.as_str() {
@@ -177,7 +147,13 @@ fn resolve(v: &Value, results: &[Value]) -> Value {
         Value::Array(items) => Value::Array(items.iter().map(|x| resolve(x, results)).collect()),
         Value::Object(o) if o.contains_key("$ref") => {
             let r = &o["$ref"];
-            let mut v = &results[r[0].as_u64().unwrap() as usize];
+            let at = r[0].as_i64().unwrap();
+            let i = if at < 0 {
+                results.len() as i64 + at
+            } else {
+                at
+            };
+            let mut v = &results[i as usize];
             let field = r[1].as_str().unwrap();
             if !field.is_empty() {
                 for key in field.split('.') {
@@ -197,6 +173,41 @@ fn resolve(v: &Value, results: &[Value]) -> Value {
         ),
         other => other.clone(),
     }
+}
+
+/// Whole floats as integers, as `JSON.stringify` prints them (depths are `f64`).
+fn ints(v: Value) -> Value {
+    match v {
+        Value::Number(n) if n.is_f64() => {
+            let f = n.as_f64().unwrap();
+            if f.fract() == 0.0 && f.abs() < 9.1e15 {
+                json!(f as i64)
+            } else {
+                Value::Number(n)
+            }
+        }
+        Value::Array(a) => Value::Array(a.into_iter().map(ints).collect()),
+        Value::Object(o) => Value::Object(o.into_iter().map(|(k, v)| (k, ints(v))).collect()),
+        other => other,
+    }
+}
+
+/// `{ result }`, or `{ error }` with the fields the error's class adds.
+fn outcome<T: serde::Serialize>(r: std::result::Result<T, ResolveError>) -> Value {
+    ints(match r {
+        Ok(v) => json!({ "result": to_value(v) }),
+        Err(ResolveError::Message(m)) => json!({ "error": { "name": "Error", "message": m } }),
+        Err(ResolveError::Unsatisfiable(e)) => json!({ "error": to_value(*e) }),
+        Err(ResolveError::SingletonConflict(e)) => json!({ "error": to_value(*e) }),
+    })
+}
+
+fn locked_arg(v: Option<&Value>) -> Option<HashMap<String, String>> {
+    v.and_then(Value::as_object).map(|m| {
+        m.iter()
+            .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_owned()))
+            .collect()
+    })
 }
 
 fn to_value<T: serde::Serialize>(v: T) -> Value {
@@ -226,6 +237,19 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
     };
     let scope = |i: usize| a.get(i).filter(|v| !v.is_null());
     Ok(match f {
+        "resolveComposition" => outcome(resolve::resolve_composition(
+            ctx,
+            &strs(0),
+            locked_arg(a.get(1)).as_ref(),
+        )),
+        "walkDependencyGraph" => outcome(resolve::walk_dependency_graph(
+            ctx,
+            s(0),
+            locked_arg(a.get(1)).as_ref(),
+        )),
+        "getPluginOverrides" => to_value(resolve::get_plugin_overrides(ctx, s(0))?),
+        "parsePluginSelector" => to_value(resolve::parse_plugin_selector(s(0))?),
+        "isLocalFilesystemSource" => json!(resolve::is_local_filesystem_source(s(0))),
         "isFrozenPlugin" => json!(is_frozen_plugin(&from::<Plugin>(&a[0])?)),
         "mergePluginsById" => to_value(merge_plugins_by_id(ctx, &strs(0))?),
         "createPlugin" => to_value(create_plugin(ctx, &from(&a[0])?)?),
@@ -408,12 +432,11 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             Value::Null
         }
         "markPluginDirty" => {
-            versioning::mark_plugin_dirty(ctx, &Stand, s(0))?;
+            versioning::mark_plugin_dirty(ctx, s(0))?;
             Value::Null
         }
         "cutPluginVersion" => to_value(versioning::cut_plugin_version(
             ctx,
-            &Stand,
             o(0, "pluginId").unwrap(),
             o(0, "newVersion").unwrap(),
         )?),
@@ -431,7 +454,6 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
         }
         "rollbackPluginVersion" => to_value(versioning::rollback_plugin_version(
             ctx,
-            &Stand,
             o(0, "selector").unwrap(),
             o(0, "toVersion").unwrap(),
         )?),
@@ -461,7 +483,7 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
                 embed_on_export: a.get(2).is_some_and(|v| v["embedOnExport"] == true),
                 mark_dirty: a.get(2).and_then(|v| v["markDirty"].as_bool()),
             };
-            to_value(dependency::add_dependency(ctx, &Stand, s(0), s(1), &opts)?)
+            to_value(dependency::add_dependency(ctx, s(0), s(1), &opts)?)
         }
         "dependenciesFromResources" => to_value(dependency::dependencies_from_resources(&from::<
             Vec<AttachedResource>,
@@ -469,12 +491,12 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             &a[0]
         )?)),
         "listDependencies" => to_value(dependency::list_dependencies(ctx, s(0))?),
-        "removeDependency" => json!(dependency::remove_dependency(ctx, &Stand, s(0), s(1))?),
+        "removeDependency" => json!(dependency::remove_dependency(ctx, s(0), s(1))?),
         "parseExcludeEntry" => to_value(extends::parse_exclude_entry(s(0))?),
         "normalizeExcludeEntries" => json!(extends::normalize_exclude_entries(&strs(0))?),
         "listPluginExcludes" => json!(extends::list_plugin_excludes(ctx, s(0))?),
         "writePluginExcludes" => json!(extends::write_plugin_excludes(ctx, s(0), &strs(1))?),
-        "setPluginExcludes" => json!(extends::set_plugin_excludes(ctx, &Stand, s(0), &strs(1))?),
+        "setPluginExcludes" => json!(extends::set_plugin_excludes(ctx, s(0), &strs(1))?),
         "resolveUpstreamParent" => to_value(extends::resolve_upstream_parent(
             ctx,
             &plugin_arg(ctx, &a[0])?,
@@ -649,7 +671,6 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
         "attachPluginPinToPlugin" => {
             composition::attach_plugin_pin_to_plugin(
                 ctx,
-                &Stand,
                 s(0),
                 s(1),
                 s(2),
@@ -659,7 +680,7 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             Value::Null
         }
         "detachPluginPinFromPlugin" => {
-            composition::detach_plugin_pin_from_plugin(ctx, &Stand, s(0), s(1))?;
+            composition::detach_plugin_pin_from_plugin(ctx, s(0), s(1))?;
             Value::Null
         }
         "listAttachedPluginRefs" => Value::Array(
@@ -682,7 +703,7 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
                     map_resource_row(ctx, r)
                 })
                 .unwrap();
-            composition::attach_composition_resource(ctx, &Stand, s(0), &resource)?;
+            composition::attach_composition_resource(ctx, s(0), &resource)?;
             Value::Null
         }
         "resolveAttachmentType" => {
@@ -711,7 +732,6 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             json!(composition::add_plugin_attachment(
                 ctx,
                 &Stand,
-                &Stand,
                 &plugin,
                 &AddAttachment {
                     selector: input["selector"].as_str().unwrap(),
@@ -727,7 +747,6 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             let plugin = plugin_arg(ctx, &input["plugin"])?;
             let (message, removed) = composition::remove_plugin_attachment(
                 ctx,
-                &Stand,
                 &plugin,
                 input["selector"].as_str().unwrap(),
                 input["type"].as_str(),
@@ -793,7 +812,8 @@ fn dump(conn: &Connection) -> Value {
     Value::Object(out)
 }
 
-/// Sorted keys, then ULIDs renamed `<id1>`, `<id2>` in order of appearance.
+/// Sorted keys, then ULIDs renamed `<id1>`, `<id2>` in order of appearance
+/// and the random part of ephemeral root names masked.
 fn normalize(v: &Value) -> String {
     fn sort(v: &Value) -> Value {
         match v {
@@ -806,7 +826,10 @@ fn normalize(v: &Value) -> String {
             other => other.clone(),
         }
     }
-    let text = sort(v).to_string();
+    // The six random characters of an ephemeral root's name.
+    let ephemeral = regex::Regex::new(r"(__ht_ephemeral_root__\d+_)[0-9a-z]*").unwrap();
+    let sorted = sort(v).to_string();
+    let text = ephemeral.replace_all(&sorted, "${1}<random>");
     let re = regex::Regex::new(r"\b[0-9A-HJKMNP-TV-Z]{26}\b").unwrap();
     let mut seen: Vec<String> = Vec::new();
     re.replace_all(&text, |c: &regex::Captures| {

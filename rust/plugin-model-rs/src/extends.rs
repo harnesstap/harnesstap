@@ -21,7 +21,7 @@ use crate::dependency::{DependencyView, dependencies_from_resources, is_host_plu
 use crate::upstream::{
     PluginUpstream, exportable_upstream, is_catalog_upstream_ref, upstream_ref_base,
 };
-use crate::versioning::{ResolveComposition, mark_plugin_dirty};
+use crate::versioning::mark_plugin_dirty;
 use crate::{
     AttachedResource, Plugin, Result, get_plugin_by_id, get_plugin_resources, resolve_ap_name,
     transaction,
@@ -159,7 +159,6 @@ pub fn write_plugin_excludes<S: AsRef<str>>(
 /// `setPluginExcludes`: only an extends link can hide anything.
 pub fn set_plugin_excludes<S: AsRef<str>>(
     ctx: &Ctx,
-    resolver: &dyn ResolveComposition,
     plugin_id: &str,
     entries: &[S],
 ) -> Result<Vec<String>> {
@@ -177,7 +176,7 @@ pub fn set_plugin_excludes<S: AsRef<str>>(
     if current.join("\n") == normalized.join("\n") {
         return Ok(current);
     }
-    mark_plugin_dirty(ctx, resolver, plugin_id)?;
+    mark_plugin_dirty(ctx, plugin_id)?;
     write_plugin_excludes(ctx, plugin_id, &normalized)
 }
 

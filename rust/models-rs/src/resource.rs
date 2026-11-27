@@ -51,6 +51,28 @@ pub struct Resource {
     pub updated_at: String,
 }
 
+/// A resource as a plugin attaches it: the row's `order` and parsed
+/// `harness_scope` ride along (`mapAttachedResource`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AttachedResource {
+    #[serde(flatten)]
+    pub resource: Resource,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub harness_scope: Option<Value>,
+}
+
+impl From<Resource> for AttachedResource {
+    fn from(resource: Resource) -> Self {
+        AttachedResource {
+            resource,
+            order: None,
+            harness_scope: None,
+        }
+    }
+}
+
 /// `ResourceLookupResult`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
