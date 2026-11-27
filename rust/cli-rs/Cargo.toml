@@ -7,11 +7,19 @@ publish = false
 description = "The CLI front end of `ht`: src/bin.ts and src/cli/runtime.ts before the action runs, on a port of commander 13's parser over the original's dumped command tree"
 
 [dependencies]
+apm-rs = { path = "../apm-rs" }
 collate-rs = { path = "../collate-rs" }
+db-rs = { path = "../db-rs" }
 emit-rs = { path = "../emit-rs" }
+lockfile-rs = { path = "../lockfile-rs" }
+models-rs = { path = "../models-rs" }
+plugin-model-rs = { path = "../plugin-model-rs" }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+rusqlite = { version = "0.37", features = ["bundled"] }
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }

@@ -32,6 +32,12 @@ pub trait Host {
     /// Opens the database (creating and migrating it like `getDb` + `initializeSchema`) and
     /// lists the profile plugin names (`listProfilePluginsCommand`).
     fn profile_names(&mut self) -> ProfileNames;
+    /// `process.cwd()`.
+    fn cwd(&self) -> Option<String> {
+        std::env::current_dir()
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned())
+    }
     /// `setTelemetryProduct("cli")`, `maybeWarnCliTelemetry` and `trackCliStartup`, run just
     /// before an answer that comes after them in the original.
     fn telemetry_prologue(&mut self, args: &[String]);
@@ -376,7 +382,12 @@ fn after_prologue(host: &mut dyn Host, args: &[String]) -> Outcome {
             if args.iter().any(|a| a == "-v" || a == "--verbose") {
                 return Outcome::Original;
             }
-            let Some(printed) = actions::run(&call) else {
+            let ctx = actions::Ctx {
+                host: &*host,
+                args,
+                plain: root_help_is_plain(&*host, args),
+            };
+            let Some(printed) = actions::run(&call, &ctx) else {
                 return Outcome::Original;
             };
             if printed.themed && !root_help_is_plain(host, args) {

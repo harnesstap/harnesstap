@@ -1,0 +1,4545 @@
+[
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "label": "minimal",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\nNo profiles configured.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "label": "minimal",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "label": "minimal",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "label": "minimal",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "label": "full",
+  "stdout": "⚠ apm.yml field workspaces is reserved for OpenAPM v0.2 and is ignored\n⚠ Unknown APM target \"nope\"; skipping\n  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.2.3\n  Default profile       work\n  Default environment   prod\n  Environments          2\n  Inline plugins        1\n+------------------+------------+------------------------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN                          | ENVIRONMENT      |    |\n+------------------+------------+------------------------------------------+------------------+----+\n| work             | local      | work                                     | prod             | *  |\n+------------------+------------+------------------------------------------+------------------+----+\n| cat              | catalog    | @acme/very-long-selector-name-that-is... | prod             |    |\n+------------------+------------+------------------------------------------+------------------+----+\n| inl              | inline     | mine                                     | prod             |    |\n+------------------+------------+------------------------------------------+------------------+----+\n\n3 profiles\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "label": "full",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.2.3\",\n  \"default_profile\": \"work\",\n  \"default_environment\": \"prod\",\n  \"targets\": [\n    \"claude-code\"\n  ],\n  \"skipped_targets\": [\n    \"nope\"\n  ],\n  \"profiles\": [\n    {\n      \"name\": \"work\",\n      \"source\": \"local\",\n      \"selector\": \"work\"\n    },\n    {\n      \"name\": \"cat\",\n      \"source\": \"catalog\",\n      \"selector\": \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\",\n      \"environment\": \"prod\"\n    },\n    {\n      \"name\": \"inl\",\n      \"source\": \"inline\",\n      \"plugin\": \"mine\"\n    }\n  ],\n  \"environments\": [\n    {\n      \"name\": \"prod\",\n      \"values\": {\n        \"2\": \"two\",\n        \"B\": \"1\",\n        \"A\": \"true\"\n      },\n      \"secret_refs\": {\n        \"K\": {\n          \"provider\": \"file\",\n          \"ref\": \"x\"\n        },\n        \"E\": {\n          \"provider\": \"env\",\n          \"ref\": \"\"\n        }\n      }\n    },\n    {\n      \"name\": \"dev\",\n      \"values\": {}\n    }\n  ],\n  \"plugins\": [\n    {\n      \"name\": \"mine\"\n    }\n  ],\n  \"environment_count\": 2,\n  \"plugin_count\": 1,\n  \"apm_dependencies\": [\n    {\n      \"name\": \"repo\",\n      \"source\": \"git\",\n      \"selector\": \"repo\",\n      \"ref\": \"v1\"\n    },\n    {\n      \"name\": \"r\",\n      \"source\": \"git\",\n      \"selector\": \"r\",\n      \"ref\": \"main\",\n      \"path\": \"sub/x\"\n    }\n  ],\n  \"mcp_dependencies\": [\n    {\n      \"name\": \"x\",\n      \"registry_id\": \"io.github/x\"\n    }\n  ],\n  \"warnings\": [\n    \"apm.yml field workspaces is reserved for OpenAPM v0.2 and is ignored\",\n    \"Unknown APM target \\\"nope\\\"; skipping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "label": "full",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "label": "full",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    source: catalog\n    selector: ssssssssssssssssssssssssssssss\n    environment: eeeeeeeeee\n  - name: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeee\n  - name: c\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+  },
+  "label": "wide",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\n+------------------------+------------+----------------------------------+--------------------+----+\n| PROFILE                | SOURCE     | SELECTOR/PLUGIN                  | ENVIRONMENT        |    |\n+------------------------+------------+----------------------------------+--------------------+----+\n| aaaaaaaaaaaaaaaaaaa... | catalog    | ssssssssssssssssssssssssssssss   | eeeeeeeeee         |    |\n+------------------------+------------+----------------------------------+--------------------+----+\n| bbbbbbbbbbbbbbbbbbb... | catalog    | sssssssssssssssssssssssssssss... | eeeeeeeeeeeeeee... |    |\n+------------------------+------------+----------------------------------+--------------------+----+\n| c                      | catalog    | sssssssssssssssssssssssssssss... | eeeeeeeeeeeeeee... |    |\n+------------------------+------------+----------------------------------+--------------------+----+\n\n3 profiles\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    source: catalog\n    selector: ssssssssssssssssssssssssssssss\n    environment: eeeeeeeeee\n  - name: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeee\n  - name: c\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+  },
+  "label": "wide",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [\n    {\n      \"name\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n      \"source\": \"catalog\",\n      \"selector\": \"ssssssssssssssssssssssssssssss\",\n      \"environment\": \"eeeeeeeeee\"\n    },\n    {\n      \"name\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n      \"source\": \"catalog\",\n      \"selector\": \"ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\",\n      \"environment\": \"eeeeeeeeeeeeeeeeeeeeeeeee\"\n    },\n    {\n      \"name\": \"c\",\n      \"source\": \"catalog\",\n      \"selector\": \"ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\",\n      \"environment\": \"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"\n    }\n  ],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    source: catalog\n    selector: ssssssssssssssssssssssssssssss\n    environment: eeeeeeeeee\n  - name: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeee\n  - name: c\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+  },
+  "label": "wide",
+  "stdout": "  - Profile aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa references unknown environment: eeeeeeeeee\n  - Profile bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb references unknown environment: eeeeeeeeeeeeeeeeeeeeeeeee\n  - Profile c references unknown environment: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n",
+  "stderr": "✗ Project config validation failed ([ROOT]/apm.yml):\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    source: catalog\n    selector: ssssssssssssssssssssssssssssss\n    environment: eeeeeeeeee\n  - name: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeee\n  - name: c\n    source: catalog\n    selector: ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\n    environment: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+  },
+  "label": "wide",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Profile aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa references unknown environment: eeeeeeeeee\",\n    \"Profile bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb references unknown environment: eeeeeeeeeeeeeeeeeeeeeeeee\",\n    \"Profile c references unknown environment: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "label": "one",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\n+------------------+------------+--------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN          | ENVIRONMENT      |    |\n+------------------+------------+--------------------------+------------------+----+\n| solo             | local      | other                    |                  |    |\n+------------------+------------+--------------------------+------------------+----+\n\n1 profile\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "label": "one",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [\n    {\n      \"name\": \"solo\",\n      \"source\": \"local\",\n      \"selector\": \"other\"\n    }\n  ],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "label": "one",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "label": "one",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: café\n    source: local\n"
+  },
+  "label": "unicode",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\n+------------------+------------+--------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN          | ENVIRONMENT      |    |\n+------------------+------------+--------------------------+------------------+----+\n| café             | local      | café                     |                  |    |\n+------------------+------------+--------------------------+------------------+----+\n\n1 profile\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: café\n    source: local\n"
+  },
+  "label": "unicode",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [\n    {\n      \"name\": \"café\",\n      \"source\": \"local\",\n      \"selector\": \"café\"\n    }\n  ],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: café\n    source: local\n"
+  },
+  "label": "unicode",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: café\n    source: local\n"
+  },
+  "label": "unicode",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: [demo\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "",
+  "stderr": "✗ Invalid YAML in [ROOT]/apm.yml: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\n\nname: [demo\n\n^\n\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: [demo\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "{\n  \"error\": \"Invalid YAML in [ROOT]/apm.yml: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\\n\\nname: [demo\\n\\n^\\n\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: [demo\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "",
+  "stderr": "✗ Invalid YAML in [ROOT]/apm.yml: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\n\nname: [demo\n\n^\n\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: [demo\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Invalid YAML in [ROOT]/apm.yml: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\\n\\nname: [demo\\n\\n^\\n\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "- a\n- b\n"
+  },
+  "label": "notMapping",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml must be a YAML mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "- a\n- b\n"
+  },
+  "label": "notMapping",
+  "stdout": "{\n  \"error\": \"[ROOT]/apm.yml must be a YAML mapping\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "- a\n- b\n"
+  },
+  "label": "notMapping",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml must be a YAML mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "- a\n- b\n"
+  },
+  "label": "notMapping",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"[ROOT]/apm.yml must be a YAML mapping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": ""
+  },
+  "label": "empty",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml must be a YAML mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": ""
+  },
+  "label": "empty",
+  "stdout": "{\n  \"error\": \"[ROOT]/apm.yml must be a YAML mapping\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": ""
+  },
+  "label": "empty",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml must be a YAML mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": ""
+  },
+  "label": "empty",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"[ROOT]/apm.yml must be a YAML mapping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "version: 1.0.0\n"
+  },
+  "label": "noName",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml is missing required field name\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "version: 1.0.0\n"
+  },
+  "label": "noName",
+  "stdout": "{\n  \"error\": \"[ROOT]/apm.yml is missing required field name\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "version: 1.0.0\n"
+  },
+  "label": "noName",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml is missing required field name\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "version: 1.0.0\n"
+  },
+  "label": "noName",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"[ROOT]/apm.yml is missing required field name\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\n"
+  },
+  "label": "noVersion",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml is missing required field version\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\n"
+  },
+  "label": "noVersion",
+  "stdout": "{\n  \"error\": \"[ROOT]/apm.yml is missing required field version\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\n"
+  },
+  "label": "noVersion",
+  "stdout": "",
+  "stderr": "✗ [ROOT]/apm.yml is missing required field version\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\n"
+  },
+  "label": "noVersion",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"[ROOT]/apm.yml is missing required field version\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 2\n"
+  },
+  "label": "numberVersion",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               2\n  Environments          0\n  Inline plugins        0\nNo profiles configured.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 2\n"
+  },
+  "label": "numberVersion",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"2\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 2\n"
+  },
+  "label": "numberVersion",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 2\n"
+  },
+  "label": "numberVersion",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: [x]\n"
+  },
+  "label": "profileNotTable",
+  "stdout": "",
+  "stderr": "✗ Profile at index 0 must be a table\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: [x]\n"
+  },
+  "label": "profileNotTable",
+  "stdout": "{\n  \"error\": \"Profile at index 0 must be a table\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: [x]\n"
+  },
+  "label": "profileNotTable",
+  "stdout": "",
+  "stderr": "✗ Profile at index 0 must be a table\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: [x]\n"
+  },
+  "label": "profileNotTable",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Profile at index 0 must be a table\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n"
+  },
+  "label": "profileNoSource",
+  "stdout": "",
+  "stderr": "✗ Profile a must include a source string\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n"
+  },
+  "label": "profileNoSource",
+  "stdout": "{\n  \"error\": \"Profile a must include a source string\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n"
+  },
+  "label": "profileNoSource",
+  "stdout": "",
+  "stderr": "✗ Profile a must include a source string\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n"
+  },
+  "label": "profileNoSource",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Profile a must include a source string\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n    source: weird\n"
+  },
+  "label": "profileBadSource",
+  "stdout": "",
+  "stderr": "✗ Unknown profile source for a: weird\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n    source: weird\n"
+  },
+  "label": "profileBadSource",
+  "stdout": "{\n  \"error\": \"Unknown profile source for a: weird\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n    source: weird\n"
+  },
+  "label": "profileBadSource",
+  "stdout": "",
+  "stderr": "✗ Unknown profile source for a: weird\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: a\n    source: weird\n"
+  },
+  "label": "profileBadSource",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Unknown profile source for a: weird\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: local}\n  - {name: a, source: local}\n"
+  },
+  "label": "profileDup",
+  "stdout": "",
+  "stderr": "✗ Duplicate profile name: a\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: local}\n  - {name: a, source: local}\n"
+  },
+  "label": "profileDup",
+  "stdout": "{\n  \"error\": \"Duplicate profile name: a\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: local}\n  - {name: a, source: local}\n"
+  },
+  "label": "profileDup",
+  "stdout": "",
+  "stderr": "✗ Duplicate profile name: a\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: local}\n  - {name: a, source: local}\n"
+  },
+  "label": "profileDup",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Duplicate profile name: a\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: inline}\n"
+  },
+  "label": "inlineNoPlugin",
+  "stdout": "",
+  "stderr": "✗ Profile a with inline source must include a plugin key\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: inline}\n"
+  },
+  "label": "inlineNoPlugin",
+  "stdout": "{\n  \"error\": \"Profile a with inline source must include a plugin key\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: inline}\n"
+  },
+  "label": "inlineNoPlugin",
+  "stdout": "",
+  "stderr": "✗ Profile a with inline source must include a plugin key\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: inline}\n"
+  },
+  "label": "inlineNoPlugin",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Profile a with inline source must include a plugin key\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: catalog}\n"
+  },
+  "label": "catalogNoSelector",
+  "stdout": "",
+  "stderr": "✗ Profile a with catalog source must include a selector\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: catalog}\n"
+  },
+  "label": "catalogNoSelector",
+  "stdout": "{\n  \"error\": \"Profile a with catalog source must include a selector\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: catalog}\n"
+  },
+  "label": "catalogNoSelector",
+  "stdout": "",
+  "stderr": "✗ Profile a with catalog source must include a selector\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - {name: a, source: catalog}\n"
+  },
+  "label": "catalogNoSelector",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Profile a with catalog source must include a selector\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: {a: 1}\n"
+  },
+  "label": "profilesNotArray",
+  "stdout": "",
+  "stderr": "✗ Project config profiles must be an array of tables\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: {a: 1}\n"
+  },
+  "label": "profilesNotArray",
+  "stdout": "{\n  \"error\": \"Project config profiles must be an array of tables\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: {a: 1}\n"
+  },
+  "label": "profilesNotArray",
+  "stdout": "",
+  "stderr": "✗ Project config profiles must be an array of tables\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles: {a: 1}\n"
+  },
+  "label": "profilesNotArray",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Project config profiles must be an array of tables\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: [a]\n"
+  },
+  "label": "envNotMapping",
+  "stdout": "",
+  "stderr": "✗ Project config field environments must be a mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: [a]\n"
+  },
+  "label": "envNotMapping",
+  "stdout": "{\n  \"error\": \"Project config field environments must be a mapping\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: [a]\n"
+  },
+  "label": "envNotMapping",
+  "stdout": "",
+  "stderr": "✗ Project config field environments must be a mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: [a]\n"
+  },
+  "label": "envNotMapping",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Project config field environments must be a mapping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {default: 3}\n"
+  },
+  "label": "envDefaultBad",
+  "stdout": "",
+  "stderr": "✗ Project config field environments.default must be a non-empty string when set\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {default: 3}\n"
+  },
+  "label": "envDefaultBad",
+  "stdout": "{\n  \"error\": \"Project config field environments.default must be a non-empty string when set\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {default: 3}\n"
+  },
+  "label": "envDefaultBad",
+  "stdout": "",
+  "stderr": "✗ Project config field environments.default must be a non-empty string when set\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {default: 3}\n"
+  },
+  "label": "envDefaultBad",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Project config field environments.default must be a non-empty string when set\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {values: [1]}}\n"
+  },
+  "label": "envValuesBad",
+  "stdout": "",
+  "stderr": "✗ Environment prod field values must be a mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {values: [1]}}\n"
+  },
+  "label": "envValuesBad",
+  "stdout": "{\n  \"error\": \"Environment prod field values must be a mapping\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {values: [1]}}\n"
+  },
+  "label": "envValuesBad",
+  "stdout": "",
+  "stderr": "✗ Environment prod field values must be a mapping\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {values: [1]}}\n"
+  },
+  "label": "envValuesBad",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Environment prod field values must be a mapping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {secret_refs: {K: {provider: vault}}}}\n"
+  },
+  "label": "envProviderBad",
+  "stdout": "",
+  "stderr": "✗ Environment prod secret_refs.K has unknown provider: vault\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {secret_refs: {K: {provider: vault}}}}\n"
+  },
+  "label": "envProviderBad",
+  "stdout": "{\n  \"error\": \"Environment prod secret_refs.K has unknown provider: vault\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {secret_refs: {K: {provider: vault}}}}\n"
+  },
+  "label": "envProviderBad",
+  "stdout": "",
+  "stderr": "✗ Environment prod secret_refs.K has unknown provider: vault\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nenvironments: {prod: {secret_refs: {K: {provider: vault}}}}\n"
+  },
+  "label": "envProviderBad",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Environment prod secret_refs.K has unknown provider: vault\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins: {a: 1}\n"
+  },
+  "label": "pluginsNotArray",
+  "stdout": "",
+  "stderr": "✗ Project config plugins must be an array of tables\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins: {a: 1}\n"
+  },
+  "label": "pluginsNotArray",
+  "stdout": "{\n  \"error\": \"Project config plugins must be an array of tables\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins: {a: 1}\n"
+  },
+  "label": "pluginsNotArray",
+  "stdout": "",
+  "stderr": "✗ Project config plugins must be an array of tables\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins: {a: 1}\n"
+  },
+  "label": "pluginsNotArray",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Project config plugins must be an array of tables\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins:\n  - x: 1\n"
+  },
+  "label": "pluginNoName",
+  "stdout": "",
+  "stderr": "✗ Plugin at index 0 must include a non-empty name\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins:\n  - x: 1\n"
+  },
+  "label": "pluginNoName",
+  "stdout": "{\n  \"error\": \"Plugin at index 0 must include a non-empty name\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins:\n  - x: 1\n"
+  },
+  "label": "pluginNoName",
+  "stdout": "",
+  "stderr": "✗ Plugin at index 0 must include a non-empty name\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nplugins:\n  - x: 1\n"
+  },
+  "label": "pluginNoName",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Plugin at index 0 must include a non-empty name\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: 3\n"
+  },
+  "label": "defaultProfileBad",
+  "stdout": "",
+  "stderr": "✗ Project config field default_profile must be a non-empty string when set\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: 3\n"
+  },
+  "label": "defaultProfileBad",
+  "stdout": "{\n  \"error\": \"Project config field default_profile must be a non-empty string when set\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: 3\n"
+  },
+  "label": "defaultProfileBad",
+  "stdout": "",
+  "stderr": "✗ Project config field default_profile must be a non-empty string when set\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: 3\n"
+  },
+  "label": "defaultProfileBad",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Project config field default_profile must be a non-empty string when set\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: ghost\nenvironments: {default: nowhere, prod: {}}\nprofiles:\n  - {name: a, source: inline, plugin: missing, environment: staging}\n  - {name: b, source: local, environment: prod}\n"
+  },
+  "label": "invalidRefs",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Default profile       ghost\n  Default environment   nowhere\n  Environments          1\n  Inline plugins        0\n+------------------+------------+--------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN          | ENVIRONMENT      |    |\n+------------------+------------+--------------------------+------------------+----+\n| a                | inline     | missing                  | staging          |    |\n+------------------+------------+--------------------------+------------------+----+\n| b                | local      | b                        | prod             |    |\n+------------------+------------+--------------------------+------------------+----+\n\n2 profiles\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: ghost\nenvironments: {default: nowhere, prod: {}}\nprofiles:\n  - {name: a, source: inline, plugin: missing, environment: staging}\n  - {name: b, source: local, environment: prod}\n"
+  },
+  "label": "invalidRefs",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"default_profile\": \"ghost\",\n  \"default_environment\": \"nowhere\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [\n    {\n      \"name\": \"a\",\n      \"source\": \"inline\",\n      \"plugin\": \"missing\",\n      \"environment\": \"staging\"\n    },\n    {\n      \"name\": \"b\",\n      \"source\": \"local\",\n      \"selector\": \"b\",\n      \"environment\": \"prod\"\n    }\n  ],\n  \"environments\": [\n    {\n      \"name\": \"prod\",\n      \"values\": {}\n    }\n  ],\n  \"plugins\": [],\n  \"environment_count\": 1,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: ghost\nenvironments: {default: nowhere, prod: {}}\nprofiles:\n  - {name: a, source: inline, plugin: missing, environment: staging}\n  - {name: b, source: local, environment: prod}\n"
+  },
+  "label": "invalidRefs",
+  "stdout": "  - default_profile references unknown profile: ghost\n  - environments.default references unknown environment: nowhere\n  - Profile a references unknown environment: staging\n  - Profile a with inline source references unknown plugin: missing\n",
+  "stderr": "✗ Project config validation failed ([ROOT]/apm.yml):\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ndefault_profile: ghost\nenvironments: {default: nowhere, prod: {}}\nprofiles:\n  - {name: a, source: inline, plugin: missing, environment: staging}\n  - {name: b, source: local, environment: prod}\n"
+  },
+  "label": "invalidRefs",
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"default_profile references unknown profile: ghost\",\n    \"environments.default references unknown environment: nowhere\",\n    \"Profile a references unknown environment: staging\",\n    \"Profile a with inline source references unknown plugin: missing\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ncompilation: {strategy: distributed, target: [codex]}\n"
+  },
+  "label": "distributed",
+  "stdout": "⚠ apm.yml compilation.strategy is distributed; ht compile / ht apply write existing harness files (single-file root context) rather than per-directory AGENTS.md\n  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\nNo profiles configured.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ncompilation: {strategy: distributed, target: [codex]}\n"
+  },
+  "label": "distributed",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [\n    \"codex\"\n  ],\n  \"skipped_targets\": [],\n  \"profiles\": [],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": [\n    \"apm.yml compilation.strategy is distributed; ht compile / ht apply write existing harness files (single-file root context) rather than per-directory AGENTS.md\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ncompilation: {strategy: distributed, target: [codex]}\n"
+  },
+  "label": "distributed",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\ncompilation: {strategy: distributed, target: [codex]}\n"
+  },
+  "label": "distributed",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "stdout": "",
+  "stderr": "✗ No project config found. Run `ht config init` to create `apm.yml`.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n",
+   "sub/dir/": null
+  },
+  "cwd": "sub/dir",
+  "stdout": "⚠ apm.yml field workspaces is reserved for OpenAPM v0.2 and is ignored\n⚠ Unknown APM target \"nope\"; skipping\n  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.2.3\n  Default profile       work\n  Default environment   prod\n  Environments          2\n  Inline plugins        1\n+------------------+------------+------------------------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN                          | ENVIRONMENT      |    |\n+------------------+------------+------------------------------------------+------------------+----+\n| work             | local      | work                                     | prod             | *  |\n+------------------+------------+------------------------------------------+------------------+----+\n| cat              | catalog    | @acme/very-long-selector-name-that-is... | prod             |    |\n+------------------+------------+------------------------------------------+------------------+----+\n| inl              | inline     | mine                                     | prod             |    |\n+------------------+------------+------------------------------------------+------------------+----+\n\n3 profiles\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "sub"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "sub/apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "stdout": "  Config                [ROOT]/sub/apm.yml\n  Root                  [ROOT]/sub\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\n+------------------+------------+--------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN          | ENVIRONMENT      |    |\n+------------------+------------+--------------------------+------------------+----+\n| solo             | local      | other                    |                  |    |\n+------------------+------------+--------------------------+------------------+----+\n\n1 profile\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "apm.yml"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "stdout": "⚠ apm.yml field workspaces is reserved for OpenAPM v0.2 and is ignored\n⚠ Unknown APM target \"nope\"; skipping\n  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.2.3\n  Default profile       work\n  Default environment   prod\n  Environments          2\n  Inline plugins        1\n+------------------+------------+------------------------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN                          | ENVIRONMENT      |    |\n+------------------+------------+------------------------------------------+------------------+----+\n| work             | local      | work                                     | prod             | *  |\n+------------------+------------+------------------------------------------+------------------+----+\n| cat              | catalog    | @acme/very-long-selector-name-that-is... | prod             |    |\n+------------------+------------+------------------------------------------+------------------+----+\n| inl              | inline     | mine                                     | prod             |    |\n+------------------+------------+------------------------------------------+------------------+----+\n\n3 profiles\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "missing/x"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\nNo profiles configured.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   ".."
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "a/": null
+  },
+  "cwd": "a",
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Environments          0\n  Inline plugins        0\nNo profiles configured.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml/": null
+  },
+  "stdout": "",
+  "stderr": "✗ EISDIR: illegal operation on a directory, read\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n",
+   ".harnesstap/local.toml": "default_profile = \"solo\"\ndefault_environment = \"x\"\n"
+  },
+  "stdout": "  Config                [ROOT]/apm.yml\n  Root                  [ROOT]\n  Name                  demo\n  Version               1.0.0\n  Default profile       solo\n  Default environment   x\n  Environments          0\n  Inline plugins        0\n+------------------+------------+--------------------------+------------------+----+\n| PROFILE          | SOURCE     | SELECTOR/PLUGIN          | ENVIRONMENT      |    |\n+------------------+------------+--------------------------+------------------+----+\n| solo             | local      | other                    | x                | *  |\n+------------------+------------+--------------------------+------------------+----+\n\n1 profile\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "default_profile = 3\n"
+  },
+  "stdout": "",
+  "stderr": "✗ Project config field default_profile must be a non-empty string when set\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "nope = [\n"
+  },
+  "stdout": "",
+  "stderr": "✗ Invalid project local overrides TOML: Invalid TOML document: unfinished array encountered\n\n1:  nope = [\n\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "stdout": "{\n  \"error\": \"No project config found. Run `ht config init` to create `apm.yml`.\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n",
+   "sub/dir/": null
+  },
+  "cwd": "sub/dir",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.2.3\",\n  \"default_profile\": \"work\",\n  \"default_environment\": \"prod\",\n  \"targets\": [\n    \"claude-code\"\n  ],\n  \"skipped_targets\": [\n    \"nope\"\n  ],\n  \"profiles\": [\n    {\n      \"name\": \"work\",\n      \"source\": \"local\",\n      \"selector\": \"work\"\n    },\n    {\n      \"name\": \"cat\",\n      \"source\": \"catalog\",\n      \"selector\": \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\",\n      \"environment\": \"prod\"\n    },\n    {\n      \"name\": \"inl\",\n      \"source\": \"inline\",\n      \"plugin\": \"mine\"\n    }\n  ],\n  \"environments\": [\n    {\n      \"name\": \"prod\",\n      \"values\": {\n        \"2\": \"two\",\n        \"B\": \"1\",\n        \"A\": \"true\"\n      },\n      \"secret_refs\": {\n        \"K\": {\n          \"provider\": \"file\",\n          \"ref\": \"x\"\n        },\n        \"E\": {\n          \"provider\": \"env\",\n          \"ref\": \"\"\n        }\n      }\n    },\n    {\n      \"name\": \"dev\",\n      \"values\": {}\n    }\n  ],\n  \"plugins\": [\n    {\n      \"name\": \"mine\"\n    }\n  ],\n  \"environment_count\": 2,\n  \"plugin_count\": 1,\n  \"apm_dependencies\": [\n    {\n      \"name\": \"repo\",\n      \"source\": \"git\",\n      \"selector\": \"repo\",\n      \"ref\": \"v1\"\n    },\n    {\n      \"name\": \"r\",\n      \"source\": \"git\",\n      \"selector\": \"r\",\n      \"ref\": \"main\",\n      \"path\": \"sub/x\"\n    }\n  ],\n  \"mcp_dependencies\": [\n    {\n      \"name\": \"x\",\n      \"registry_id\": \"io.github/x\"\n    }\n  ],\n  \"warnings\": [\n    \"apm.yml field workspaces is reserved for OpenAPM v0.2 and is ignored\",\n    \"Unknown APM target \\\"nope\\\"; skipping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "sub",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "sub/apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "stdout": "{\n  \"root_path\": \"[ROOT]/sub\",\n  \"config_path\": \"[ROOT]/sub/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [\n    {\n      \"name\": \"solo\",\n      \"source\": \"local\",\n      \"selector\": \"other\"\n    }\n  ],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "apm.yml",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.2.3\",\n  \"default_profile\": \"work\",\n  \"default_environment\": \"prod\",\n  \"targets\": [\n    \"claude-code\"\n  ],\n  \"skipped_targets\": [\n    \"nope\"\n  ],\n  \"profiles\": [\n    {\n      \"name\": \"work\",\n      \"source\": \"local\",\n      \"selector\": \"work\"\n    },\n    {\n      \"name\": \"cat\",\n      \"source\": \"catalog\",\n      \"selector\": \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\",\n      \"environment\": \"prod\"\n    },\n    {\n      \"name\": \"inl\",\n      \"source\": \"inline\",\n      \"plugin\": \"mine\"\n    }\n  ],\n  \"environments\": [\n    {\n      \"name\": \"prod\",\n      \"values\": {\n        \"2\": \"two\",\n        \"B\": \"1\",\n        \"A\": \"true\"\n      },\n      \"secret_refs\": {\n        \"K\": {\n          \"provider\": \"file\",\n          \"ref\": \"x\"\n        },\n        \"E\": {\n          \"provider\": \"env\",\n          \"ref\": \"\"\n        }\n      }\n    },\n    {\n      \"name\": \"dev\",\n      \"values\": {}\n    }\n  ],\n  \"plugins\": [\n    {\n      \"name\": \"mine\"\n    }\n  ],\n  \"environment_count\": 2,\n  \"plugin_count\": 1,\n  \"apm_dependencies\": [\n    {\n      \"name\": \"repo\",\n      \"source\": \"git\",\n      \"selector\": \"repo\",\n      \"ref\": \"v1\"\n    },\n    {\n      \"name\": \"r\",\n      \"source\": \"git\",\n      \"selector\": \"r\",\n      \"ref\": \"main\",\n      \"path\": \"sub/x\"\n    }\n  ],\n  \"mcp_dependencies\": [\n    {\n      \"name\": \"x\",\n      \"registry_id\": \"io.github/x\"\n    }\n  ],\n  \"warnings\": [\n    \"apm.yml field workspaces is reserved for OpenAPM v0.2 and is ignored\",\n    \"Unknown APM target \\\"nope\\\"; skipping\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "missing/x",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--project",
+   "..",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "a/": null
+  },
+  "cwd": "a",
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml/": null
+  },
+  "stdout": "{\n  \"error\": \"EISDIR: illegal operation on a directory, read\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n",
+   ".harnesstap/local.toml": "default_profile = \"solo\"\ndefault_environment = \"x\"\n"
+  },
+  "stdout": "{\n  \"root_path\": \"[ROOT]\",\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"name\": \"demo\",\n  \"version\": \"1.0.0\",\n  \"default_profile\": \"solo\",\n  \"default_environment\": \"x\",\n  \"targets\": [],\n  \"skipped_targets\": [],\n  \"profiles\": [\n    {\n      \"name\": \"solo\",\n      \"source\": \"local\",\n      \"selector\": \"other\"\n    }\n  ],\n  \"environments\": [],\n  \"plugins\": [],\n  \"environment_count\": 0,\n  \"plugin_count\": 0,\n  \"apm_dependencies\": [],\n  \"mcp_dependencies\": [],\n  \"warnings\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "default_profile = 3\n"
+  },
+  "stdout": "{\n  \"error\": \"Project config field default_profile must be a non-empty string when set\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "nope = [\n"
+  },
+  "stdout": "{\n  \"error\": \"Invalid project local overrides TOML: Invalid TOML document: unfinished array encountered\\n\\n1:  nope = [\\n\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "show",
+   "--format",
+   "xml"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid --format value: xml. Use human or json.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "stdout": "",
+  "stderr": "✗ No project config found. Run `ht config init` to create `apm.yml`.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n",
+   "sub/dir/": null
+  },
+  "cwd": "sub/dir",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "sub"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "sub/apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "stdout": "✓ Project config is valid ([ROOT]/sub/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "apm.yml"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "missing/x"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   ".."
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "a/": null
+  },
+  "cwd": "a",
+  "stdout": "✓ Project config is valid ([ROOT]/apm.yml).\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml/": null
+  },
+  "stdout": "",
+  "stderr": "✗ EISDIR: illegal operation on a directory, read\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n",
+   ".harnesstap/local.toml": "default_profile = \"solo\"\ndefault_environment = \"x\"\n"
+  },
+  "stdout": "  - environments.default references unknown environment: x\n",
+  "stderr": "✗ Project config validation failed ([ROOT]/apm.yml):\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "default_profile = 3\n"
+  },
+  "stdout": "",
+  "stderr": "✗ Project config field default_profile must be a non-empty string when set\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "nope = [\n"
+  },
+  "stdout": "",
+  "stderr": "✗ Invalid project local overrides TOML: Invalid TOML document: unfinished array encountered\n\n1:  nope = [\n\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"No project config found. Run `ht config init` to create `apm.yml`.\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n",
+   "sub/dir/": null
+  },
+  "cwd": "sub/dir",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "sub",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "sub/apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n"
+  },
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "apm.yml",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "missing/x",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--project",
+   "..",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   "a/": null
+  },
+  "cwd": "a",
+  "stdout": "{\n  \"valid\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml/": null
+  },
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"EISDIR: illegal operation on a directory, read\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\nprofiles:\n  - name: solo\n    source: local\n    selector: other\n",
+   ".harnesstap/local.toml": "default_profile = \"solo\"\ndefault_environment = \"x\"\n"
+  },
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"environments.default references unknown environment: x\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "default_profile = 3\n"
+  },
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Project config field default_profile must be a non-empty string when set\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "json"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n",
+   ".harnesstap/local.toml": "nope = [\n"
+  },
+  "stdout": "{\n  \"valid\": false,\n  \"errors\": [\n    \"Invalid project local overrides TOML: Invalid TOML document: unfinished array encountered\\n\\n1:  nope = [\\n\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "validate",
+   "--format",
+   "xml"
+  ],
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid --format value: xml. Use human or json.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "stdout": "",
+  "stderr": "✗ no such table: plugins\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/": null
+  },
+  "rows": {
+   "plugins": null,
+   "environments": null
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": true,
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": true,
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "⚠ Project config already exists. Pass --force to overwrite, or edit `apm.yml` directly.\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--force"
+  ],
+  "db": true,
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--profile",
+   "work"
+  ],
+  "db": true,
+  "stdout": "",
+  "stderr": "✗ Unknown profile plugin: work. Create it with `ht profile create work` first.\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--profile",
+   "global default",
+   "--profile",
+   "global default",
+   "--default",
+   "global default"
+  ],
+  "db": true,
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--default",
+   "nope"
+  ],
+  "db": true,
+  "stdout": "",
+  "stderr": "✗ Default profile \"nope\" must be one of: global default\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "missing/deeper"
+  ],
+  "db": true,
+  "stdout": "",
+  "stderr": "✗ ENOENT: no such file or directory, open '[ROOT]/missing/deeper/apm.yml'\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "file/x"
+  ],
+  "db": true,
+  "files": {
+   "file": "x"
+  },
+  "stdout": "",
+  "stderr": "✗ ENOTDIR: not a directory, open '[ROOT]/file/x/apm.yml'\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "file"
+  ],
+  "db": true,
+  "files": {
+   "file": "x"
+  },
+  "stdout": "",
+  "stderr": "✗ ENOTDIR: not a directory, open '[ROOT]/file/apm.yml'\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--force"
+  ],
+  "db": true,
+  "files": {
+   "apm.yml/": null
+  },
+  "stdout": "",
+  "stderr": "✗ EISDIR: illegal operation on a directory, open '[ROOT]/apm.yml'\n",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "sub"
+  ],
+  "db": true,
+  "files": {
+   "sub/": null
+  },
+  "stdout": "✓ Created project config at [ROOT]/sub/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/sub/apm.yml": "name: sub\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000001', 'personal', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000002', 'zeta', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "home": {
+   ".harnesstap/active-profile.json": "{\"name\": \"personal\"}"
+  },
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       personal\n  Profiles              personal, work, zeta\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: personal\nprofiles:\n  - name: personal\n    source: local\n    selector: personal\n  - name: work\n    source: local\n    selector: work\n  - name: zeta\n    source: local\n    selector: zeta\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "personal",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "zeta",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--profile",
+   "zeta",
+   "--profile",
+   "work"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000001', 'personal', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000002', 'zeta', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       zeta\n  Profiles              zeta, work\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: zeta\nprofiles:\n  - name: zeta\n    source: local\n    selector: zeta\n  - name: work\n    source: local\n    selector: work\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "personal",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "zeta",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--default",
+   "work"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000001', 'personal', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       work\n  Profiles              personal, work\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: work\nprofiles:\n  - name: personal\n    source: local\n    selector: personal\n  - name: work\n    source: local\n    selector: work\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "personal",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "home": {
+   ".harnesstap/active-profile.json": "not json"
+  },
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       work\n  Profiles              work\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n    selector: work\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": true,
+  "home": {
+   ".harnesstap/active-profile.json": "{\"name\": \" empty \"}",
+   ".harnesstap/active-environment.json": "{\"name\": \"kept\"}"
+  },
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n",
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO environments (id, name, created_at, updated_at) VALUES ('01J1', 'staging', 'x', 'x');",
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       work\n  Profiles              work\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n    selector: work\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "staging",
+     ""
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'default', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init"
+  ],
+  "db": "INSERT INTO plugins (id, name, created_at, updated_at) VALUES ('01J2', 'global default', 'x', 'x');",
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "stdout": "{\n  \"error\": \"no such table: plugins\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/": null
+  },
+  "rows": {
+   "plugins": null,
+   "environments": null
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.0.0\n"
+  },
+  "stdout": "{\n  \"error\": \"Project config already exists. Pass --force to overwrite, or edit `apm.yml` directly.\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--force",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "files": {
+   "apm.yml": "name: demo\nversion: 1.2.3\ndescription: A demo\ntargets: [claude, nope]\nworkspaces: [a]\ndependencies:\n  apm:\n    - acme/repo#v1\n    - {git: https://github.com/o/r.git, path: sub/x, ref: main}\n  mcp:\n    - io.github/x\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n  - name: cat\n    source: catalog\n    selector: \"@acme/very-long-selector-name-that-is-really-long-and-even-longer-than-that@^1.0.0\"\n    environment: prod\n  - name: inl\n    source: inline\n    plugin: mine\nenvironments:\n  default: prod\n  prod:\n    values: {B: 1, \"2\": two, A: true}\n    secret_refs:\n      K: {provider: file, ref: x}\n      E: {}\n  dev: {}\nplugins:\n  - name: mine\n    x: 1\n"
+  },
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--profile",
+   "work",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "stdout": "{\n  \"error\": \"Unknown profile plugin: work. Create it with `ht profile create work` first.\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--profile",
+   "global default",
+   "--profile",
+   "global default",
+   "--default",
+   "global default",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--default",
+   "nope",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "stdout": "{\n  \"error\": \"Default profile \\\"nope\\\" must be one of: global default\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "missing/deeper",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "stdout": "{\n  \"error\": \"ENOENT: no such file or directory, open '[ROOT]/missing/deeper/apm.yml'\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "file/x",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "files": {
+   "file": "x"
+  },
+  "stdout": "{\n  \"error\": \"ENOTDIR: not a directory, open '[ROOT]/file/x/apm.yml'\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "file",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "files": {
+   "file": "x"
+  },
+  "stdout": "{\n  \"error\": \"ENOTDIR: not a directory, open '[ROOT]/file/apm.yml'\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--force",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "files": {
+   "apm.yml/": null
+  },
+  "stdout": "{\n  \"error\": \"EISDIR: illegal operation on a directory, open '[ROOT]/apm.yml'\"\n}\n",
+  "stderr": "",
+  "code": 1,
+  "changes": {
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--project",
+   "sub",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "files": {
+   "sub/": null
+  },
+  "stdout": "{\n  \"config_path\": \"[ROOT]/sub/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/sub/apm.yml": "name: sub\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000001', 'personal', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000002', 'zeta', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "home": {
+   ".harnesstap/active-profile.json": "{\"name\": \"personal\"}"
+  },
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"personal\",\n  \"profiles\": [\n    \"personal\",\n    \"work\",\n    \"zeta\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: personal\nprofiles:\n  - name: personal\n    source: local\n    selector: personal\n  - name: work\n    source: local\n    selector: work\n  - name: zeta\n    source: local\n    selector: zeta\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "personal",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "zeta",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--profile",
+   "zeta",
+   "--profile",
+   "work",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000001', 'personal', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000002', 'zeta', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"zeta\",\n  \"profiles\": [\n    \"zeta\",\n    \"work\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: zeta\nprofiles:\n  - name: zeta\n    source: local\n    selector: zeta\n  - name: work\n    source: local\n    selector: work\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "personal",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "zeta",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--default",
+   "work",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000001', 'personal', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"work\",\n  \"profiles\": [\n    \"personal\",\n    \"work\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: work\nprofiles:\n  - name: personal\n    source: local\n    selector: personal\n  - name: work\n    source: local\n    selector: work\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "personal",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ],
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "home": {
+   ".harnesstap/active-profile.json": "not json"
+  },
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"work\",\n  \"profiles\": [\n    \"work\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n    selector: work\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "home": {
+   ".harnesstap/active-profile.json": "{\"name\": \" empty \"}",
+   ".harnesstap/active-environment.json": "{\"name\": \"kept\"}"
+  },
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n",
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'work', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');\nINSERT INTO environments (id, name, created_at, updated_at) VALUES ('01J1', 'staging', 'x', 'x');",
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"work\",\n  \"profiles\": [\n    \"work\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: work\nprofiles:\n  - name: work\n    source: local\n    selector: work\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "work",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "staging",
+     ""
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, tags, created_at, updated_at) VALUES ('01J00000000000000000000000', 'default', '[\"profile\"]', '2024-01-01T00:00:00.000Z', '2024-01-01T00:00:00.000Z');",
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "json"
+  ],
+  "db": "INSERT INTO plugins (id, name, created_at, updated_at) VALUES ('01J2', 'global default', 'x', 'x');",
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--no-interactive"
+  ],
+  "db": true,
+  "stdout": "✓ Created project config at [ROOT]/apm.yml.\n  Default profile       global default\n  Profiles              global default\n  → Run `ht config show` to inspect or `ht use` to switch profiles.\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--interactive",
+   "--format",
+   "json"
+  ],
+  "db": true,
+  "stdout": "{\n  \"config_path\": \"[ROOT]/apm.yml\",\n  \"default_profile\": \"global default\",\n  \"profiles\": [\n    \"global default\"\n  ]\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/apm.yml": "name: project\nversion: 1.0.0\ndefault_profile: global default\nprofiles:\n  - name: global default\n    source: local\n    selector: global default\n",
+   "[HOME]/.harnesstap/active-environment.json": "{\n  \"name\": \"default\"\n}\n",
+   "[HOME]/.harnesstap/active-profile.json": "{\n  \"name\": \"global default\"\n}\n"
+  },
+  "rows": {
+   "plugins": [
+    [
+     "global default",
+     "1.0.0",
+     "Global default profile",
+     "[\"profile\"]",
+     "authored"
+    ]
+   ],
+   "environments": [
+    [
+     "default",
+     "Default environment"
+    ]
+   ]
+  }
+ },
+ {
+  "args": [
+   "config",
+   "init",
+   "--format",
+   "xml"
+  ],
+  "db": true,
+  "stdout": "",
+  "stderr": "Error: Invalid --format value: xml. Use human or json.\n",
+  "code": 1,
+  "changes": {},
+  "rows": {
+   "plugins": [],
+   "environments": []
+  }
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "label": "lockfile",
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--format",
+   "spdx"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "label": "lockfile",
+  "stdout": "{\n  \"SPDXID\": \"SPDXRef-DOCUMENT\",\n  \"creationInfo\": {\n    \"created\": \"2024-05-01T10:00:00Z\",\n    \"creators\": [\n      \"Tool: ht lock export\"\n    ]\n  },\n  \"dataLicense\": \"CC0-1.0\",\n  \"documentNamespace\": \"https://spdx.org/spdxdocs/harnesstap-sbom-2024-05-01T10:00:00Z\",\n  \"name\": \"harnesstap-sbom\",\n  \"packages\": [\n    {\n      \"SPDXID\": \"SPDXRef-Package-0\",\n      \"downloadLocation\": \"NOASSERTION\",\n      \"externalRefs\": [\n        {\n          \"referenceCategory\": \"PACKAGE-MANAGER\",\n          \"referenceLocator\": \"pkg:generic/harnesstap/cat@2.0.0\",\n          \"referenceType\": \"purl\"\n        }\n      ],\n      \"licenseConcluded\": \"NOASSERTION\",\n      \"licenseDeclared\": \"Proprietary\",\n      \"name\": \"cat\",\n      \"versionInfo\": \"2.0.0\"\n    },\n    {\n      \"SPDXID\": \"SPDXRef-Package-1\",\n      \"checksums\": [\n        {\n          \"algorithm\": \"SHA256\",\n          \"checksumValue\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"downloadLocation\": \"NOASSERTION\",\n      \"externalRefs\": [\n        {\n          \"referenceCategory\": \"PACKAGE-MANAGER\",\n          \"referenceLocator\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n          \"referenceType\": \"purl\"\n        }\n      ],\n      \"licenseConcluded\": \"NOASSERTION\",\n      \"licenseDeclared\": \"MIT\",\n      \"name\": \"local-one\",\n      \"versionInfo\": \"1.0.0\"\n    },\n    {\n      \"SPDXID\": \"SPDXRef-Package-2\",\n      \"downloadLocation\": \"https://github.com/Acme/Repo.git\",\n      \"externalRefs\": [\n        {\n          \"referenceCategory\": \"PACKAGE-MANAGER\",\n          \"referenceLocator\": \"pkg:github/Acme/Repo@abc123\",\n          \"referenceType\": \"purl\"\n        }\n      ],\n      \"licenseConcluded\": \"NOASSERTION\",\n      \"licenseDeclared\": \"(MIT OR Apache-2.0)\",\n      \"name\": \"Acme/Repo\",\n      \"versionInfo\": \"abc123\"\n    }\n  ],\n  \"spdxVersion\": \"SPDX-2.3\"\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-f",
+   "SPDX",
+   "--timestamp",
+   "2024-06-01T05:30:00+05:30"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "label": "lockfile",
+  "stdout": "{\n  \"SPDXID\": \"SPDXRef-DOCUMENT\",\n  \"creationInfo\": {\n    \"created\": \"2024-06-01T00:00:00+00:00\",\n    \"creators\": [\n      \"Tool: ht lock export\"\n    ]\n  },\n  \"dataLicense\": \"CC0-1.0\",\n  \"documentNamespace\": \"https://spdx.org/spdxdocs/harnesstap-sbom-2024-06-01T00:00:00+00:00\",\n  \"name\": \"harnesstap-sbom\",\n  \"packages\": [\n    {\n      \"SPDXID\": \"SPDXRef-Package-0\",\n      \"downloadLocation\": \"NOASSERTION\",\n      \"externalRefs\": [\n        {\n          \"referenceCategory\": \"PACKAGE-MANAGER\",\n          \"referenceLocator\": \"pkg:generic/harnesstap/cat@2.0.0\",\n          \"referenceType\": \"purl\"\n        }\n      ],\n      \"licenseConcluded\": \"NOASSERTION\",\n      \"licenseDeclared\": \"Proprietary\",\n      \"name\": \"cat\",\n      \"versionInfo\": \"2.0.0\"\n    },\n    {\n      \"SPDXID\": \"SPDXRef-Package-1\",\n      \"checksums\": [\n        {\n          \"algorithm\": \"SHA256\",\n          \"checksumValue\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"downloadLocation\": \"NOASSERTION\",\n      \"externalRefs\": [\n        {\n          \"referenceCategory\": \"PACKAGE-MANAGER\",\n          \"referenceLocator\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n          \"referenceType\": \"purl\"\n        }\n      ],\n      \"licenseConcluded\": \"NOASSERTION\",\n      \"licenseDeclared\": \"MIT\",\n      \"name\": \"local-one\",\n      \"versionInfo\": \"1.0.0\"\n    },\n    {\n      \"SPDXID\": \"SPDXRef-Package-2\",\n      \"downloadLocation\": \"https://github.com/Acme/Repo.git\",\n      \"externalRefs\": [\n        {\n          \"referenceCategory\": \"PACKAGE-MANAGER\",\n          \"referenceLocator\": \"pkg:github/Acme/Repo@abc123\",\n          \"referenceType\": \"purl\"\n        }\n      ],\n      \"licenseConcluded\": \"NOASSERTION\",\n      \"licenseDeclared\": \"(MIT OR Apache-2.0)\",\n      \"name\": \"Acme/Repo\",\n      \"versionInfo\": \"abc123\"\n    }\n  ],\n  \"spdxVersion\": \"SPDX-2.3\"\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"9\"\n"
+  },
+  "label": "v9",
+  "stdout": "",
+  "stderr": "Error: Unsupported lockfile_version: 9. Expected \"1\". Delete apm.lock.yaml and re-run apply to regenerate it.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--format",
+   "spdx"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"9\"\n"
+  },
+  "label": "v9",
+  "stdout": "",
+  "stderr": "Error: Unsupported lockfile_version: 9. Expected \"1\". Delete apm.lock.yaml and re-run apply to regenerate it.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-f",
+   "SPDX",
+   "--timestamp",
+   "2024-06-01T05:30:00+05:30"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"9\"\n"
+  },
+  "label": "v9",
+  "stdout": "",
+  "stderr": "Error: Unsupported lockfile_version: 9. Expected \"1\". Delete apm.lock.yaml and re-run apply to regenerate it.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "- 1\n"
+  },
+  "label": "notMapping",
+  "stdout": "",
+  "stderr": "Error: Invalid lockfile in [ROOT]/apm.lock.yaml: expected a YAML mapping.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--format",
+   "spdx"
+  ],
+  "files": {
+   "apm.lock.yaml": "- 1\n"
+  },
+  "label": "notMapping",
+  "stdout": "",
+  "stderr": "Error: Invalid lockfile in [ROOT]/apm.lock.yaml: expected a YAML mapping.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-f",
+   "SPDX",
+   "--timestamp",
+   "2024-06-01T05:30:00+05:30"
+  ],
+  "files": {
+   "apm.lock.yaml": "- 1\n"
+  },
+  "label": "notMapping",
+  "stdout": "",
+  "stderr": "Error: Invalid lockfile in [ROOT]/apm.lock.yaml: expected a YAML mapping.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "plugins: [\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "",
+  "stderr": "Error: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\n\nplugins: [\n\n^.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--format",
+   "spdx"
+  ],
+  "files": {
+   "apm.lock.yaml": "plugins: [\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "",
+  "stderr": "Error: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\n\nplugins: [\n\n^.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-f",
+   "SPDX",
+   "--timestamp",
+   "2024-06-01T05:30:00+05:30"
+  ],
+  "files": {
+   "apm.lock.yaml": "plugins: [\n"
+  },
+  "label": "invalidYaml",
+  "stdout": "",
+  "stderr": "Error: Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 1:\n\nplugins: [\n\n^.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\n"
+  },
+  "label": "empty",
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [],\n  \"metadata\": {\n    \"timestamp\": \"1970-01-01T00:00:00+00:00\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--format",
+   "spdx"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\n"
+  },
+  "label": "empty",
+  "stdout": "{\n  \"SPDXID\": \"SPDXRef-DOCUMENT\",\n  \"creationInfo\": {\n    \"created\": \"1970-01-01T00:00:00+00:00\",\n    \"creators\": [\n      \"Tool: ht lock export\"\n    ]\n  },\n  \"dataLicense\": \"CC0-1.0\",\n  \"documentNamespace\": \"https://spdx.org/spdxdocs/harnesstap-sbom-1970-01-01T00:00:00+00:00\",\n  \"name\": \"harnesstap-sbom\",\n  \"packages\": [],\n  \"spdxVersion\": \"SPDX-2.3\"\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-f",
+   "SPDX",
+   "--timestamp",
+   "2024-06-01T05:30:00+05:30"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\n"
+  },
+  "label": "empty",
+  "stdout": "{\n  \"SPDXID\": \"SPDXRef-DOCUMENT\",\n  \"creationInfo\": {\n    \"created\": \"2024-06-01T00:00:00+00:00\",\n    \"creators\": [\n      \"Tool: ht lock export\"\n    ]\n  },\n  \"dataLicense\": \"CC0-1.0\",\n  \"documentNamespace\": \"https://spdx.org/spdxdocs/harnesstap-sbom-2024-06-01T00:00:00+00:00\",\n  \"name\": \"harnesstap-sbom\",\n  \"packages\": [],\n  \"spdxVersion\": \"SPDX-2.3\"\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "stdout": "",
+  "stderr": "Error: No lockfile found at [ROOT]/apm.lock.yaml. Run ht apply or ht install to generate one first.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--project",
+   "sub"
+  ],
+  "files": {
+   "sub/apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--project",
+   "."
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-o",
+   "out/deep/sbom.json"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/out/": null,
+   "[ROOT]/out/deep/": null,
+   "[ROOT]/out/deep/sbom.json": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n"
+  },
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-o",
+   ""
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--project",
+   "..",
+   "--output=../sbom.json"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n",
+   "a/": null
+  },
+  "cwd": "a",
+  "stdout": "",
+  "stderr": "",
+  "code": 0,
+  "changes": {
+   "[ROOT]/sbom.json": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n"
+  },
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-o",
+   "file/x.json"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n",
+   "file": "x"
+  },
+  "stdout": "",
+  "stderr": "Error: EEXIST: file already exists, mkdir '[ROOT]/file'.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--format",
+   "xml"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Unsupported SBOM format: xml. Use cyclonedx or spdx.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--global"
+  ],
+  "stdout": "",
+  "stderr": "Error: No lockfile found at [HOME]/.harnesstap/apm.lock.yaml. Run ht apply or ht install to generate one first.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-g"
+  ],
+  "home": {
+   ".harnesstap/apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-g",
+   "--project",
+   "x"
+  ],
+  "stdout": "",
+  "stderr": "Error: Pass only one of --global or --project.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "-g",
+   "--project",
+   "."
+  ],
+  "home": {
+   ".harnesstap/apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--timestamp",
+   "2024-06-01"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid timestamp \"2024-06-01\". Expected timezone-aware ISO 8601, e.g. 2024-06-01T00:00:00+00:00.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--timestamp",
+   ""
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid timestamp \"\". Expected timezone-aware ISO 8601, e.g. 2024-06-01T00:00:00+00:00.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--timestamp",
+   "2024-13-01T00:00:00Z"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid timestamp \"2024-13-01T00:00:00Z\". Expected timezone-aware ISO 8601, e.g. 2024-06-01T00:00:00+00:00.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--timestamp",
+   "2023-02-30T24:00:00-01:00"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2023-03-03T01:00:00+00:00\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--timestamp",
+   "June 1 2024 +00:00"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid timestamp \"June 1 2024 +00:00\". Expected timezone-aware ISO 8601, e.g. 2024-06-01T00:00:00+00:00.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export",
+   "--timestamp",
+   "garbage"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid timestamp \"garbage\". Expected timezone-aware ISO 8601, e.g. 2024-06-01T00:00:00+00:00.\nht apply\nht install\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "env": {
+   "SOURCE_DATE_EPOCH": "1700000000"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2023-11-14T22:13:20+00:00\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "env": {
+   "SOURCE_DATE_EPOCH": "9e15"
+  },
+  "stdout": "",
+  "stderr": "Error: Invalid time value.\n",
+  "code": 1,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "env": {
+   "SOURCE_DATE_EPOCH": "abc"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ },
+ {
+  "args": [
+   "lock",
+   "export"
+  ],
+  "files": {
+   "apm.lock.yaml": "lockfile_version: \"1\"\ngenerated_at: 2024-05-01T10:00:00Z\nplugins:\n  - name: local-one\n    version: 1.0.0\n    source: local\n    integrity: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n    declared_license: MIT\n  - name: repo\n    version: \"\"\n    source: git\n    repo_url: https://user:tok@github.com/Acme/Repo.git?x=1\n    resolved_commit: abc123\n    declared_license: (MIT OR Apache-2.0)\n  - name: cat\n    version: 2.0.0\n    source: catalog\n    declared_license: Proprietary\n"
+  },
+  "env": {
+   "SOURCE_DATE_EPOCH": "1.5"
+  },
+  "stdout": "{\n  \"bomFormat\": \"CycloneDX\",\n  \"components\": [\n    {\n      \"bom-ref\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"licenses\": [\n        {\n          \"license\": {\n            \"name\": \"Proprietary\"\n          }\n        }\n      ],\n      \"name\": \"cat\",\n      \"purl\": \"pkg:generic/harnesstap/cat@2.0.0\",\n      \"type\": \"library\",\n      \"version\": \"2.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"hashes\": [\n        {\n          \"alg\": \"SHA-256\",\n          \"content\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"license\": {\n            \"id\": \"MIT\"\n          }\n        }\n      ],\n      \"name\": \"local-one\",\n      \"purl\": \"pkg:generic/local-one@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n      \"type\": \"library\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"bom-ref\": \"pkg:github/Acme/Repo@abc123\",\n      \"externalReferences\": [\n        {\n          \"type\": \"distribution\",\n          \"url\": \"https://github.com/Acme/Repo.git\"\n        }\n      ],\n      \"licenses\": [\n        {\n          \"expression\": \"(MIT OR Apache-2.0)\"\n        }\n      ],\n      \"name\": \"Acme/Repo\",\n      \"purl\": \"pkg:github/Acme/Repo@abc123\",\n      \"type\": \"library\",\n      \"version\": \"abc123\"\n    }\n  ],\n  \"metadata\": {\n    \"timestamp\": \"2024-05-01T10:00:00Z\",\n    \"tools\": [\n      {\n        \"name\": \"ht lock export\",\n        \"vendor\": \"HarnessTap\"\n      }\n    ]\n  },\n  \"specVersion\": \"1.5\",\n  \"version\": 1\n}\n",
+  "stderr": "",
+  "code": 0,
+  "changes": {},
+  "rows": null
+ }
+]

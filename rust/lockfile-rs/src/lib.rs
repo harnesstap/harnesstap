@@ -10,6 +10,7 @@
 #![forbid(unsafe_code)]
 
 mod deployed;
+pub mod export;
 mod read;
 mod write;
 
