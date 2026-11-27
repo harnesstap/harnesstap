@@ -36,6 +36,7 @@ impl Host for Sandbox {
     fn profile_names(&mut self) -> ProfileNames {
         ProfileNames::Names(Vec::new())
     }
+    fn telemetry_prologue(&mut self, _: &[String]) {}
 }
 
 fn package_version() -> String {
@@ -93,11 +94,14 @@ fn answers_match_the_original() {
 }
 
 #[test]
-fn colored_or_telemetry_runs_go_to_the_original() {
-    struct Tty;
+fn colored_runs_go_to_the_original_and_answers_run_the_prologue() {
+    #[derive(Default)]
+    struct Tty {
+        prologues: usize,
+    }
     impl Host for Tty {
-        fn var(&self, name: &str) -> Option<String> {
-            (name == "HARNESSTAP_TELEMETRY").then(|| "0".to_string())
+        fn var(&self, _: &str) -> Option<String> {
+            None
         }
         fn stdout_is_tty(&self) -> bool {
             true
@@ -108,42 +112,29 @@ fn colored_or_telemetry_runs_go_to_the_original() {
         fn profile_names(&mut self) -> ProfileNames {
             ProfileNames::Unknown
         }
+        fn telemetry_prologue(&mut self, _: &[String]) {
+            self.prologues += 1;
+        }
     }
     let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-    assert_eq!(
-        cli_rs::run(&mut Tty, "ht", &args(&["--help"]), "1"),
-        Outcome::Original
-    );
-    assert_eq!(
-        cli_rs::run(&mut Tty, "ht", &args(&["plugin", "--help"]), "1"),
-        Outcome::Original
-    );
-    assert_eq!(
-        cli_rs::run(&mut Tty, "ht", &args(&["frobnicate"]), "1"),
-        Outcome::Original
-    );
-    // Errors carry no color, so a TTY does not matter.
+    let mut host = Tty::default();
+    for argv in [&["--help"][..], &["plugin", "--help"], &["frobnicate"]] {
+        assert_eq!(
+            cli_rs::run(&mut host, "ht", &args(argv), "1"),
+            Outcome::Original
+        );
+    }
+    // Root help comes before the prologue in the original; a fallback never runs it.
+    assert_eq!(host.prologues, 0);
+    // Errors carry no color, so a TTY does not matter; they come after the prologue.
     assert!(matches!(
-        cli_rs::run(&mut Tty, "ht", &args(&["plugin", "--bogus"]), "1"),
+        cli_rs::run(&mut host, "ht", &args(&["plugin", "--bogus"]), "1"),
         Outcome::Answer { code: 1, .. }
     ));
-    struct Telemetry;
-    impl Host for Telemetry {
-        fn var(&self, _: &str) -> Option<String> {
-            None
-        }
-        fn stdout_is_tty(&self) -> bool {
-            false
-        }
-        fn stderr_is_tty(&self) -> bool {
-            false
-        }
-        fn profile_names(&mut self) -> ProfileNames {
-            ProfileNames::Names(Vec::new())
-        }
-    }
-    assert_eq!(
-        cli_rs::run(&mut Telemetry, "ht", &args(&["plugin", "--bogus"]), "1"),
-        Outcome::Original
-    );
+    assert_eq!(host.prologues, 1);
+    assert!(matches!(
+        cli_rs::run(&mut host, "ht", &args(&["uninstall"]), "1"),
+        Outcome::Answer { code: 1, .. }
+    ));
+    assert_eq!(host.prologues, 1);
 }

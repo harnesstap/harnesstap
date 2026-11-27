@@ -12,11 +12,11 @@ this file. Load the `rust-anything` skill and its `whole-app.md`
 - Wave 2 has started. `rust/cli-rs` is the CLI front end: the commander 13 parse over the
   original's dumped command tree, root help, `--help` anywhere, a group's own help and every
   commander error, plus the first ported action (`help`). Replay is 564/564 with a
-  fallback rate of 77.8% (439/564), down from 99.8%.
+  fallback rate of 77.5% (437/564), down from 99.8%.
 - Rust actions go in `cli-rs/src/actions/<group>.rs`. An action builds its whole output
-  before any side effect and is printed only when the original would add nothing after it
-  (ADR-018). Until the theme, telemetry and self-update are ported, interactive runs
-  (a TTY, telemetry not switched off) still reach the original.
+  before any side effect; the front door then runs the ported telemetry prologue, prints
+  and runs the ported update notice (ADR-019). Colored output still goes to the original
+  until `src/ui/theme.ts` is ported.
 
 ## Before you run anything
 
@@ -35,9 +35,8 @@ this file. Load the `rust-anything` skill and its `whole-app.md`
 
 ## Next
 
-1. Runtime services that keep interactive runs in Rust: `self-update.ts` (the notice after
-   an action), `src/telemetry/` (notice and startup event), `src/ui/theme.ts` (chalk
-   levels and colors). Then relax the hand-back rules in `cli-rs/src/lib.rs`.
+1. `src/ui/theme.ts` (chalk levels and colors) and the table renderer, so colored help and
+   human output stay in Rust; then drop the color hand-back in `cli-rs/src/lib.rs`.
 2. Command groups whose services are ported: `config`, `lock`, `harness`, `targets`,
    `policy`, `environment`, then `resource` and `plugin`.
 3. Harness writers once `merge-skill-markdown` and `agent-bridge` are ported (the
@@ -48,6 +47,6 @@ this file. Load the `rust-anything` skill and its `whole-app.md`
 - ADR-003: the equivalence bar.
 - ADR-012: on-disk compatibility.
 - ADR-016: network effects.
-- ADR-018: invocation name and the front end's hand-back rules.
+- ADR-018 and ADR-019: invocation name, hand-back rules, telemetry and update notice.
 
 All are in `DECISIONS.md`.

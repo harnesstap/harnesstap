@@ -2,8 +2,8 @@
 //! do before an action runs, with commander 13's parse over the original's command tree
 //! (`data/tree.json`, dumped by `tests/dump-tree.ts`). It answers root help, the
 //! `uninstall` and `version` guards, `--help` on any command, a command group's own help
-//! and every commander error; for anything else (an action, colored help, telemetry that is
-//! not switched off, `--verbose` errors) it says so and the original runs.
+//! and every commander error, plus the actions ported in `actions/`; for anything else
+//! (colored help, errors under `--verbose`) it says so and the original runs.
 
 pub mod actions;
 pub mod commander;
@@ -32,6 +32,9 @@ pub trait Host {
     /// Opens the database (creating and migrating it like `getDb` + `initializeSchema`) and
     /// lists the profile plugin names (`listProfilePluginsCommand`).
     fn profile_names(&mut self) -> ProfileNames;
+    /// `setTelemetryProduct("cli")`, `maybeWarnCliTelemetry` and `trackCliStartup`, run just
+    /// before an answer that comes after them in the original.
+    fn telemetry_prologue(&mut self, args: &[String]);
 }
 
 #[derive(Debug, PartialEq)]
@@ -180,13 +183,6 @@ fn env_truthy(host: &dyn Host, name: &str) -> bool {
     host.var(name).is_some_and(|v| !v.is_empty())
 }
 
-/// `telemetryEnvFlag()` is `false`: no notice, no startup event.
-fn telemetry_off(host: &dyn Host) -> bool {
-    host.var("HARNESSTAP_TELEMETRY")
-        .map(|v| v.trim_matches(is_js_space).to_lowercase())
-        .is_some_and(|v| matches!(v.as_str(), "0" | "false" | "no" | "off"))
-}
-
 /// Root help is plain text: `theme` styles only when `NO_COLOR` is unset and chalk's
 /// `supports-color` level is above 0. `None` when it could be colored.
 fn root_help_is_plain(host: &dyn Host, args: &[String]) -> bool {
@@ -329,10 +325,17 @@ pub fn run(host: &mut dyn Host, program: &str, args: &[String], version: &str) -
         }
         _ => {}
     }
-    if !telemetry_off(host) {
-        return Outcome::Original;
+    // Everything below comes after `maybeWarnCliTelemetry` and `trackCliStartup` in the
+    // original: decide first, then run that prologue only when Rust answers.
+    let outcome = after_prologue(host, args);
+    if outcome != Outcome::Original {
+        host.telemetry_prologue(args);
     }
+    outcome
+}
 
+/// `runHarnesstapCli` from the profile shorthand on: the parse and the action.
+fn after_prologue(host: &mut dyn Host, args: &[String]) -> Outcome {
     let data = tree();
     // rewriteProfileShorthandArgv
     if let Some(index) = first_positional_index(args) {
