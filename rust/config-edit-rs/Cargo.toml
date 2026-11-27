@@ -1,0 +1,16 @@
+[package]
+name = "config-edit-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "The port of src/services/format-preserving-config.ts: JSONC (jsonc-parser) and TOML (smol-toml) edits that keep the file's layout"
+
+[dependencies]
+emit-rs = { path = "../emit-rs" }
+regex = "1"
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip", "unbounded_depth"] }
+toml = { version = "1", default-features = false, features = ["parse", "std", "serde", "preserve_order"] }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
