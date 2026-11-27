@@ -1,0 +1,26 @@
+[package]
+name = "apm-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "Rust port of the apm services in src/services/apm-*.ts"
+
+[dependencies]
+collate-rs = { path = "../collate-rs" }
+db-rs = { path = "../db-rs" }
+emit-rs = { path = "../emit-rs" }
+lockfile-rs = { path = "../lockfile-rs" }
+models-rs = { path = "../models-rs" }
+node-semver-rs = { path = "../node-semver-rs" }
+picomatch-rs = { path = "../picomatch-rs" }
+platforms-rs = { path = "../platforms-rs" }
+resolve-rs = { path = "../resolve-rs" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+sha2 = "0.10"
+url = "2"
+yaml-rs = { path = "../yaml-rs" }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
