@@ -12,7 +12,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+      "id": "01KDVDNA005RSHJTBHX58NHBW9",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -53,7 +53,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -91,7 +91,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNBYGAWECW02S47EX2B9A",
+      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -114,7 +114,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -136,7 +136,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNDX0EQ0527CK11HX2R0C",
+      "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -158,7 +158,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNEW8YKY9D5YV4CQNEB9Y",
+      "id": "01KDVDNEW8J82JTAHKRMX23X1T",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -182,7 +182,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -227,7 +227,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+      "id": "01KDVDNA005RSHJTBHX58NHBW9",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -246,7 +246,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYGAWECW02S47EX2B9A",
+      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -265,7 +265,7 @@
       "alpha@1.0.0"
      ],
      "result": {
-      "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+      "id": "01KDVDNA005RSHJTBHX58NHBW9",
       "name": "alpha",
       "version": "1.0.0",
       "org_slug": "",
@@ -284,7 +284,7 @@
       "alpha@^1.0.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -317,7 +317,7 @@
       "alpha@>=2.0.0-0"
      ],
      "result": {
-      "id": "01KDVDNBYGAWECW02S47EX2B9A",
+      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -336,7 +336,7 @@
       "alpha@latest"
      ],
      "result": {
-      "id": "01KDVDNBYGAWECW02S47EX2B9A",
+      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -355,7 +355,7 @@
       "alpha@ 1.2.0 "
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -409,7 +409,7 @@
       "beta@latest"
      ],
      "result": {
-      "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -428,7 +428,7 @@
       "beta@1.0"
      ],
      "result": {
-      "id": "01KDVDNDX0EQ0527CK11HX2R0C",
+      "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -447,7 +447,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -480,7 +480,7 @@
       "alpha"
      ],
      "result": {
-      "id": "01KDVDNBYGAWECW02S47EX2B9A",
+      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -500,7 +500,7 @@
       "1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -534,7 +534,7 @@
       ""
      ],
      "result": {
-      "id": "01KDVDNBYGAWECW02S47EX2B9A",
+      "id": "01KDVDNBYG063MZPC87QBNZ7CG",
       "name": "alpha",
       "version": "2.0.0-beta.1",
       "org_slug": "",
@@ -566,7 +566,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -599,7 +599,7 @@
       "alpha@1.2.0"
      ],
      "result": {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -639,7 +639,7 @@
       "beta"
      ],
      "result": {
-      "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -658,7 +658,7 @@
       "default"
      ],
      "result": {
-      "id": "01KDVDNEW8YKY9D5YV4CQNEB9Y",
+      "id": "01KDVDNEW8J82JTAHKRMX23X1T",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -690,7 +690,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+       "id": "01KDVDNA005RSHJTBHX58NHBW9",
        "name": "alpha",
        "version": "1.0.0",
        "org_slug": "",
@@ -703,7 +703,7 @@
        "updated_at": "2026-01-01T00:00:00.000Z"
       },
       {
-       "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+       "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -730,7 +730,7 @@
        "updated_at": "2026-01-01T00:00:01.000Z"
       },
       {
-       "id": "01KDVDNBYGAWECW02S47EX2B9A",
+       "id": "01KDVDNBYG063MZPC87QBNZ7CG",
        "name": "alpha",
        "version": "2.0.0-beta.1",
        "org_slug": "",
@@ -743,7 +743,7 @@
        "updated_at": "2026-01-01T00:00:02.000Z"
       },
       {
-       "id": "01KDVDNDX0EQ0527CK11HX2R0C",
+       "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -756,7 +756,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+       "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -769,7 +769,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8YKY9D5YV4CQNEB9Y",
+       "id": "01KDVDNEW8J82JTAHKRMX23X1T",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -981,7 +981,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+      "id": "01KDVDNA005RSHJTBHX58NHBW9",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1060,7 +1060,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+       "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
        "name": "alpha",
        "version": "1.2.0",
        "org_slug": "",
@@ -1087,7 +1087,7 @@
        "updated_at": "2026-01-01T00:00:49.000Z"
       },
       {
-       "id": "01KDVDNDX0EQ0527CK11HX2R0C",
+       "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
        "name": "beta",
        "version": "1.0",
        "org_slug": "",
@@ -1100,7 +1100,7 @@
        "updated_at": "2026-01-01T00:00:04.000Z"
       },
       {
-       "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+       "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
        "name": "beta",
        "version": "latest",
        "org_slug": "",
@@ -1113,7 +1113,7 @@
        "updated_at": "2026-01-01T00:00:03.000Z"
       },
       {
-       "id": "01KDVDNEW8YKY9D5YV4CQNEB9Y",
+       "id": "01KDVDNEW8J82JTAHKRMX23X1T",
        "name": "global default",
        "version": "1.0.0",
        "org_slug": "",
@@ -1126,7 +1126,7 @@
        "updated_at": "2026-01-01T00:00:05.000Z"
       },
       {
-       "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+       "id": "01KDVDNA005RSHJTBHX58NHBW9",
        "name": "renamed",
        "version": "1.0.0",
        "org_slug": "",
@@ -1173,7 +1173,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00ANTGJ1X5Y74H0NR9",
+      "id": "01KDVDNA005RSHJTBHX58NHBW9",
       "name": "renamed",
       "version": "1.0.0",
       "org_slug": "",
@@ -1204,7 +1204,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8CZS1E7FXVAQMY4PZ",
+      "id": "01KDVDNAZ8H2BZHNH3P0GR9SK9",
       "name": "alpha",
       "version": "1.2.0",
       "org_slug": "",
@@ -1235,7 +1235,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNCXRH52FNY8D7M7C35EA",
+      "id": "01KDVDNCXRTAZ8M608VR5Q2B3X",
       "name": "beta",
       "version": "latest",
       "org_slug": "",
@@ -1266,7 +1266,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNDX0EQ0527CK11HX2R0C",
+      "id": "01KDVDNDX0C59X7D2BKWFDJ3QZ",
       "name": "beta",
       "version": "1.0",
       "org_slug": "",
@@ -1297,7 +1297,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNEW8YKY9D5YV4CQNEB9Y",
+      "id": "01KDVDNEW8J82JTAHKRMX23X1T",
       "name": "global default",
       "version": "1.0.0",
       "org_slug": "",
@@ -3700,7 +3700,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3741,7 +3741,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3805,7 +3805,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3854,7 +3854,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3924,7 +3924,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -3984,7 +3984,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4053,7 +4053,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4143,7 +4143,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+       "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4363,7 +4363,7 @@
      "args": [],
      "result": [
       {
-       "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+       "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
        "name": "c",
        "version": "1.0.0",
        "org_slug": "",
@@ -4584,7 +4584,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00YQKGH2JMEYP8WFG0",
+      "id": "01KDVDNA00FNPJQEJJJ8DK3FQ6",
       "name": "c",
       "version": "1.0.0",
       "org_slug": "",
@@ -4907,7 +4907,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -4961,7 +4961,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5028,7 +5028,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5127,7 +5127,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5174,7 +5174,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5220,7 +5220,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5266,7 +5266,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5495,7 +5495,7 @@
     ],
     "plugins": [
      {
-      "id": "01KDVDNA007E7JSB9M5V02HC2B",
+      "id": "01KDVDNA00PF6FMSZX1KE8WC3A",
       "name": "m",
       "version": "1.0.0",
       "org_slug": "",
@@ -5561,7 +5561,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -5624,7 +5624,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+      "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -5811,13 +5811,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+       "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+       "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
        "dependency_name": "dep-two",
        "version_constraint": "latest",
        "order": 1
@@ -5836,13 +5836,13 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+       "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
        "dependency_name": "dep-one",
        "version_constraint": "2.0.0",
        "order": 0
       },
       {
-       "plugin_id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+       "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
        "dependency_name": "dep-three",
        "version_constraint": "latest",
        "order": 1
@@ -5904,7 +5904,7 @@
        }
       },
       {
-       "id": "01KDVDNJS8CV4ZAKKMN6A2PHVT",
+       "id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -5926,7 +5926,7 @@
        }
       },
       {
-       "id": "01KDVDNKRG3TXPC83PDW15F63C",
+       "id": "01KDVDNKRGHGN524TSCC25S4XJ",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -5968,7 +5968,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+        "id": "01KDVDNA00241MHW6X7Z0HD1DF",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6001,7 +6001,7 @@
         "updated_at": "2026-01-01T00:00:00.000Z"
        },
        {
-        "id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+        "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6171,7 +6171,7 @@
      "result": {
       "plugins": [
        {
-        "id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+        "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
         "name": "b",
         "version": "1.0.0",
         "org_slug": "",
@@ -6205,7 +6205,7 @@
         "updated_at": "2026-01-01T00:00:01.000Z"
        },
        {
-        "id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+        "id": "01KDVDNA00241MHW6X7Z0HD1DF",
         "name": "a",
         "version": "1.0.0",
         "org_slug": "",
@@ -6402,7 +6402,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNXH0EFBM40DB65BJDSHJ",
+      "id": "01KDVDNXH0J7F46ET9RD291AQ5",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -6533,7 +6533,7 @@
        }
       },
       {
-       "id": "01KDVDNJS8CV4ZAKKMN6A2PHVT",
+       "id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
        "type": "plugin",
        "name": "dep-one",
        "description": "",
@@ -6555,7 +6555,7 @@
        }
       },
       {
-       "id": "01KDVDNKRG3TXPC83PDW15F63C",
+       "id": "01KDVDNKRGHGN524TSCC25S4XJ",
        "type": "plugin",
        "name": "dep-two",
        "description": "",
@@ -6575,7 +6575,7 @@
        }
       },
       {
-       "id": "01KDVDNNQ0YVS5Q44M0P446CZX",
+       "id": "01KDVDNNQ0M0D9K0WN982GMTQV",
        "type": "plugin",
        "name": "dep-three",
        "description": "",
@@ -6606,7 +6606,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNZFGRE0FMCCNE5SXWGMB",
+      "id": "01KDVDNZFGBEJFZNKQ7C4ZW4J0",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -6636,7 +6636,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6687,7 +6687,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -6738,7 +6738,7 @@
       }
      ],
      "result": {
-      "id": "01KDVDP2D8H3D11R0WMWA7P34K",
+      "id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -6875,7 +6875,7 @@
      ],
      "result": [
       {
-       "plugin_id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+       "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
        "dependency_name": "dep-two",
        "version_constraint": "1.0.0",
        "order": 0
@@ -6916,111 +6916,111 @@
     ],
     "plugin_resources": [
      {
-      "plugin_id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+      "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+      "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
       "resource_id": "R2",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
-      "resource_id": "01KDVDNJS8CV4ZAKKMN6A2PHVT",
+      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+      "resource_id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
-      "resource_id": "01KDVDNNQ0YVS5Q44M0P446CZX",
+      "plugin_id": "01KDVDNAZ8GG3CW2Y032KPN61A",
+      "resource_id": "01KDVDNNQ0M0D9K0WN982GMTQV",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0EFBM40DB65BJDSHJ",
+      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0EFBM40DB65BJDSHJ",
+      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"cursor\"]"
      },
      {
-      "plugin_id": "01KDVDNXH0EFBM40DB65BJDSHJ",
+      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
       "resource_id": "R2",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0EFBM40DB65BJDSHJ",
-      "resource_id": "01KDVDNJS8CV4ZAKKMN6A2PHVT",
+      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "resource_id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0EFBM40DB65BJDSHJ",
-      "resource_id": "01KDVDNKRG3TXPC83PDW15F63C",
+      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "resource_id": "01KDVDNKRGHGN524TSCC25S4XJ",
       "order": 4,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNXH0EFBM40DB65BJDSHJ",
-      "resource_id": "01KDVDNNQ0YVS5Q44M0P446CZX",
+      "plugin_id": "01KDVDNXH0J7F46ET9RD291AQ5",
+      "resource_id": "01KDVDNNQ0M0D9K0WN982GMTQV",
       "order": 5,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8H3D11R0WMWA7P34K",
+      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
       "resource_id": "R1",
       "order": 0,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8H3D11R0WMWA7P34K",
+      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
       "resource_id": "R3",
       "order": 1,
       "harness_scope": "[\"claude\"]"
      },
      {
-      "plugin_id": "01KDVDP2D8H3D11R0WMWA7P34K",
-      "resource_id": "01KDVDNJS8CV4ZAKKMN6A2PHVT",
+      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
+      "resource_id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
       "order": 2,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDP2D8H3D11R0WMWA7P34K",
-      "resource_id": "01KDVDNKRG3TXPC83PDW15F63C",
+      "plugin_id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
+      "resource_id": "01KDVDNKRGHGN524TSCC25S4XJ",
       "order": 3,
       "harness_scope": "all"
      },
      {
-      "plugin_id": "01KDVDNA00WAG6KFQQFXM8KMYC",
-      "resource_id": "01KDVDNKRG3TXPC83PDW15F63C",
+      "plugin_id": "01KDVDNA00241MHW6X7Z0HD1DF",
+      "resource_id": "01KDVDNKRGHGN524TSCC25S4XJ",
       "order": 2,
       "harness_scope": "all"
      }
     ],
     "plugins": [
      {
-      "id": "01KDVDNA00WAG6KFQQFXM8KMYC",
+      "id": "01KDVDNA00241MHW6X7Z0HD1DF",
       "name": "a",
       "version": "1.0.0",
       "org_slug": "",
@@ -7051,7 +7051,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNAZ8M2SVD9VDP8A5B5GV",
+      "id": "01KDVDNAZ8GG3CW2Y032KPN61A",
       "name": "b",
       "version": "1.0.0",
       "org_slug": "",
@@ -7082,7 +7082,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNXH0EFBM40DB65BJDSHJ",
+      "id": "01KDVDNXH0J7F46ET9RD291AQ5",
       "name": "merged",
       "version": "1.0.0",
       "org_slug": "",
@@ -7113,7 +7113,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDNZFGRE0FMCCNE5SXWGMB",
+      "id": "01KDVDNZFGBEJFZNKQ7C4ZW4J0",
       "name": "empty",
       "version": "1.0.0",
       "org_slug": "",
@@ -7144,7 +7144,7 @@
       "upstream_plugin_id": ""
      },
      {
-      "id": "01KDVDP2D8H3D11R0WMWA7P34K",
+      "id": "01KDVDP2D8Y1CQ9PGHB80Y33GN",
       "name": "a-copy",
       "version": "3.0.0",
       "org_slug": "",
@@ -7225,7 +7225,7 @@
       "updated_at": "2026-01-01T00:00:00.000Z"
      },
      {
-      "id": "01KDVDNJS8CV4ZAKKMN6A2PHVT",
+      "id": "01KDVDNJS80QBBTBJ3MEMQ5MJS",
       "type": "plugin",
       "name": "dep-one",
       "description": "",
@@ -7241,7 +7241,7 @@
       "updated_at": "2026-01-01T00:00:11.000Z"
      },
      {
-      "id": "01KDVDNKRG3TXPC83PDW15F63C",
+      "id": "01KDVDNKRGHGN524TSCC25S4XJ",
       "type": "plugin",
       "name": "dep-two",
       "description": "",
@@ -7257,7 +7257,7 @@
       "updated_at": "2026-01-01T00:00:31.000Z"
      },
      {
-      "id": "01KDVDNNQ0YVS5Q44M0P446CZX",
+      "id": "01KDVDNNQ0M0D9K0WN982GMTQV",
       "type": "plugin",
       "name": "dep-three",
       "description": "",
@@ -7271,6 +7271,1951 @@
       "content_blob_ref": "",
       "created_at": "2026-01-01T00:00:12.000Z",
       "updated_at": "2026-01-01T00:00:12.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "name": "versioning",
+   "calls": [
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "v",
+       "version": "1.0.0",
+       "tags": [
+        "t"
+       ],
+       "claude": {
+        "plugins": [
+         {
+          "id": "a@m",
+          "version": "1",
+          "enabled": true
+         }
+        ]
+       },
+       "needs": [
+        "N"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('R1', 'skill', 's1', '{}', 'body of s1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO resources (id, type, name, metadata, content, created_at, updated_at) VALUES ('R2', 'rule', 'r1', '{}', 'body of r1', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "R1"
+     ],
+     "result": null
+    },
+    {
+     "fn": "addResourceToPlugin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "R2",
+      {
+       "kind": "subset",
+       "harnesses": [
+        "claude"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "addDependencyToPlugin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "dep",
+      "^1.0.0"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "INSERT INTO plugin_excludes (plugin_id, entry, created_at) SELECT id, 'skill:x', '2026-01-01T00:00:00.000Z' FROM plugins WHERE name = 'v'"
+     ],
+     "result": null
+    },
+    {
+     "fn": "markPluginDirty",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "markPluginDirty",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "getPluginById",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": true,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:07.000Z"
+     }
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.1.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:10.000Z"
+     }
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.1.0"
+      }
+     ],
+     "error": "New version must differ from current version 1.1.0"
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "bad"
+      }
+     ],
+     "error": "Invalid semver version: bad"
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.0.0"
+      }
+     ],
+     "error": "Plugin v@1.0.0 already exists"
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": "nope",
+       "newVersion": "2.0.0"
+      }
+     ],
+     "error": "Plugin not found: nope"
+    },
+    {
+     "fn": "listPluginVersionHistory",
+     "args": [
+      "v"
+     ],
+     "result": [
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.1.0",
+       "dirty": false,
+       "frozen_at": null,
+       "is_head": true,
+       "updated_at": "2026-01-01T00:00:10.000Z"
+      },
+      {
+       "id": "01KDVDNKRGBNA4FWFKH2EBDT8D",
+       "name": "v",
+       "version": "1.0.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:10.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:00:10.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "getFrozenResolvedSet",
+     "args": [
+      {
+       "$ref": [
+        15,
+        "1.id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "name": "dep",
+       "version": "^1.0.0"
+      }
+     ]
+    },
+    {
+     "fn": "removeResourceFromPlugin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "R1"
+     ],
+     "result": null
+    },
+    {
+     "fn": "markPluginDirty",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "v",
+       "toVersion": "1.0.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": true,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:19.000Z"
+     }
+    },
+    {
+     "fn": "getPluginResources",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": [
+      {
+       "id": "R1",
+       "type": "skill",
+       "name": "s1",
+       "description": "",
+       "content": "body of s1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 0,
+       "harness_scope": {
+        "kind": "all"
+       }
+      },
+      {
+       "id": "R2",
+       "type": "rule",
+       "name": "r1",
+       "description": "",
+       "content": "body of r1",
+       "metadata": {},
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:00.000Z",
+       "order": 1,
+       "harness_scope": {
+        "kind": "subset",
+        "harnesses": [
+         "claude"
+        ]
+       }
+      },
+      {
+       "id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+       "type": "plugin",
+       "name": "dep",
+       "description": "",
+       "content": "",
+       "metadata": {
+        "version_constraint": "^1.0.0"
+       },
+       "source": "manual",
+       "namespace": "",
+       "origin_kind": "manual",
+       "origin_ref": "",
+       "content_hash": "",
+       "content_blob_ref": "",
+       "created_at": "2026-01-01T00:00:05.000Z",
+       "updated_at": "2026-01-01T00:00:05.000Z",
+       "order": 2,
+       "harness_scope": {
+        "kind": "all"
+       }
+      }
+     ]
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "v",
+       "toVersion": "1.1.0"
+      }
+     ],
+     "error": "Plugin v@1.1.0 is not a frozen version of v"
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "nope",
+       "toVersion": "1.0.0"
+      }
+     ],
+     "error": "Plugin not found: nope"
+    },
+    {
+     "fn": "markPluginDirty",
+     "args": [
+      {
+       "$ref": [
+        15,
+        "1.id"
+       ]
+      }
+     ],
+     "error": "Plugin v@1.0.0 is frozen and cannot be marked dirty"
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         15,
+         "1.id"
+        ]
+       },
+       "newVersion": "9.0.0"
+      }
+     ],
+     "error": "Plugin v@1.0.0 is frozen and cannot be cut"
+    },
+    {
+     "fn": "markPluginClean",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "formatPluginVersionLabel",
+     "args": [
+      "1.0.0",
+      true
+     ],
+     "result": "1.0.0*"
+    },
+    {
+     "fn": "formatPluginRollbackConfirmMessage",
+     "args": [
+      {
+       "headVersion": "1.1.0",
+       "frozenVersion": "1.0.0",
+       "dirty": true
+      }
+     ],
+     "result": "Replace unpublished edits on 1.1.0* with version 1.0.0? The working head stays 1.1.0 and is marked dirty. This does not apply the plugin."
+    },
+    {
+     "fn": "formatPluginRollbackConfirmMessage",
+     "args": [
+      {
+       "headVersion": "1.1.0",
+       "frozenVersion": "1.0.0",
+       "dirty": false
+      }
+     ],
+     "result": "Replace the working head 1.1.0 with version 1.0.0? The working head stays 1.1.0 and is marked dirty. This does not apply the plugin."
+    },
+    {
+     "fn": "listPlugins",
+     "args": [],
+     "result": [
+      {
+       "id": "01KDVDNKRGBNA4FWFKH2EBDT8D",
+       "name": "v",
+       "version": "1.0.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "origin": "authored",
+       "description": "",
+       "tags": [
+        "t"
+       ],
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:10.000Z",
+       "claude": {
+        "plugins": [
+         {
+          "id": "a@m",
+          "version": "1",
+          "enabled": true
+         }
+        ]
+       },
+       "needs": [
+        "N"
+       ],
+       "created_at": "2026-01-01T00:00:10.000Z",
+       "updated_at": "2026-01-01T00:00:10.000Z"
+      },
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "origin": "authored",
+       "description": "",
+       "tags": [
+        "t"
+       ],
+       "dirty": false,
+       "claude": {
+        "plugins": [
+         {
+          "id": "a@m",
+          "version": "1",
+          "enabled": true
+         }
+        ]
+       },
+       "needs": [
+        "N"
+       ],
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:19.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "assertPluginsCleanForShare",
+     "args": [
+      {
+       "$ref": [
+        29,
+        ""
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugins SET dirty = 1"
+     ],
+     "result": null
+    },
+    {
+     "fn": "listPlugins",
+     "args": [],
+     "result": [
+      {
+       "id": "01KDVDNKRGBNA4FWFKH2EBDT8D",
+       "name": "v",
+       "version": "1.0.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "origin": "authored",
+       "description": "",
+       "tags": [
+        "t"
+       ],
+       "dirty": true,
+       "frozen_at": "2026-01-01T00:00:10.000Z",
+       "claude": {
+        "plugins": [
+         {
+          "id": "a@m",
+          "version": "1",
+          "enabled": true
+         }
+        ]
+       },
+       "needs": [
+        "N"
+       ],
+       "created_at": "2026-01-01T00:00:10.000Z",
+       "updated_at": "2026-01-01T00:00:10.000Z"
+      },
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.1.0",
+       "org_slug": "",
+       "catalog_slug": "",
+       "origin": "authored",
+       "description": "",
+       "tags": [
+        "t"
+       ],
+       "dirty": true,
+       "claude": {
+        "plugins": [
+         {
+          "id": "a@m",
+          "version": "1",
+          "enabled": true
+         }
+        ]
+       },
+       "needs": [
+        "N"
+       ],
+       "created_at": "2026-01-01T00:00:00.000Z",
+       "updated_at": "2026-01-01T00:00:19.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "assertPluginsCleanForShare",
+     "args": [
+      {
+       "$ref": [
+        32,
+        ""
+       ]
+      }
+     ],
+     "error": "Cannot share plugins with unpublished edits: v@1.0.0, v@1.1.0. Cut a frozen version first (plugin cut <name> --version <semver>)."
+    },
+    {
+     "fn": "__writeConfig",
+     "args": [
+      "// limit\n{\"pluginVersionHistoryLimit\": 3, }"
+     ],
+     "result": null
+    },
+    {
+     "fn": "setPluginUpstream",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "UP"
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.2.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.2.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:36.000Z"
+     }
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.3.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.3.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:37.000Z"
+     }
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "w"
+      }
+     ],
+     "result": {
+      "id": "01KDVDPF3G1GK72DHSHBNE549Q",
+      "name": "w",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:38.000Z",
+      "updated_at": "2026-01-01T00:00:38.000Z"
+     }
+    },
+    {
+     "fn": "addDependencyToPlugin",
+     "args": [
+      {
+       "$ref": [
+        38,
+        "id"
+       ]
+      },
+      "v",
+      "1.1.0"
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.4.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.4.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:40.000Z"
+     }
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.5.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.5.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:41.000Z"
+     }
+    },
+    {
+     "fn": "listPluginVersionHistory",
+     "args": [
+      "v"
+     ],
+     "result": [
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.5.0",
+       "dirty": false,
+       "frozen_at": null,
+       "is_head": true,
+       "updated_at": "2026-01-01T00:00:41.000Z"
+      },
+      {
+       "id": "01KDVDPJ185SB5PW9SVWPQA5BH",
+       "name": "v",
+       "version": "1.4.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:41.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:00:41.000Z"
+      },
+      {
+       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "name": "v",
+       "version": "1.1.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:36.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:00:36.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "createPlugin",
+     "args": [
+      {
+       "name": "broken-x"
+      }
+     ],
+     "result": {
+      "id": "01KDVDPKZRB7RSZJ1PM97X15Z0",
+      "name": "broken-x",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:43.000Z",
+      "updated_at": "2026-01-01T00:00:43.000Z"
+     }
+    },
+    {
+     "fn": "markPluginDirty",
+     "args": [
+      {
+       "$ref": [
+        43,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         43,
+         "id"
+        ]
+       },
+       "newVersion": "2.0.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDPKZRB7RSZJ1PM97X15Z0",
+      "name": "broken-x",
+      "version": "2.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [],
+      "dirty": false,
+      "created_at": "2026-01-01T00:00:43.000Z",
+      "updated_at": "2026-01-01T00:00:45.000Z"
+     }
+    },
+    {
+     "fn": "getFrozenResolvedSet",
+     "args": [
+      "nope"
+     ],
+     "result": []
+    },
+    {
+     "fn": "getPluginOrigin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": "authored"
+    },
+    {
+     "fn": "getPluginOrigin",
+     "args": [
+      "nope"
+     ],
+     "result": "authored"
+    },
+    {
+     "fn": "assertAuthored",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "edit"
+     ],
+     "result": null
+    },
+    {
+     "fn": "assertSyncable",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "error": "v is an authored plugin; there is no upstream to sync from"
+    },
+    {
+     "fn": "assertSyncable",
+     "args": [
+      "nope"
+     ],
+     "error": "nope is an authored plugin; there is no upstream to sync from"
+    },
+    {
+     "fn": "setPluginOrigin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "catalog"
+     ],
+     "result": null
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "v",
+       "toVersion": "1.4.0"
+      }
+     ],
+     "error": "v is a catalog plugin and cannot be edited directly"
+    },
+    {
+     "fn": "assertAuthored",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "publish"
+     ],
+     "error": "v is a catalog plugin and cannot be published directly"
+    },
+    {
+     "fn": "assertSyncable",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "setPluginOrigin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "upstream"
+     ],
+     "result": null
+    },
+    {
+     "fn": "assertAuthored",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "needs"
+     ],
+     "error": "v is an upstream plugin and cannot be given needs"
+    },
+    {
+     "fn": "assertAuthored",
+     "args": [
+      "nope",
+      "cut"
+     ],
+     "result": null
+    },
+    {
+     "fn": "setPluginOrigin",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      },
+      "authored"
+     ],
+     "result": null
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "UPDATE plugin_working_snapshots SET payload = json_remove(payload, '$.excludes')"
+     ],
+     "result": null
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "v",
+       "toVersion": "1.4.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.5.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": true,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:01:01.000Z"
+     }
+    },
+    {
+     "fn": "__exec",
+     "args": [
+      "DELETE FROM plugin_working_snapshots"
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.6.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.6.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:01:03.000Z"
+     }
+    },
+    {
+     "fn": "listPluginVersionHistory",
+     "args": [
+      "v"
+     ],
+     "result": [
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.6.0",
+       "dirty": false,
+       "frozen_at": null,
+       "is_head": true,
+       "updated_at": "2026-01-01T00:01:03.000Z"
+      },
+      {
+       "id": "01KDVDQ7GRWFB4TH2Q9D6423KP",
+       "name": "v",
+       "version": "1.5.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:01:03.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:01:03.000Z"
+      },
+      {
+       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "name": "v",
+       "version": "1.1.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:36.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:00:36.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "listPluginVersionHistory",
+     "args": [
+      "none"
+     ],
+     "result": []
+    },
+    {
+     "fn": "__query",
+     "args": [
+      "SELECT plugin_id, source_version, payload FROM plugin_working_snapshots"
+     ],
+     "result": []
+    },
+    {
+     "fn": "__writeConfig",
+     "args": [
+      "{\"pluginVersionHistoryLimit\": 2}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.7.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.7.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:01:08.000Z"
+     }
+    },
+    {
+     "fn": "listPluginVersionHistory",
+     "args": [
+      "v"
+     ],
+     "result": [
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.7.0",
+       "dirty": false,
+       "frozen_at": null,
+       "is_head": true,
+       "updated_at": "2026-01-01T00:01:08.000Z"
+      },
+      {
+       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "name": "v",
+       "version": "1.1.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:36.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:00:36.000Z"
+      }
+     ]
+    },
+    {
+     "fn": "markPluginClean",
+     "args": [
+      {
+       "$ref": [
+        0,
+        "id"
+       ]
+      }
+     ],
+     "result": null
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "v",
+       "toVersion": "1.1.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.7.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": true,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:01:11.000Z"
+     }
+    },
+    {
+     "fn": "__query",
+     "args": [
+      "SELECT plugin_id, source_version, payload FROM plugin_working_snapshots"
+     ],
+     "result": [
+      [
+       "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "1.7.0",
+       "{\"resource_ids\":[\"R1\",\"R2\",\"01KDVDNEW8QR1GJQZ6Q3QZAXVE\"],\"harness_scopes\":{\"R2\":\"[\\\"claude\\\"]\"},\"description\":\"\",\"tags\":[\"t\"],\"claude_config\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"a@m\\\",\\\"version\\\":\\\"1\\\",\\\"enabled\\\":true}]}\",\"needs_config\":\"[\\\"N\\\"]\",\"default_environment_id\":null,\"source_version\":\"1.7.0\",\"resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}],\"excludes\":[\"skill:x\"]}"
+      ]
+     ]
+    },
+    {
+     "fn": "rollbackPluginVersion",
+     "args": [
+      {
+       "selector": "v",
+       "toVersion": "1.6.0"
+      }
+     ],
+     "error": "Plugin not found: v@1.6.0"
+    },
+    {
+     "fn": "__writeConfig",
+     "args": [
+      "{\"pluginVersionHistoryLimit\": 0.5}"
+     ],
+     "result": null
+    },
+    {
+     "fn": "cutPluginVersion",
+     "args": [
+      {
+       "pluginId": {
+        "$ref": [
+         0,
+         "id"
+        ]
+       },
+       "newVersion": "1.8.0"
+      }
+     ],
+     "result": {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.8.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "origin": "authored",
+      "description": "",
+      "tags": [
+       "t"
+      ],
+      "dirty": false,
+      "claude": {
+       "plugins": [
+        {
+         "id": "a@m",
+         "version": "1",
+         "enabled": true
+        }
+       ]
+      },
+      "needs": [
+       "N"
+      ],
+      "upstream": {
+       "kind": "fork",
+       "ref": "o/c/v@^1.0.0",
+       "version_at_link": "1.0.0"
+      },
+      "upstream_plugin_id": "UP",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:01:15.000Z"
+     }
+    },
+    {
+     "fn": "listPluginVersionHistory",
+     "args": [
+      "v"
+     ],
+     "result": [
+      {
+       "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+       "name": "v",
+       "version": "1.8.0",
+       "dirty": false,
+       "frozen_at": null,
+       "is_head": true,
+       "updated_at": "2026-01-01T00:01:15.000Z"
+      },
+      {
+       "id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+       "name": "v",
+       "version": "1.7.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:01:15.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:01:15.000Z"
+      },
+      {
+       "id": "01KDVDPD50FGQS30N14Z953ZQC",
+       "name": "v",
+       "version": "1.1.0",
+       "dirty": false,
+       "frozen_at": "2026-01-01T00:00:36.000Z",
+       "is_head": false,
+       "updated_at": "2026-01-01T00:00:36.000Z"
+      }
+     ]
+    }
+   ],
+   "dump": {
+    "environments": [
+     {
+      "id": "env1",
+      "name": "one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e1",
+      "name": "e-one",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "e2",
+      "name": "e-two",
+      "description": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     }
+    ],
+    "plugin_excludes": [
+     {
+      "plugin_id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "entry": "skill:x",
+      "created_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "plugin_id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "entry": "skill:x",
+      "created_at": "2026-01-01T00:00:36.000Z"
+     },
+     {
+      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "entry": "skill:x",
+      "created_at": "2026-01-01T00:01:15.000Z"
+     }
+    ],
+    "plugin_resources": [
+     {
+      "plugin_id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "resource_id": "R2",
+      "order": 0,
+      "harness_scope": "[\"claude\"]"
+     },
+     {
+      "plugin_id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "resource_id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "order": 1,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDPF3G1GK72DHSHBNE549Q",
+      "resource_id": "01KDVDPG2RNGPFR8XH079P15TD",
+      "order": 0,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "resource_id": "R2",
+      "order": 0,
+      "harness_scope": "[\"claude\"]"
+     },
+     {
+      "plugin_id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "resource_id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "order": 1,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "resource_id": "R1",
+      "order": 0,
+      "harness_scope": "all"
+     },
+     {
+      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "resource_id": "R2",
+      "order": 1,
+      "harness_scope": "[\"claude\"]"
+     },
+     {
+      "plugin_id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "resource_id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "order": 2,
+      "harness_scope": "all"
+     }
+    ],
+    "plugins": [
+     {
+      "id": "01KDVDNA00EZ2J3M1NTYB85ME3",
+      "name": "v",
+      "version": "1.8.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[\"t\"]",
+      "claude_config": "{\"plugins\":[{\"id\":\"a@m\",\"version\":\"1\",\"enabled\":true}]}",
+      "needs_config": "[\"N\"]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:01:15.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "fork",
+      "upstream_ref": "o/c/v@^1.0.0",
+      "upstream_version_at_link": "1.0.0",
+      "upstream_plugin_id": "UP"
+     },
+     {
+      "id": "01KDVDPD50FGQS30N14Z953ZQC",
+      "name": "v",
+      "version": "1.1.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[\"t\"]",
+      "claude_config": "{\"plugins\":[{\"id\":\"a@m\",\"version\":\"1\",\"enabled\":true}]}",
+      "needs_config": "[\"N\"]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:36.000Z",
+      "updated_at": "2026-01-01T00:00:36.000Z",
+      "dirty": 0,
+      "frozen_at": "2026-01-01T00:00:36.000Z",
+      "overrides": "{\"versions\":{},\"resources\":{},\"frozen_resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}]}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "fork",
+      "upstream_ref": "o/c/v@^1.0.0",
+      "upstream_version_at_link": "1.0.0",
+      "upstream_plugin_id": "UP"
+     },
+     {
+      "id": "01KDVDPF3G1GK72DHSHBNE549Q",
+      "name": "w",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:38.000Z",
+      "updated_at": "2026-01-01T00:00:38.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDPKZRB7RSZJ1PM97X15Z0",
+      "name": "broken-x",
+      "version": "2.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:43.000Z",
+      "updated_at": "2026-01-01T00:00:45.000Z",
+      "dirty": 0,
+      "frozen_at": null,
+      "overrides": "{}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDPNY8XNPKRRYZPYT2HSDT",
+      "name": "broken-x",
+      "version": "1.0.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[]",
+      "claude_config": "{}",
+      "needs_config": "[]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:00:45.000Z",
+      "updated_at": "2026-01-01T00:00:45.000Z",
+      "dirty": 0,
+      "frozen_at": "2026-01-01T00:00:45.000Z",
+      "overrides": "{\"versions\":{},\"resources\":{},\"frozen_resolved_set\":[]}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "",
+      "upstream_ref": "",
+      "upstream_version_at_link": "",
+      "upstream_plugin_id": ""
+     },
+     {
+      "id": "01KDVDQK7RHQZFDJ8YXJZX5HXJ",
+      "name": "v",
+      "version": "1.7.0",
+      "org_slug": "",
+      "catalog_slug": "",
+      "description": "",
+      "tags": "[\"t\"]",
+      "claude_config": "{\"plugins\":[{\"id\":\"a@m\",\"version\":\"1\",\"enabled\":true}]}",
+      "needs_config": "[\"N\"]",
+      "default_environment_id": null,
+      "created_at": "2026-01-01T00:01:15.000Z",
+      "updated_at": "2026-01-01T00:01:15.000Z",
+      "dirty": 0,
+      "frozen_at": "2026-01-01T00:01:15.000Z",
+      "overrides": "{\"versions\":{},\"resources\":{},\"frozen_resolved_set\":[{\"name\":\"dep\",\"version\":\"^1.0.0\"}]}",
+      "origin": "authored",
+      "ap_name": "",
+      "origin_locator": "",
+      "origin_fingerprint": "",
+      "origin_fingerprint_kind": "",
+      "author_json": "",
+      "homepage": "",
+      "repository": "",
+      "license": "",
+      "opaque_extensions": "",
+      "upstream_kind": "fork",
+      "upstream_ref": "o/c/v@^1.0.0",
+      "upstream_version_at_link": "1.0.0",
+      "upstream_plugin_id": "UP"
+     }
+    ],
+    "resources": [
+     {
+      "id": "R1",
+      "type": "skill",
+      "name": "s1",
+      "description": "",
+      "content": "body of s1",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "R2",
+      "type": "rule",
+      "name": "r1",
+      "description": "",
+      "content": "body of r1",
+      "metadata": "{}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+     },
+     {
+      "id": "01KDVDNEW8QR1GJQZ6Q3QZAXVE",
+      "type": "plugin",
+      "name": "dep",
+      "description": "",
+      "content": "",
+      "metadata": "{\"version_constraint\":\"^1.0.0\"}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:05.000Z",
+      "updated_at": "2026-01-01T00:00:05.000Z"
+     },
+     {
+      "id": "01KDVDPG2RNGPFR8XH079P15TD",
+      "type": "plugin",
+      "name": "v",
+      "description": "",
+      "content": "",
+      "metadata": "{\"version_constraint\":\"1.1.0\"}",
+      "source": "manual",
+      "namespace": "",
+      "origin_kind": "manual",
+      "origin_ref": "",
+      "content_hash": "",
+      "content_blob_ref": "",
+      "created_at": "2026-01-01T00:00:39.000Z",
+      "updated_at": "2026-01-01T00:00:39.000Z"
      }
     ]
    }

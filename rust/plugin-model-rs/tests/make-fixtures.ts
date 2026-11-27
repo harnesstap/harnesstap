@@ -20,6 +20,11 @@ import * as extendsSvc from "../../../src/services/plugin-extends.ts";
 import * as pins from "../../../src/services/claude-plugin-pins.ts";
 import * as upstream from "../../../src/services/plugin-upstream.ts";
 import * as names from "../../../src/services/agent-plugins/name.ts";
+import * as versioning from "../../../src/services/plugin-versioning.ts";
+import * as origin from "../../../src/services/plugin-origin.ts";
+import * as resolveIndex from "../../../src/services/resolve/index.ts";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 
 const HOME = "/tmp/ht-plugin-model-fixture";
 const BASE = Date.parse("2026-01-01T00:00:00.000Z");
@@ -55,6 +60,20 @@ spyOn(composition, "ensurePluginResource").mockImplementation(((selector: string
 }) as never);
 spyOn(pins, "claudeConfigFromPluginPins").mockImplementation(((p: Array<{ ref: string; version_constraint: string }>) =>
   p.length === 0 ? undefined : { plugins: p.map((x) => ({ id: x.ref, version: x.version_constraint, enabled: true })) }) as never);
+
+// resolveComposition until services/resolve is ported: the root's plugin-typed
+// attachments at depth 1; a root named broken* does not resolve.
+spyOn(resolveIndex, "resolveComposition").mockImplementation(((input: { rootSelectors: string[] }) => {
+  const root = model.resolvePluginSelector(input.rootSelectors[0]!);
+  if (!root || root.name.startsWith("broken")) throw new Error("unresolvable");
+  return {
+    selected: [
+      { name: root.name, version: root.version, depth: 0 },
+      ...refs(root.id).map((r) => ({ name: r.dependency_name, version: r.version_constraint, depth: 1 })),
+    ],
+  };
+}) as never);
+spyOn(console, "error").mockImplementation(() => {});
 
 const fns: Record<string, (...args: never[]) => unknown> = {
   isFrozenPlugin: model.isFrozenPlugin,
@@ -115,7 +134,25 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   isValidAgentSkillName: names.isValidAgentSkillName,
   slugifyAgentSkillName: names.slugifyAgentSkillName,
   slugifyApName: names.slugifyApName,
+  formatPluginVersionLabel: versioning.formatPluginVersionLabel,
+  listPluginVersionHistory: versioning.listPluginVersionHistory,
+  markPluginClean: versioning.markPluginClean,
+  markPluginDirty: versioning.markPluginDirty,
+  cutPluginVersion: versioning.cutPluginVersion,
+  assertPluginsCleanForShare: versioning.assertPluginsCleanForShare,
+  getFrozenResolvedSet: versioning.getFrozenResolvedSet,
+  formatPluginRollbackConfirmMessage: versioning.formatPluginRollbackConfirmMessage,
+  rollbackPluginVersion: versioning.rollbackPluginVersion,
+  getPluginOrigin: origin.getPluginOrigin,
+  setPluginOrigin: origin.setPluginOrigin,
+  assertAuthored: origin.assertAuthored,
+  assertSyncable: origin.assertSyncable,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
+  __query: ((sql: string) => (getDb().prepare(sql).all() as Record<string, unknown>[]).map((row) => Object.values(row))) as never,
+  __writeConfig: ((text: string) => {
+    mkdirSync(HOME, { recursive: true });
+    writeFileSync(join(HOME, "config.json"), text);
+  }) as never,
 };
 
 /** `{"$ref": [i, "field"]}` is field of result i ("" for the whole result). */
@@ -464,6 +501,88 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
       { fn: "addDependencyToPlugin", args: [ref(0), "dep-two", "1.0.0"] },
       { fn: "listPluginDependencies", args: [ref(0)] },
       { fn: "listPluginDependencies", args: ["none"] },
+    ],
+  },
+  {
+    name: "versioning",
+    ops: [
+      { fn: "createPlugin", args: [{ name: "v", version: "1.0.0", tags: ["t"], claude: { plugins: [{ id: "a@m", version: "1", enabled: true }] }, needs: ["N"] }] },
+      insertResource("R1", "skill", "s1"),
+      insertResource("R2", "rule", "r1"),
+      { fn: "addResourceToPlugin", args: [ref(0), "R1"] },
+      { fn: "addResourceToPlugin", args: [ref(0), "R2", { kind: "subset", harnesses: ["claude"] }] },
+      { fn: "addDependencyToPlugin", args: [ref(0), "dep", "^1.0.0"] },
+      { fn: "__exec", args: [`INSERT INTO plugin_excludes (plugin_id, entry, created_at) SELECT id, 'skill:x', '${T}' FROM plugins WHERE name = 'v'`] },
+      { fn: "markPluginDirty", args: [ref(0)] },
+      { fn: "markPluginDirty", args: [ref(0)] },
+      { fn: "getPluginById", args: [ref(0)] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.1.0" }] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.1.0" }] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "bad" }] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.0.0" }] },
+      { fn: "cutPluginVersion", args: [{ pluginId: "nope", newVersion: "2.0.0" }] },
+      { fn: "listPluginVersionHistory", args: ["v"] },
+      { fn: "getFrozenResolvedSet", args: [ref(15, "1.id")] },
+      { fn: "removeResourceFromPlugin", args: [ref(0), "R1"] },
+      { fn: "markPluginDirty", args: [ref(0)] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "v", toVersion: "1.0.0" }] },
+      { fn: "getPluginResources", args: [ref(0)] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "v", toVersion: "1.1.0" }] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "nope", toVersion: "1.0.0" }] },
+      { fn: "markPluginDirty", args: [ref(15, "1.id")] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(15, "1.id"), newVersion: "9.0.0" }] },
+      { fn: "markPluginClean", args: [ref(0)] },
+      { fn: "formatPluginVersionLabel", args: ["1.0.0", true] },
+      { fn: "formatPluginRollbackConfirmMessage", args: [{ headVersion: "1.1.0", frozenVersion: "1.0.0", dirty: true }] },
+      { fn: "formatPluginRollbackConfirmMessage", args: [{ headVersion: "1.1.0", frozenVersion: "1.0.0", dirty: false }] },
+      { fn: "listPlugins", args: [] },
+      { fn: "assertPluginsCleanForShare", args: [ref(29, "")] },
+      { fn: "__exec", args: ["UPDATE plugins SET dirty = 1"] },
+      { fn: "listPlugins", args: [] },
+      { fn: "assertPluginsCleanForShare", args: [ref(32, "")] },
+      { fn: "__writeConfig", args: ['// limit\n{"pluginVersionHistoryLimit": 3, }'] },
+      { fn: "setPluginUpstream", args: [ref(0), { kind: "fork", ref: "o/c/v@^1.0.0", version_at_link: "1.0.0" }, "UP"] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.2.0" }] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.3.0" }] },
+      { fn: "createPlugin", args: [{ name: "w" }] },
+      { fn: "addDependencyToPlugin", args: [ref(38), "v", "1.1.0"] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.4.0" }] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.5.0" }] },
+      { fn: "listPluginVersionHistory", args: ["v"] },
+      { fn: "createPlugin", args: [{ name: "broken-x" }] },
+      { fn: "markPluginDirty", args: [ref(43)] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(43), newVersion: "2.0.0" }] },
+      { fn: "getFrozenResolvedSet", args: ["nope"] },
+      { fn: "getPluginOrigin", args: [ref(0)] },
+      { fn: "getPluginOrigin", args: ["nope"] },
+      { fn: "assertAuthored", args: [ref(0), "edit"] },
+      { fn: "assertSyncable", args: [ref(0)] },
+      { fn: "assertSyncable", args: ["nope"] },
+      { fn: "setPluginOrigin", args: [ref(0), "catalog"] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "v", toVersion: "1.4.0" }] },
+      { fn: "assertAuthored", args: [ref(0), "publish"] },
+      { fn: "assertSyncable", args: [ref(0)] },
+      { fn: "setPluginOrigin", args: [ref(0), "upstream"] },
+      { fn: "assertAuthored", args: [ref(0), "needs"] },
+      { fn: "assertAuthored", args: ["nope", "cut"] },
+      { fn: "setPluginOrigin", args: [ref(0), "authored"] },
+      { fn: "__exec", args: ["UPDATE plugin_working_snapshots SET payload = json_remove(payload, '$.excludes')"] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "v", toVersion: "1.4.0" }] },
+      { fn: "__exec", args: ["DELETE FROM plugin_working_snapshots"] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.6.0" }] },
+      { fn: "listPluginVersionHistory", args: ["v"] },
+      { fn: "listPluginVersionHistory", args: ["none"] },
+      { fn: "__query", args: ["SELECT plugin_id, source_version, payload FROM plugin_working_snapshots"] },
+      { fn: "__writeConfig", args: ['{"pluginVersionHistoryLimit": 2}'] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.7.0" }] },
+      { fn: "listPluginVersionHistory", args: ["v"] },
+      { fn: "markPluginClean", args: [ref(0)] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "v", toVersion: "1.1.0" }] },
+      { fn: "__query", args: ["SELECT plugin_id, source_version, payload FROM plugin_working_snapshots"] },
+      { fn: "rollbackPluginVersion", args: [{ selector: "v", toVersion: "1.6.0" }] },
+      { fn: "__writeConfig", args: ['{"pluginVersionHistoryLimit": 0.5}'] },
+      { fn: "cutPluginVersion", args: [{ pluginId: ref(0), newVersion: "1.8.0" }] },
+      { fn: "listPluginVersionHistory", args: ["v"] },
     ],
   },
 ];

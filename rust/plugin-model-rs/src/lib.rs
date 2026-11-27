@@ -15,7 +15,9 @@
 //! original's `JSON.parse` rejects is an `Err` here too, with another message.
 
 pub mod name;
+pub mod origin;
 pub mod upstream;
+pub mod versioning;
 
 use harness_scope_rs::js::sort as js_sort;
 use harness_scope_rs::port::{parse_harness_scope, serialize_harness_scope};
@@ -29,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use upstream::{PluginUpstream, UpstreamRow, upstream_from_row};
 
-fn err(e: rusqlite::Error) -> String {
+pub(crate) fn err(e: rusqlite::Error) -> String {
     e.to_string()
 }
 
@@ -216,7 +218,7 @@ fn parse_json(raw: &str, column: &str) -> Result<Value> {
     serde_json::from_str(raw).map_err(|e| format!("{column}: {e}"))
 }
 
-fn stringify(v: &Value) -> String {
+pub(crate) fn stringify(v: &Value) -> String {
     emit_rs::json::stringify(v, "")
 }
 
@@ -232,7 +234,7 @@ fn property<'a>(v: &'a Value, key: &str) -> Result<Option<&'a Value>> {
 // Rows
 
 /// `parseClaudeConfig`.
-fn parse_claude_config(raw: Option<&str>) -> Result<Option<Value>> {
+pub(crate) fn parse_claude_config(raw: Option<&str>) -> Result<Option<Value>> {
     let Some(raw) = raw.filter(|r| !r.is_empty() && *r != "{}") else {
         return Ok(None);
     };
@@ -254,7 +256,7 @@ fn serialize_claude_config(config: Option<&Value>) -> String {
 }
 
 /// `parseNeedsConfig`.
-fn parse_needs_config(raw: Option<&str>) -> Result<Option<Vec<String>>> {
+pub(crate) fn parse_needs_config(raw: Option<&str>) -> Result<Option<Vec<String>>> {
     let Some(raw) = raw.filter(|r| !r.is_empty() && *r != "[]") else {
         return Ok(None);
     };
@@ -291,7 +293,7 @@ fn parse_overrides(raw: Option<&str>) -> Result<Option<Value>> {
 }
 
 /// A column as text: `None` when the column is missing or NULL.
-fn text(row: &Row<'_>, column: &str) -> Option<String> {
+pub(crate) fn text(row: &Row<'_>, column: &str) -> Option<String> {
     match row.get::<_, Sql>(column) {
         Ok(Sql::Text(t)) => Some(t),
         Ok(Sql::Integer(n)) => Some(n.to_string()),
@@ -302,40 +304,40 @@ fn text(row: &Row<'_>, column: &str) -> Option<String> {
     }
 }
 
-fn non_empty(v: Option<String>) -> Option<String> {
+pub(crate) fn non_empty(v: Option<String>) -> Option<String> {
     v.filter(|s| !s.is_empty())
 }
 
 /// The raw columns of a `plugins` row, read before any JSON is parsed.
-struct PluginRow {
-    id: String,
-    name: String,
-    version: String,
-    org_slug: String,
-    catalog_slug: String,
-    origin: Option<String>,
-    description: String,
-    tags: String,
-    claude_config: Option<String>,
-    needs_config: Option<String>,
-    overrides: Option<String>,
-    default_environment_id: Option<String>,
-    ap_name: Option<String>,
-    author_json: Option<String>,
-    homepage: Option<String>,
-    repository: Option<String>,
-    license: Option<String>,
-    origin_locator: Option<String>,
-    origin_fingerprint: Option<String>,
-    origin_fingerprint_kind: Option<String>,
-    upstream: UpstreamRow,
-    dirty: bool,
-    frozen_at: Option<String>,
-    created_at: String,
-    updated_at: String,
+pub(crate) struct PluginRow {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) version: String,
+    pub(crate) org_slug: String,
+    pub(crate) catalog_slug: String,
+    pub(crate) origin: Option<String>,
+    pub(crate) description: String,
+    pub(crate) tags: String,
+    pub(crate) claude_config: Option<String>,
+    pub(crate) needs_config: Option<String>,
+    pub(crate) overrides: Option<String>,
+    pub(crate) default_environment_id: Option<String>,
+    pub(crate) ap_name: Option<String>,
+    pub(crate) author_json: Option<String>,
+    pub(crate) homepage: Option<String>,
+    pub(crate) repository: Option<String>,
+    pub(crate) license: Option<String>,
+    pub(crate) origin_locator: Option<String>,
+    pub(crate) origin_fingerprint: Option<String>,
+    pub(crate) origin_fingerprint_kind: Option<String>,
+    pub(crate) upstream: UpstreamRow,
+    pub(crate) dirty: bool,
+    pub(crate) frozen_at: Option<String>,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
 }
 
-fn read_plugin_row(row: &Row<'_>) -> rusqlite::Result<PluginRow> {
+pub(crate) fn read_plugin_row(row: &Row<'_>) -> rusqlite::Result<PluginRow> {
     let dirty = matches!(row.get::<_, Sql>("dirty"), Ok(Sql::Integer(1)))
         || matches!(row.get::<_, Sql>("dirty"), Ok(Sql::Real(f)) if f == 1.0);
     Ok(PluginRow {
@@ -413,7 +415,11 @@ fn row_to_plugin(row: PluginRow) -> Result<Plugin> {
     })
 }
 
-fn plugin_rows<P: rusqlite::Params>(ctx: &Ctx, sql: &str, params: P) -> Result<Vec<PluginRow>> {
+pub(crate) fn plugin_rows<P: rusqlite::Params>(
+    ctx: &Ctx,
+    sql: &str,
+    params: P,
+) -> Result<Vec<PluginRow>> {
     let mut stmt = ctx.db.conn.prepare_cached(sql).map_err(err)?;
     let rows = stmt.query_map(params, read_plugin_row).map_err(err)?;
     rows.collect::<rusqlite::Result<Vec<_>>>().map_err(err)
@@ -438,15 +444,15 @@ fn max_order(ctx: &Ctx, plugin_id: &str) -> Result<i64> {
         .map_err(err)
 }
 
-fn all_scope() -> Value {
+pub(crate) fn all_scope() -> Value {
     json!({ "kind": "all" })
 }
 
-fn serialize_scope(scope: &Value) -> Result<String> {
+pub(crate) fn serialize_scope(scope: &Value) -> Result<String> {
     serialize_harness_scope(scope.clone())
 }
 
-fn parse_scope(raw: Option<String>) -> Result<Value> {
+pub(crate) fn parse_scope(raw: Option<String>) -> Result<Value> {
     parse_harness_scope(raw.map_or(Value::Null, Value::String))
 }
 
@@ -742,7 +748,7 @@ pub fn stamp_plugin_origin(ctx: &Ctx, plugin_id: &str, input: &StampOrigin) -> R
     Ok(())
 }
 
-fn text_at(row: &Row<'_>, i: usize) -> Option<String> {
+pub(crate) fn text_at(row: &Row<'_>, i: usize) -> Option<String> {
     match row.get::<_, Sql>(i) {
         Ok(Sql::Text(t)) => Some(t),
         _ => None,
@@ -1138,19 +1144,28 @@ pub fn set_plugin_resource_order<S: AsRef<str>>(
     plugin_id: &str,
     resource_ids: &[S],
 ) -> Result<()> {
-    ctx.db.exec("BEGIN")?;
-    let applied = resource_ids.iter().enumerate().try_for_each(|(order, id)| {
-        ctx.db
-            .run(
+    transaction(ctx, || {
+        for (order, id) in resource_ids.iter().enumerate() {
+            ctx.db.run(
                 "UPDATE plugin_resources SET \"order\" = ? WHERE plugin_id = ? AND resource_id = ?",
                 params![order as i64, plugin_id, id.as_ref()],
-            )
-            .map(|_| ())
-    });
-    match applied {
-        Ok(()) => ctx.db.exec("COMMIT"),
+            )?;
+        }
+        Ok(())
+    })
+}
+
+/// `db.transaction(fn)()`: a savepoint, so it nests like better-sqlite3's.
+pub(crate) fn transaction<T>(ctx: &Ctx, f: impl FnOnce() -> Result<T>) -> Result<T> {
+    ctx.db.exec("SAVEPOINT ht_tx")?;
+    match f() {
+        Ok(v) => {
+            ctx.db.exec("RELEASE ht_tx")?;
+            Ok(v)
+        }
         Err(e) => {
-            let _ = ctx.db.exec("ROLLBACK");
+            let _ = ctx.db.exec("ROLLBACK TO ht_tx");
+            let _ = ctx.db.exec("RELEASE ht_tx");
             Err(e)
         }
     }
