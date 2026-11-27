@@ -10,8 +10,10 @@ use models_rs::resource::{Resource, map_resource_row};
 use models_rs::{Clock, Ctx, Ids, Result, iso_from_millis};
 use plugin_model_rs::claude_pins::{self, ClaudeHost, FsClaudeHost};
 use plugin_model_rs::cloud_error::{self, CloudApiError, CloudFailure};
+use plugin_model_rs::composition::{self, AddAttachment, CompositionHost};
 use plugin_model_rs::dependency::{self, AddDependencyOptions};
 use plugin_model_rs::extends;
+use plugin_model_rs::git_constraint;
 use plugin_model_rs::origin::{self, AuthoredCapability};
 use plugin_model_rs::upstream::{self, PluginUpstream, UpstreamRow};
 use plugin_model_rs::versioning::{self, NameVersion, ResolveComposition};
@@ -57,50 +59,60 @@ impl Stand {
     }
 }
 
-impl PluginComposition for Stand {
-    fn attached_plugin_refs(&self, ctx: &Ctx, plugin_id: &str) -> Result<Vec<PluginRefView>> {
-        Stand::refs(ctx, plugin_id)
+thread_local! {
+    static HOST_LOG: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+fn host_log(entry: String) {
+    HOST_LOG.with(|l| l.borrow_mut().push(entry));
+}
+
+impl CompositionHost for Stand {
+    fn marketplace_catalog_warnings(&self, _dir: &str, marketplace: &str) -> Result<Vec<String>> {
+        host_log(format!("warnings:{marketplace}"));
+        Ok(if marketplace == "esc" {
+            vec![
+                composition::escaping_marketplace_source_warning("bad"),
+                composition::escaping_marketplace_source_warning("twin"),
+            ]
+        } else {
+            Vec::new()
+        })
     }
-    fn ensure_plugin_resource(
+    fn catalog_plugin_names(&self, _dir: &str, marketplace: &str) -> Result<Vec<String>> {
+        host_log(format!("list:{marketplace}"));
+        Ok(if marketplace == "esc" {
+            vec!["twin".into(), "other".into()]
+        } else {
+            Vec::new()
+        })
+    }
+    fn install_marketplace_pin_into_cache(
         &self,
-        ctx: &Ctx,
-        selector: &str,
-        version_constraint: Option<&str>,
-    ) -> Result<Resource> {
-        let name = selector.strip_prefix("plugin:").unwrap_or(selector);
-        let metadata = match version_constraint.filter(|v| !v.is_empty()) {
-            Some(v) => json!({ "version_constraint": v }).to_string(),
-            None => "{}".to_owned(),
-        };
-        let now = ctx.clock.now_iso();
-        let existing: Option<String> = ctx
-            .db
-            .conn
-            .query_row(
-                "SELECT id FROM resources WHERE type = 'plugin' AND name = ?",
-                [name],
-                |r| r.get(0),
-            )
-            .ok();
-        match existing {
-            Some(id) => ctx.db.run(
-                "UPDATE resources SET metadata = ?, updated_at = ? WHERE id = ?",
-                [metadata, now, id],
-            )?,
-            None => ctx.db.run(
-                "INSERT INTO resources (id, type, name, metadata, created_at, updated_at) VALUES (?, 'plugin', ?, ?, ?, ?)",
-                [ctx.ids.ulid(), name.to_owned(), metadata, now.clone(), now],
-            )?,
-        };
-        ctx.db
-            .conn
-            .query_row(
-                "SELECT * FROM resources WHERE type = 'plugin' AND name = ?",
-                [name],
-                |r| map_resource_row(ctx, r),
-            )
-            .map_err(|e| e.to_string())
+        origin_ref: &str,
+        version_constraint: &str,
+        home_root: &str,
+    ) -> Result<()> {
+        let is_home = HOME_ROOT.with(|h| *h.borrow() == home_root);
+        host_log(format!(
+            "install:{origin_ref}:{version_constraint}:{is_home}"
+        ));
+        if origin_ref.starts_with("boom") {
+            return Err("network down".into());
+        }
+        Ok(())
     }
+    fn sync_plugin_resource(&self, _ctx: &Ctx, resource: &Resource) -> Result<()> {
+        host_log(format!("sync:{}", resource.name));
+        if resource.name.starts_with("nosync") {
+            return Err(format!("cannot sync {}", resource.name));
+        }
+        Ok(())
+    }
+}
+
+thread_local! {
+    static HOME_ROOT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
 }
 
 impl ResolveComposition for Stand {
@@ -324,12 +336,12 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             Value::Null
         }
         "addDependencyToPlugin" => {
-            add_dependency_to_plugin(ctx, &Stand, s(0), s(1), s(2))?;
+            add_dependency_to_plugin(ctx, s(0), s(1), s(2))?;
             Value::Null
         }
-        "listPluginDependencies" => to_value(list_plugin_dependencies(ctx, &Stand, s(0))?),
+        "listPluginDependencies" => to_value(list_plugin_dependencies(ctx, s(0))?),
         "removeDependencyFromPlugin" => {
-            json!(remove_dependency_from_plugin(ctx, &Stand, s(0), s(1))?)
+            json!(remove_dependency_from_plugin(ctx, s(0), s(1))?)
         }
         "setPluginDefaultEnvironment" => {
             json!(set_plugin_default_environment(ctx, s(0), a[1].as_str())?)
@@ -592,6 +604,144 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             }
             Value::Null
         }
+        "parseGitDependencyConstraint" => to_value(
+            git_constraint::parse_git_dependency_constraint(a[0].as_str())?,
+        ),
+        "isGitRefConstraint" => json!(git_constraint::is_git_ref_constraint(a[0].as_str())),
+        "isValidGitRefName" => json!(git_constraint::is_valid_git_ref_name(s(0))),
+        "isFullCommitSha" => json!(git_constraint::is_full_commit_sha(s(0))),
+        "gitPinFetchRef" => to_value(git_constraint::git_pin_fetch_ref(
+            &git_constraint::parse_git_dependency_constraint(Some(s(0)))?,
+        )),
+        "isCompositionResourceType" => json!(composition::is_composition_resource_type(s(0))),
+        "pluginResourceNamespace" => json!(composition::plugin_resource_namespace(
+            &composition::PluginRefIdentity {
+                name: a[0]["name"].as_str().unwrap().into(),
+                namespace: a[0]["namespace"].as_str().unwrap().into(),
+                origin_ref: a[0]["origin_ref"].as_str().unwrap().into(),
+            },
+            a.get(1).and_then(Value::as_str),
+        )),
+        "formatPluginRef" => {
+            let name = a[0]["$res"].as_str().unwrap();
+            let resource = ctx
+                .db
+                .conn
+                .query_row("SELECT * FROM resources WHERE name = ?", [name], |r| {
+                    map_resource_row(ctx, r)
+                })
+                .unwrap();
+            json!(composition::format_plugin_ref(&resource))
+        }
+        "findPluginResourceByPin" => to_value(composition::find_plugin_resource_by_pin(
+            ctx,
+            s(0),
+            a.get(1).and_then(Value::as_str),
+        )?),
+        "compositionParsePluginRef" => to_value(composition::parse_plugin_ref(s(0))),
+        "ensurePluginResource" => to_value(composition::ensure_plugin_resource(
+            ctx,
+            s(0),
+            o(1, "versionConstraint"),
+            o(1, "portable"),
+        )?),
+        "listAttachedPluginPins" => to_value(composition::list_attached_plugin_pins(ctx, s(0))?),
+        "attachPluginPinToPlugin" => {
+            composition::attach_plugin_pin_to_plugin(
+                ctx,
+                &Stand,
+                s(0),
+                s(1),
+                s(2),
+                a.get(3).is_some_and(|v| v["embedOnExport"] == true),
+                a.get(3).and_then(|v| v["markDirty"].as_bool()),
+            )?;
+            Value::Null
+        }
+        "detachPluginPinFromPlugin" => {
+            composition::detach_plugin_pin_from_plugin(ctx, &Stand, s(0), s(1))?;
+            Value::Null
+        }
+        "listAttachedPluginRefs" => Value::Array(
+            composition::list_attached_plugin_refs(ctx, s(0))?
+                .into_iter()
+                .map(|r| {
+                    json!({
+                        "dependency_name": r.dependency_name,
+                        "version_constraint": r.version_constraint,
+                        "resource": to_value(r.resource),
+                    })
+                })
+                .collect(),
+        ),
+        "attachCompositionResource" => {
+            let resource = ctx
+                .db
+                .conn
+                .query_row("SELECT * FROM resources WHERE id = ?", [s(1)], |r| {
+                    map_resource_row(ctx, r)
+                })
+                .unwrap();
+            composition::attach_composition_resource(ctx, &Stand, s(0), &resource)?;
+            Value::Null
+        }
+        "resolveAttachmentType" => {
+            match composition::resolve_attachment_type(s(0), a.get(1).and_then(Value::as_str)) {
+                Ok(t) => json!(t),
+                Err(e) if e.starts_with("Attachment type required") => {
+                    let hints = composition::attachment_type_required_hints(
+                        s(0),
+                        a.get(2).and_then(|c| c["pluginName"].as_str()),
+                    );
+                    return Err(format!("{e} | {}", hints.join(" | ")));
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        "attachmentTypeRequiredHints" => json!(composition::attachment_type_required_hints(
+            s(0),
+            a.get(1).and_then(Value::as_str),
+        )),
+        "validatePluginAttachmentType" => to_value(composition::validate_plugin_attachment_type(
+            a.first().and_then(Value::as_str),
+        )?),
+        "addPluginAttachment" => {
+            let input = &a[0];
+            let plugin = plugin_arg(ctx, &input["plugin"])?;
+            json!(composition::add_plugin_attachment(
+                ctx,
+                &Stand,
+                &Stand,
+                &plugin,
+                &AddAttachment {
+                    selector: input["selector"].as_str().unwrap(),
+                    resource_type: input["type"].as_str(),
+                    version: input["version"].as_str(),
+                    embed: input["embed"] == true,
+                    sync: input["sync"] == true,
+                },
+            )?)
+        }
+        "removePluginAttachment" => {
+            let input = &a[0];
+            let plugin = plugin_arg(ctx, &input["plugin"])?;
+            let (message, removed) = composition::remove_plugin_attachment(
+                ctx,
+                &Stand,
+                &plugin,
+                input["selector"].as_str().unwrap(),
+                input["type"].as_str(),
+            )?;
+            json!({ "removed": removed, "message": message })
+        }
+        "findMarketplacePluginNameCollision" => to_value(
+            composition::find_marketplace_plugin_name_collision(ctx, s(0))?,
+        ),
+        "assertNoMarketplacePluginNameCollision" => {
+            composition::assert_no_marketplace_plugin_name_collision(ctx, s(0))?;
+            Value::Null
+        }
+        "__hostLog" => json!(HOST_LOG.with(|l| std::mem::take(&mut *l.borrow_mut()))),
         "__writeConfig" => {
             std::fs::write(std::path::Path::new(home).join("config.json"), s(0)).unwrap();
             Value::Null
@@ -686,6 +836,8 @@ fn plugin_model_matches_the_original() {
         ));
         std::fs::create_dir_all(&home_dir).unwrap();
         let home = home_dir.to_string_lossy().into_owned();
+        HOME_ROOT.with(|h| *h.borrow_mut() = home.clone());
+        HOST_LOG.with(|l| l.borrow_mut().clear());
         let env = {
             let home = home.clone();
             move |k: &str| matches!(k, "HARNESSTAP_HOME" | "HOME").then(|| home.clone())
