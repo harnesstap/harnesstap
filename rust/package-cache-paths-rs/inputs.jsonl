@@ -1,0 +1,522 @@
+{"fn": "packagesCacheRoot", "args": ["/home/u/.harnesstap"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "claude-plugins-official", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "claude-plugins-official", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "claude-plugins-official", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "a/b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "a/b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "a/b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "a\\b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "a\\b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "a\\b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "..", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "..", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/home/u/.harnesstap", "..", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/home/u/.harnesstap", "..", "../escape", "abc/def"]}
+{"fn": "packagesCacheRoot", "args": [""]}
+{"fn": "hostPluginPackagesParent", "args": ["", "claude-plugins-official", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["", "claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "claude-plugins-official", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["", "claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "claude-plugins-official", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["", "claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "a/b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["", "a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "a/b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["", "a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "a/b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["", "a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "a\\b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["", "a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "a\\b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["", "a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "a\\b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["", "a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "..", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["", "..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "..", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["", "..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["", "..", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["", "..", "../escape", "abc/def"]}
+{"fn": "packagesCacheRoot", "args": ["relative/home"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "claude-plugins-official", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "claude-plugins-official", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "claude-plugins-official", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "a/b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "a/b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "a/b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "a\\b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "a\\b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "a\\b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "..", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "..", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["relative/home", "..", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["relative/home", "..", "../escape", "abc/def"]}
+{"fn": "packagesCacheRoot", "args": ["/h/../x/./y/"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "claude-plugins-official", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "claude-plugins-official", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "claude-plugins-official", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "a/b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "a/b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "a/b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "a\\b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "a\\b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "a\\b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "..", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "..", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/h/../x/./y/", "..", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/h/../x/./y/", "..", "../escape", "abc/def"]}
+{"fn": "packagesCacheRoot", "args": ["C:\\Users\\u\\.harnesstap"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "claude-plugins-official", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "claude-plugins-official", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "claude-plugins-official", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "a/b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "a/b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "a/b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "a\\b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "a\\b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "a\\b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "..", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "..", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["C:\\Users\\u\\.harnesstap", "..", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "..", "../escape", "abc/def"]}
+{"fn": "packagesCacheRoot", "args": ["/"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "claude-plugins-official", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "claude-plugins-official", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "claude-plugins-official", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "a/b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "a/b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "a/b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "a\\b", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "a\\b", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "a\\b", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "..", "plugin"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "..", "p/q"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackagesParent", "args": ["/", "..", "../escape"]}
+{"fn": "hostPluginPackageDir", "args": ["/", "..", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["claude-plugins-official", "\u03a3\u0391\u03a3", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a/b", "\u03a3\u0391\u03a3", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["a\\b", "\u03a3\u0391\u03a3", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["..", "\u03a3\u0391\u03a3", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["", "\u03a3\u0391\u03a3", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": [".", "\u03a3\u0391\u03a3", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "plugin", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "plugin", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "plugin", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "plugin", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "p/q", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "p/q", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "p/q", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "p/q", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "../escape", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "../escape", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "../escape", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "../escape", ""]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "\u03a3\u0391\u03a3", "1.0.0"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "\u03a3\u0391\u03a3", "abc/def"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "\u03a3\u0391\u03a3", "1.0.0\\x"]}
+{"fn": "hostPluginPackageRelativePath", "args": ["x/../../y", "\u03a3\u0391\u03a3", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "", ""]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "git@github.com:a/b", ""]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "git@github.com:a/b", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageDir", "args": ["/home/u/.harnesstap", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageDir", "args": ["", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["", "", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["", "", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["", "", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "", ""]}
+{"fn": "apmGitPackageDir", "args": ["", "", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "git@github.com:a/b", ""]}
+{"fn": "apmGitPackageDir", "args": ["", "git@github.com:a/b", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageDir", "args": ["", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "", ""]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "git@github.com:a/b", ""]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "git@github.com:a/b", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageDir", "args": ["relative/home", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "", ""]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "git@github.com:a/b", ""]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "git@github.com:a/b", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageDir", "args": ["/h/../x/./y/", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "", ""]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", ""]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "git@github.com:a/b", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageDir", "args": ["C:\\Users\\u\\.harnesstap", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://github.com/a/b.git", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/", "", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/", "", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/", "", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/", "", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "", ""]}
+{"fn": "apmGitPackageDir", "args": ["/", "", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/", "git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/", "git@github.com:a/b", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/", "git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/", "git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "git@github.com:a/b", ""]}
+{"fn": "apmGitPackageDir", "args": ["/", "git@github.com:a/b", ""]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitLegacyPackagePaths", "args": ["/", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageDir", "args": ["/", "https://\u4f8b\u3048.jp/r", ""]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://github.com/a/b.git", "ABCDEF0123"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://github.com/a/b.git", "abc"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://github.com/a/b.git", "\u0130STANBUL"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://github.com/a/b.git", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://github.com/a/b.git", ""]}
+{"fn": "apmGitPackageRelativePath", "args": ["", "ABCDEF0123"]}
+{"fn": "apmGitPackageRelativePath", "args": ["", "abc"]}
+{"fn": "apmGitPackageRelativePath", "args": ["", "\u0130STANBUL"]}
+{"fn": "apmGitPackageRelativePath", "args": ["", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageRelativePath", "args": ["", ""]}
+{"fn": "apmGitPackageRelativePath", "args": ["git@github.com:a/b", "ABCDEF0123"]}
+{"fn": "apmGitPackageRelativePath", "args": ["git@github.com:a/b", "abc"]}
+{"fn": "apmGitPackageRelativePath", "args": ["git@github.com:a/b", "\u0130STANBUL"]}
+{"fn": "apmGitPackageRelativePath", "args": ["git@github.com:a/b", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageRelativePath", "args": ["git@github.com:a/b", ""]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://\u4f8b\u3048.jp/r", "ABCDEF0123"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://\u4f8b\u3048.jp/r", "abc"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://\u4f8b\u3048.jp/r", "\u0130STANBUL"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://\u4f8b\u3048.jp/r", "\u03a3\u0391\u03a3"]}
+{"fn": "apmGitPackageRelativePath", "args": ["https://\u4f8b\u3048.jp/r", ""]}

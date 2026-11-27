@@ -1,0 +1,210 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "src/services/package-cache/paths.ts",
+  "language": "ts",
+  "kind": "napi",
+  "crate_name": "package-cache-paths-rs",
+  "exports": [
+    {
+      "name": "packagesCacheRoot",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 6,
+      "params": [
+        {
+          "name": "harnesstapDir",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "hostPluginPackagesParent",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 10,
+      "params": [
+        {
+          "name": "harnesstapDir",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "marketplace",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "pluginName",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "hostPluginPackageDir",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 20,
+      "params": [
+        {
+          "name": "harnesstapDir",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "marketplace",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "pluginName",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "version",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "hostPluginPackageRelativePath",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 39,
+      "params": [
+        {
+          "name": "marketplace",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "pluginName",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "version",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "apmGitLegacyPackagePaths",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 57,
+      "params": [
+        {
+          "name": "harnesstapDir",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "repoUrl",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "commit",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "apmGitPackageDir",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 71,
+      "params": [
+        {
+          "name": "harnesstapDir",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "repoUrl",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "commit",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "apmGitPackageRelativePath",
+      "file": "src/services/package-cache/paths.ts",
+      "line": 85,
+      "params": [
+        {
+          "name": "repoUrl",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "commit",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}
