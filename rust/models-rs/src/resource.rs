@@ -150,6 +150,12 @@ pub(crate) fn read_row(row: &Row<'_>) -> rusqlite::Result<RawRow> {
     })
 }
 
+/// `mapResourceRow` on a row of `resources` columns (extra columns are
+/// ignored; callers that select more read them from the row themselves).
+pub fn map_resource_row(ctx: &Ctx, row: &Row<'_>) -> rusqlite::Result<Resource> {
+    Ok(hydrate(ctx, read_row(row)?))
+}
+
 /// `mapResourceRow`: overflow content comes back from the blob store.
 pub(crate) fn hydrate(ctx: &Ctx, raw: RawRow) -> Resource {
     let mut resource = raw.resource;

@@ -1,0 +1,25 @@
+[package]
+name = "plugin-model-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "The port of src/models/plugin-model.ts and the small services it needs, on models-rs"
+
+[dependencies]
+db-rs = { path = "../db-rs" }
+emit-rs = { path = "../emit-rs" }
+harness-scope-rs = { path = "../harness-scope-rs" }
+models-rs = { path = "../models-rs" }
+node-semver-rs = { path = "../node-semver-rs" }
+resolve-rs = { path = "../resolve-rs" }
+regex = "1"
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip", "unbounded_depth"] }
+
+[dev-dependencies]
+ulid = "1"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
