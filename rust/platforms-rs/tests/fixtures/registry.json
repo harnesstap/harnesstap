@@ -1,0 +1,1230 @@
+{
+  "platforms": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp",
+        "permissions",
+        "hooks",
+        "agents",
+        "commands",
+        "env_vars",
+        "model_config"
+      ],
+      "projectPaths": {
+        "instructions": "CLAUDE.md",
+        "skills": ".claude/skills/",
+        "rules": ".claude/rules/",
+        "mcp": ".mcp.json",
+        "permissions": ".claude/settings.json",
+        "hooks": ".claude/settings.json",
+        "agents": ".claude/agents/",
+        "commands": ".claude/commands/",
+        "settings": ".claude/settings.json"
+      },
+      "globalPaths": {
+        "instructions": "~/.claude/CLAUDE.md",
+        "skills": "~/.claude/skills/",
+        "rules": "~/.claude/rules/",
+        "mcp": "~/.claude.json",
+        "agents": "~/.claude/agents/",
+        "commands": "~/.claude/commands/",
+        "settings": "~/.claude/settings.json",
+        "plugins": "~/.claude/plugins/"
+      },
+      "hostPluginRuntimeModules": true
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp",
+        "permissions",
+        "hooks",
+        "agents",
+        "commands",
+        "env_vars",
+        "model_config"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "mcp": ".codex/config.toml",
+        "permissions": ".codex/config.toml",
+        "hooks": ".codex/hooks.json",
+        "agents": ".codex/agents/",
+        "commands": ".codex/prompts/",
+        "settings": ".codex/config.toml"
+      },
+      "globalPaths": {
+        "instructions": "~/.codex/AGENTS.md",
+        "skills": "~/.agents/skills/",
+        "settings": "~/.codex/config.toml",
+        "agents": "~/.codex/agents/",
+        "commands": "~/.codex/prompts/"
+      }
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp",
+        "agents",
+        "hooks"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "legacy_instructions": ".cursorrules",
+        "rules": ".cursor/rules/",
+        "skills": ".agents/skills/",
+        "mcp": ".cursor/mcp.json",
+        "agents": ".cursor/agents/",
+        "hooks": ".cursor/hooks.json"
+      },
+      "globalPaths": {
+        "rules": "~/.cursor/rules/",
+        "skills": "~/.cursor/skills/",
+        "settings": "~/.cursor/mcp.json",
+        "agents": "~/.cursor/agents/",
+        "hooks": "~/.cursor/hooks.json",
+        "plugins": "~/.cursor/plugins/"
+      },
+      "hostManagedPaths": {
+        "skills": "~/.cursor/skills-cursor/"
+      },
+      "relatedLocations": [
+        {
+          "path": "~/.claude/plugins/",
+          "surfaces": [
+            "plugins"
+          ]
+        },
+        {
+          "path": "~/.claude/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "warp",
+      "name": "Warp",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.agents/skills/"
+      },
+      "detectionPaths": {
+        "project": [
+          ".warp/"
+        ],
+        "global": [
+          "~/.warp"
+        ]
+      }
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp",
+        "agents",
+        "commands"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".opencode/skills/",
+        "agents": ".opencode/agents/",
+        "commands": ".opencode/commands/",
+        "pathAlternates": {
+          "commands": [
+            ".opencode/command/"
+          ],
+          "agents": [
+            ".opencode/agent/"
+          ],
+          "skills": [
+            ".agents/skills/"
+          ]
+        },
+        "mcp": "opencode.json"
+      },
+      "globalPaths": {
+        "skills": "~/.config/opencode/skills/",
+        "agents": "~/.config/opencode/agents/",
+        "commands": "~/.config/opencode/commands/",
+        "settings": "~/.config/opencode/opencode.json",
+        "pathAlternates": {
+          "commands": [
+            "~/.config/opencode/command/"
+          ],
+          "agents": [
+            "~/.config/opencode/agent/"
+          ]
+        }
+      },
+      "relatedLocations": [
+        {
+          "path": "~/.agents/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        },
+        {
+          "path": "~/.claude/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        },
+        {
+          "path": "~/.agents/AGENTS.md",
+          "surfaces": [
+            "instructions"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "github-copilot",
+      "name": "GitHub Copilot",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp",
+        "agents"
+      ],
+      "projectPaths": {
+        "instructions": ".github/copilot-instructions.md",
+        "rules": ".github/instructions/",
+        "skills": ".agents/skills/",
+        "agents": ".github/agents/",
+        "mcp": ".mcp.json"
+      },
+      "globalPaths": {
+        "skills": "~/.copilot/skills/",
+        "settings": "~/.copilot/mcp-config.json"
+      },
+      "skillEmission": "instruction-only"
+    },
+    {
+      "id": "copilot-cli",
+      "name": "Copilot CLI",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp",
+        "agents"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "mcp": ".mcp.json",
+        "agents": ".github/agents/"
+      },
+      "globalPaths": {
+        "skills": "~/.copilot/skills/",
+        "settings": "~/.copilot/mcp-config.json",
+        "plugins": "~/.copilot/installed-plugins/",
+        "pathAlternates": {
+          "settings": [
+            "~/.copilot/settings.json"
+          ]
+        }
+      }
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "supports": [
+        "instructions",
+        "skills",
+        "commands",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "commands": "commands/",
+        "settings": "gemini-extension.json",
+        "mcp": ".gemini/settings.json"
+      },
+      "globalPaths": {
+        "skills": "~/.gemini/skills/",
+        "settings": "~/.gemini/settings.json"
+      },
+      "skillEmission": "instruction-only"
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": ".windsurfrules",
+        "rules": ".devin/rules/",
+        "legacy_rules": ".windsurf/rules/",
+        "skills": ".agents/skills/",
+        "mcp": ".devin/mcp_config.json",
+        "pathAlternates": {
+          "rules": [
+            ".windsurf/rules/"
+          ],
+          "skills": [
+            ".devin/skills/",
+            ".windsurf/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "skills": "~/.agents/skills/",
+        "rules": "~/.devin/rules/",
+        "mcp": "~/.config/devin/mcp_config.json",
+        "settings": "~/.codeium/windsurf/mcp_config.json",
+        "pathAlternates": {
+          "skills": [
+            "~/.config/devin/skills/",
+            "~/.codeium/windsurf/skills/"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "rules": ".clinerules/",
+        "legacy_rules": ".clinerules",
+        "skills": ".agents/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.agents/skills/",
+        "settings": "~/.cline/data/settings/cline_mcp_settings.json"
+      },
+      "skillEmission": "instruction-only"
+    },
+    {
+      "id": "roo",
+      "name": "Roo Code",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "rules": ".roo/rules/",
+        "skills": ".roo/skills/",
+        "mcp": ".roo/mcp.json"
+      },
+      "globalPaths": {
+        "skills": "~/.roo/skills/",
+        "settings": "~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json"
+      }
+    },
+    {
+      "id": "continue",
+      "name": "Continue",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".continue/skills/",
+        "mcp": ".continue/mcp.json"
+      },
+      "globalPaths": {
+        "skills": "~/.continue/skills/"
+      }
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp",
+        "hooks",
+        "commands"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "commands": "recipes/",
+        "mcp": ".config/goose/config.yaml",
+        "pathAlternates": {
+          "instructions": [
+            ".goosehints"
+          ],
+          "skills": [
+            ".goose/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "instructions": "~/.config/goose/.goosehints",
+        "skills": "~/.agents/skills/",
+        "settings": "~/.config/goose/config.yaml",
+        "plugins": "~/.agents/plugins/"
+      }
+    },
+    {
+      "id": "trae",
+      "name": "Trae",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "rules": ".traerules",
+        "skills": ".trae/skills/",
+        "mcp": ".trae/mcp.json"
+      },
+      "globalPaths": {
+        "skills": "~/.trae/skills/"
+      }
+    },
+    {
+      "id": "openhands",
+      "name": "OpenHands",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".openhands/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.openhands/skills/",
+        "settings": "~/.openhands/mcp.json"
+      }
+    },
+    {
+      "id": "kiro",
+      "name": "Kiro",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp",
+        "hooks"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "rules": ".kiro/steering/",
+        "skills": ".kiro/skills/",
+        "mcp": ".kiro/settings/mcp.json",
+        "hooks": ".kiro/hooks/",
+        "pathAlternates": {
+          "skills": [
+            ".agents/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "skills": "~/.kiro/skills/",
+        "settings": "~/.kiro/settings/mcp.json",
+        "hooks": "~/.kiro/hooks/"
+      }
+    },
+    {
+      "id": "pi",
+      "name": "Pi",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/"
+      },
+      "globalPaths": {}
+    },
+    {
+      "id": "antigravity",
+      "name": "Antigravity",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp",
+        "commands"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "rules": ".agents/rules/",
+        "skills": ".agents/skills/",
+        "commands": ".agents/skills/",
+        "mcp": ".agents/mcp_config.json",
+        "pathAlternates": {
+          "instructions": [
+            "GEMINI.md"
+          ],
+          "commands": [
+            ".agents/workflows/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "instructions": "~/.gemini/GEMINI.md",
+        "skills": "~/.gemini/skills/",
+        "commands": "~/.gemini/skills/",
+        "pathAlternates": {
+          "commands": [
+            "~/.gemini/config/global_workflows/",
+            "~/.gemini/config/workflows/"
+          ]
+        },
+        "settings": "~/.gemini/config/mcp_config.json"
+      }
+    },
+    {
+      "id": "amazon-q",
+      "name": "Amazon Q Developer",
+      "supports": [
+        "instructions",
+        "rules",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AmazonQ.md",
+        "rules": ".amazonq/rules/",
+        "mcp": ".amazonq/mcp.json",
+        "pathAlternates": {
+          "instructions": [
+            "AGENTS.md"
+          ]
+        }
+      },
+      "globalPaths": {
+        "settings": "~/.aws/amazonq/mcp.json"
+      }
+    },
+    {
+      "id": "aider",
+      "name": "Aider",
+      "supports": [
+        "instructions"
+      ],
+      "projectPaths": {
+        "instructions": "CONVENTIONS.md",
+        "settings": ".aider.conf.yml",
+        "pathAlternates": {
+          "instructions": [
+            "AGENTS.md"
+          ]
+        }
+      },
+      "globalPaths": {
+        "settings": "~/.aider.conf.yml"
+      }
+    },
+    {
+      "id": "zed",
+      "name": "Zed",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "mcp": ".zed/settings.json",
+        "pathAlternates": {
+          "instructions": [
+            ".rules"
+          ]
+        }
+      },
+      "globalPaths": {
+        "instructions": "~/.config/zed/AGENTS.md",
+        "skills": "~/.agents/skills/",
+        "settings": "~/.config/zed/settings.json"
+      }
+    },
+    {
+      "id": "devin",
+      "name": "Devin",
+      "supports": [
+        "instructions",
+        "skills",
+        "rules",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "rules": ".devin/rules/",
+        "mcp": ".devin/mcp_config.json",
+        "settings": ".devin/config.json",
+        "pathAlternates": {
+          "instructions": [
+            "AGENTS.local.md",
+            "AGENT.md"
+          ],
+          "skills": [
+            ".devin/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "instructions": "~/.config/devin/AGENTS.md",
+        "skills": "~/.agents/skills/",
+        "rules": "~/.devin/rules/",
+        "mcp": "~/.config/devin/mcp_config.json",
+        "settings": "~/.config/devin/config.json"
+      }
+    },
+    {
+      "id": "jules",
+      "name": "Jules",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "pathAlternates": {
+          "instructions": [
+            "JULES.md"
+          ]
+        }
+      },
+      "globalPaths": {
+        "skills": "~/.agents/skills/"
+      },
+      "detectionPaths": {
+        "project": [
+          "JULES.md"
+        ],
+        "global": [
+          "~/.jules",
+          "~/JULES.md"
+        ]
+      }
+    },
+    {
+      "id": "cody",
+      "name": "Sourcegraph Cody",
+      "supports": [
+        "instructions",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "settings": "cody.json"
+      },
+      "globalPaths": {
+        "settings": "~/.config/sourcegraph/cody.json"
+      }
+    },
+    {
+      "id": "grok-build",
+      "name": "Grok Build",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp",
+        "permissions",
+        "hooks",
+        "agents",
+        "commands",
+        "model_config"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".grok/skills/",
+        "agents": ".grok/agents/",
+        "hooks": ".grok/hooks/",
+        "commands": ".agents/commands/",
+        "mcp": ".grok/config.toml",
+        "permissions": ".grok/config.toml",
+        "settings": ".grok/config.toml",
+        "pathAlternates": {
+          "instructions": [
+            "AGENT.md",
+            "Agents.md"
+          ],
+          "skills": [
+            ".agents/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "skills": "~/.grok/skills/",
+        "agents": "~/.grok/agents/",
+        "hooks": "~/.grok/hooks/",
+        "commands": "~/.agents/commands/",
+        "settings": "~/.grok/config.toml",
+        "pathAlternates": {
+          "skills": [
+            "~/.agents/skills/"
+          ]
+        }
+      },
+      "relatedLocations": [
+        {
+          "path": "~/.claude/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "deepseek-harness",
+      "name": "DeepSeek Harness",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp",
+        "permissions",
+        "hooks",
+        "agents",
+        "model_config"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".dsh/skills/",
+        "hooks": ".dsh/hooks/",
+        "pathAlternates": {
+          "skills": [
+            ".agents/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "instructions": "~/.dsh/AGENTS.md",
+        "skills": "~/.dsh/skills/",
+        "hooks": "~/.dsh/hooks/",
+        "mcp": "~/.dsh/cordis.patch.yml",
+        "settings": "~/.dsh/settings.yaml",
+        "agents": "~/.dsh/.agent-presets/",
+        "plugins": "~/.dsh/profiles/web/"
+      }
+    },
+    {
+      "id": "muse-code",
+      "name": "Muse Code",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp",
+        "hooks"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/",
+        "hooks": ".muse/hooks.json"
+      },
+      "globalPaths": {
+        "settings": "~/.config/muse/settings.json",
+        "mcp": "~/.config/muse/settings.json",
+        "skills": "~/.config/muse/skills/",
+        "pathAlternates": {
+          "settings": [
+            "~/.config/muse/"
+          ]
+        }
+      },
+      "relatedLocations": [
+        {
+          "path": "~/.agents/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        },
+        {
+          "path": "~/.claude/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        },
+        {
+          "path": "~/.codex/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "minimax-code",
+      "name": "MiniMax Code",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".minimax/skills/",
+        "plugins": ".minimax-plugin/",
+        "pathAlternates": {
+          "skills": [
+            ".agents/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "settings": "~/.minimax/config.yaml",
+        "mcp": "~/.minimax/mcp.json",
+        "skills": "~/.minimax/skills/",
+        "plugins": "~/.minimax/plugins/",
+        "pathAlternates": {
+          "settings": [
+            "~/.minimax/",
+            "~/.mavis/"
+          ]
+        }
+      },
+      "relatedLocations": [
+        {
+          "path": "~/.agents/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        },
+        {
+          "path": "~/.claude/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        },
+        {
+          "path": "~/.codex/skills/",
+          "surfaces": [
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "amp",
+      "name": "Amp",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.config/agents/skills/"
+      }
+    },
+    {
+      "id": "kilo",
+      "name": "Kilo Code",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".kilo/skills/",
+        "pathAlternates": {
+          "skills": [
+            ".kilocode/skills/"
+          ]
+        }
+      },
+      "globalPaths": {
+        "skills": "~/.kilo/skills/",
+        "pathAlternates": {
+          "skills": [
+            "~/.kilocode/skills/"
+          ]
+        }
+      }
+    },
+    {
+      "id": "augment",
+      "name": "Augment",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".augment/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.augment/skills/"
+      }
+    },
+    {
+      "id": "firebender",
+      "name": "Firebender",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.firebender/skills/"
+      }
+    },
+    {
+      "id": "junie",
+      "name": "Junie",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".junie/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.junie/skills/"
+      }
+    },
+    {
+      "id": "zencoder",
+      "name": "Zencoder",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".zencoder/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.zencoder/skills/"
+      }
+    },
+    {
+      "id": "deepagents",
+      "name": "Deep Agents",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".agents/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.deepagents/agent/skills/"
+      }
+    },
+    {
+      "id": "qwen-code",
+      "name": "Qwen Code",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".qwen/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.qwen/skills/"
+      }
+    },
+    {
+      "id": "crush",
+      "name": "Crush",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".crush/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.config/crush/skills/"
+      }
+    },
+    {
+      "id": "droid",
+      "name": "Droid",
+      "supports": [
+        "instructions",
+        "skills",
+        "mcp"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".factory/skills/",
+        "mcp": ".factory/mcp.json"
+      },
+      "globalPaths": {
+        "skills": "~/.factory/skills/",
+        "settings": "~/.factory/mcp.json"
+      }
+    },
+    {
+      "id": "codebuddy",
+      "name": "CodeBuddy",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".codebuddy/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.codebuddy/skills/"
+      }
+    },
+    {
+      "id": "mux",
+      "name": "Mux",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".mux/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.mux/skills/"
+      }
+    },
+    {
+      "id": "kode",
+      "name": "Kode",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".kode/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.kode/skills/"
+      }
+    },
+    {
+      "id": "command-code",
+      "name": "Command Code",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".commandcode/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.commandcode/skills/"
+      }
+    },
+    {
+      "id": "cortex",
+      "name": "Cortex Code",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".cortex/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.snowflake/cortex/skills/"
+      }
+    },
+    {
+      "id": "neovate",
+      "name": "Neovate",
+      "supports": [
+        "instructions",
+        "skills"
+      ],
+      "projectPaths": {
+        "instructions": "AGENTS.md",
+        "skills": ".neovate/skills/"
+      },
+      "globalPaths": {
+        "skills": "~/.neovate/skills/"
+      }
+    }
+  ],
+  "ids": [
+    "claude-code",
+    "codex",
+    "cursor",
+    "warp",
+    "opencode",
+    "github-copilot",
+    "copilot-cli",
+    "gemini-cli",
+    "windsurf",
+    "cline",
+    "roo",
+    "continue",
+    "goose",
+    "trae",
+    "openhands",
+    "kiro",
+    "pi",
+    "antigravity",
+    "amazon-q",
+    "aider",
+    "zed",
+    "devin",
+    "jules",
+    "cody",
+    "grok-build",
+    "deepseek-harness",
+    "muse-code",
+    "minimax-code",
+    "amp",
+    "kilo",
+    "augment",
+    "firebender",
+    "junie",
+    "zencoder",
+    "deepagents",
+    "qwen-code",
+    "crush",
+    "droid",
+    "codebuddy",
+    "mux",
+    "kode",
+    "command-code",
+    "cortex",
+    "neovate"
+  ],
+  "lookups": [
+    {
+      "id": "claude-code",
+      "found": "claude-code"
+    },
+    {
+      "id": "cursor",
+      "found": "cursor"
+    },
+    {
+      "id": "droid",
+      "found": "droid"
+    },
+    {
+      "id": "kilo",
+      "found": "kilo"
+    },
+    {
+      "id": "nope",
+      "found": null
+    },
+    {
+      "id": "",
+      "found": null
+    },
+    {
+      "id": "constructor",
+      "found": null
+    },
+    {
+      "id": "Claude-Code",
+      "found": null
+    }
+  ],
+  "resourceClasses": {
+    "skill": "set",
+    "rule": "set",
+    "agent": "set",
+    "command": "set",
+    "hook": "set",
+    "mcp_server": "set",
+    "instruction": "singleton",
+    "model_config": "singleton",
+    "permission": "singleton",
+    "env_var": "singleton"
+  },
+  "resourceClassCalls": [
+    [
+      "skill",
+      "set"
+    ],
+    [
+      "rule",
+      "set"
+    ],
+    [
+      "agent",
+      "set"
+    ],
+    [
+      "command",
+      "set"
+    ],
+    [
+      "hook",
+      "set"
+    ],
+    [
+      "mcp_server",
+      "set"
+    ],
+    [
+      "instruction",
+      "singleton"
+    ],
+    [
+      "model_config",
+      "singleton"
+    ],
+    [
+      "permission",
+      "singleton"
+    ],
+    [
+      "env_var",
+      "singleton"
+    ]
+  ]
+}

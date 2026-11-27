@@ -1,0 +1,474 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "src/services/harness-scope.ts",
+  "language": "ts",
+  "kind": "napi",
+  "crate_name": "harness-scope-rs",
+  "exports": [
+    {
+      "name": "parseHarnessScope",
+      "file": "src/services/harness-scope.ts",
+      "line": 15,
+      "params": [
+        {
+          "name": "raw",
+          "ts_type": "unknown",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "serializeHarnessScope",
+      "file": "src/services/harness-scope.ts",
+      "line": 40,
+      "params": [
+        {
+          "name": "scope",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "harnessScopeWire",
+      "file": "src/services/harness-scope.ts",
+      "line": 47,
+      "params": [
+        {
+          "name": "scope",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "\"all\" | string[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "resourceHarnessScope",
+      "file": "src/services/harness-scope.ts",
+      "line": 51,
+      "params": [
+        {
+          "name": "resource",
+          "ts_type": "Pick<Resource, \"harness_scope\">",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "uniqueSorted",
+      "file": "src/services/harness-scope.ts",
+      "line": 55,
+      "params": [
+        {
+          "name": "ids",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "intersectHarnessScopes",
+      "file": "src/services/harness-scope.ts",
+      "line": 59,
+      "params": [
+        {
+          "name": "left",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "right",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "unionHarnessScopes",
+      "file": "src/services/harness-scope.ts",
+      "line": 72,
+      "params": [
+        {
+          "name": "left",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "right",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "resourceAppliesToHarness",
+      "file": "src/services/harness-scope.ts",
+      "line": 85,
+      "params": [
+        {
+          "name": "resource",
+          "ts_type": "Pick<Resource, \"harness_scope\">",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "harnessId",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "normalizeScopeToRegistered",
+      "file": "src/services/harness-scope.ts",
+      "line": 93,
+      "params": [
+        {
+          "name": "scope",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "registered",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "coversRegistered",
+      "file": "src/services/harness-scope.ts",
+      "line": 111,
+      "params": [
+        {
+          "name": "selected",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "registered",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "isOrphanedHarnessScope",
+      "file": "src/services/harness-scope.ts",
+      "line": 122,
+      "params": [
+        {
+          "name": "scope",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "registered",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "pathSurfaceForResourceType",
+      "file": "src/services/harness-scope.ts",
+      "line": 153,
+      "params": [
+        {
+          "name": "type",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "keyof Omit<PlatformPaths, \"pathAlternates\"> | undefined",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "normalizeEmitPath",
+      "file": "src/services/harness-scope.ts",
+      "line": 157,
+      "params": [
+        {
+          "name": "raw",
+          "ts_type": "string | undefined",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string | undefined",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "originHarnessesFromSourcePath",
+      "file": "src/services/harness-scope.ts",
+      "line": 210,
+      "params": [
+        {
+          "name": "source",
+          "ts_type": "string | undefined",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "originHarnessFromSourcePath",
+      "file": "src/services/harness-scope.ts",
+      "line": 243,
+      "params": [
+        {
+          "name": "source",
+          "ts_type": "string | undefined",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string | undefined",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "diskCaptureHarnessScope",
+      "file": "src/services/harness-scope.ts",
+      "line": 247,
+      "params": [
+        {
+          "name": "resource",
+          "ts_type": "Pick<Resource, \"source\" | \"origin_ref\">",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "emitPathForResourceType",
+      "file": "src/services/harness-scope.ts",
+      "line": 260,
+      "params": [
+        {
+          "name": "platformId",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "type",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "target",
+          "ts_type": "(\"project\" | \"global\")",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string | undefined",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "linkedHarnessGroups",
+      "file": "src/services/harness-scope.ts",
+      "line": 292,
+      "params": [
+        {
+          "name": "registered",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "type",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "target",
+          "ts_type": "(\"project\" | \"global\")",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "LinkedHarnessGroup[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "expandLinkedSelection",
+      "file": "src/services/harness-scope.ts",
+      "line": 327,
+      "params": [
+        {
+          "name": "selected",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "toggleIds",
+          "ts_type": "readonly string[]",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "nextChecked",
+          "ts_type": "boolean",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string[]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "selectionFromGroups",
+      "file": "src/services/harness-scope.ts",
+      "line": 343,
+      "params": [
+        {
+          "name": "selected",
+          "ts_type": "ReadonlySet<string>",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "group",
+          "ts_type": "LinkedHarnessGroup",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "withHarnessScope",
+      "file": "src/services/harness-scope.ts",
+      "line": 350,
+      "params": [
+        {
+          "name": "resource",
+          "ts_type": "Resource",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "scope",
+          "ts_type": "(| { readonly kind: \"all\" }\n  | { readonly kind: \"subset\"; readonly harnesses: readonly string[] })",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "Resource",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

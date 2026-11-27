@@ -1,0 +1,16 @@
+[package]
+name = "collate-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+description = "JavaScript's String.prototype.localeCompare (ICU, en-US, default options) on ICU4X"
+
+[dependencies]
+icu_collator = "2"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
