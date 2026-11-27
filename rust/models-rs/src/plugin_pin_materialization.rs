@@ -1,6 +1,6 @@
 //! The port of `src/models/plugin-pin-materialization.ts`.
 
-use crate::{Ctx, Result, get};
+use crate::{Ctx, Result, get, js_trim};
 use rusqlite::params;
 
 fn table_exists(ctx: &Ctx) -> bool {
@@ -85,26 +85,6 @@ fn dirname_skill_dir(skill_md_path: &str) -> String {
         Some(dir) => dir.to_owned(),
         None => normalized,
     }
-}
-
-/// JavaScript's `trim`.
-fn js_trim(s: &str) -> &str {
-    s.trim_matches(|c: char| {
-        matches!(
-            c,
-            '\u{9}'..='\u{d}'
-                | ' '
-                | '\u{a0}'
-                | '\u{1680}'
-                | '\u{2000}'..='\u{200a}'
-                | '\u{2028}'
-                | '\u{2029}'
-                | '\u{202f}'
-                | '\u{205f}'
-                | '\u{3000}'
-                | '\u{feff}'
-        )
-    })
 }
 
 fn relative_path_candidates(resource_type: &str, source: Option<&str>) -> Vec<String> {

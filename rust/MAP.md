@@ -105,9 +105,9 @@ compares results, errors and tables with ids renamed in order of appearance.
 | `src/models/global-apply-snapshot.ts` | done | `models-rs/src/global_apply_snapshot.rs`; reads through (see note) |
 | `src/models/resource-materialization.ts` | done | `models-rs/src/resource_materialization.rs`; reads through (see note) |
 | `src/models/imported-snapshot.ts` | done | `models-rs/src/imported_snapshot.rs`; reads through (see note) |
-| `src/models/harness.ts` | open | needs `services/harness-targets` |
-| `src/models/plugin.ts` | open | |
-| `src/models/resource.ts` | open | needs `services/blob-store`, `resource-hash`, `resource-selector` |
+| `src/models/harness.ts` | done | `models-rs/src/harness.rs`, with `normalizeRegisteredHarnesses` from `services/harness-targets.ts` (the rest of that file needs platforms and the scanner) |
+| `src/models/plugin.ts` | not ported (dead code) | nothing imports it, and its `project_plugin_state` table is not created by any schema or migration, so both functions would fail with "no such table". Port it only if a caller appears |
+| `src/models/resource.ts` | done | `models-rs/src/resource.rs`, with `services/blob-store.ts`, `resource-hash.ts` (no trace span) and `resource-selector.ts` in `models-rs/src/services/`. Reads overflow blobs each time instead of the original's 256-entry in-memory cache. Known divergence: the original looks up legacy selector aliases on a plain object, so `constructor:x` or `__proto__:x` pick up inherited properties; the port treats them as plain types |
 | `src/models/environment.ts` | open | needs `resource.ts` |
 | `src/models/plugin-model.ts` | open | 1203 lines over nine services |
 
@@ -120,15 +120,26 @@ index, which is why the fixture ids sort in creation order like real ULIDs.
 
 ### Re-record after #658
 
-PR #658 (not merged yet) changes how shared `AGENTS.md` instruction emits are
-merged, and stops rewriting the lockfile when only `generated_at` differs. The
-recordings use current `main`. Once #658 merges, re-record these and re-check
-their ports:
+PR #658 changes how shared `AGENTS.md` instruction emits are merged, and stops
+rewriting the lockfile when only `generated_at` differs. It merged to `main` on
+2026-11-22 (`3f426447`), after the recordings here were made, so this stack still
+records the earlier behavior. After the stack takes in that `main` (by a merge),
+re-record these and re-check their ports:
 
 - `src/services/lockfile.ts`
 - `src/services/shared-emit-paths.ts` and `src/services/applier.ts`
 - `src/agent/parity-handlers/apply.ts` and `src/cli/commands/plugin.ts`
 - the `app-cases/` apply cases that write a shared `AGENTS.md` or the lockfile
+
+### Re-record after the "Request timed out" fix
+
+A TypeScript fix in progress changes the text `fetchWithTimeout`
+(`src/utils/fetch-with-timeout.ts`) prints for refused connections. Once it
+lands, re-record the 94 `app-cases/` that show `Request timed out` (listed in
+`rerecord/timeout-fix.txt`), and re-check the ports of
+`src/utils/fetch-with-timeout.ts` and its callers (`catalog-client`,
+`catalog-list-stream`, `plugin-source`, `plugin-origin-update`,
+`upstream-check`, `mcp-registry`, `cloud-api-version`, `self-update`).
 
 ### Wave 2: CLI surface
 

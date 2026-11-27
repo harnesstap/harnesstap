@@ -5,7 +5,7 @@
 // pinned per call (setSystemTime), ULIDs are compared after renaming them in
 // order of appearance, and arguments can refer to earlier results.
 import { setSystemTime } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { closeDb, getDb } from "../../../src/db/connection.ts";
 import { initializeSchema } from "../../../src/db/schema.ts";
@@ -18,6 +18,9 @@ import * as pin from "../../../src/models/plugin-pin-materialization.ts";
 import * as gas from "../../../src/models/global-apply-snapshot.ts";
 import * as mat from "../../../src/models/resource-materialization.ts";
 import * as imp from "../../../src/models/imported-snapshot.ts";
+import * as harness from "../../../src/models/harness.ts";
+import * as resource from "../../../src/models/resource.ts";
+import { takeSelectorDeprecations } from "../../../src/services/resource-selector.ts";
 
 const HOME = "/tmp/ht-models-fixture";
 const BASE = Date.parse("2026-01-01T00:00:00.000Z");
@@ -74,6 +77,40 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   removeImportedSnapshotOwnershipForFiles: imp.removeImportedSnapshotOwnershipForFiles,
   listImportedSnapshotInstalls: imp.listImportedSnapshotInstalls,
   findImportedSnapshotOwnersByFile: imp.findImportedSnapshotOwnersByFile,
+  getHarnessPreference: harness.getHarnessPreference,
+  setHarnessPreference: harness.setHarnessPreference,
+  getProjectHarnessConfig: harness.getProjectHarnessConfig,
+  setProjectHarnessConfig: harness.setProjectHarnessConfig,
+  deleteProjectHarnessConfig: harness.deleteProjectHarnessConfig,
+  createResource: resource.createResource,
+  upsertResource: resource.upsertResource,
+  getResource: resource.getResource,
+  resolveResource: resource.resolveResource,
+  findResourceByKey: resource.findResourceByKey,
+  getResourcesByIds: resource.getResourcesByIds,
+  listResources: resource.listResources,
+  listLinkedResources: resource.listLinkedResources,
+  updateResource: resource.updateResource,
+  renamePluginTypedResources: resource.renamePluginTypedResources,
+  listResourcesByOriginRef: resource.listResourcesByOriginRef,
+  listResourcesMatchingOriginRef: resource.listResourcesMatchingOriginRef,
+  listPluginResourcesByOriginRef: resource.listPluginResourcesByOriginRef,
+  deleteResource: resource.deleteResource,
+  takeSelectorDeprecations,
+  __listFiles: (() => {
+    const out: Array<[string, string]> = [];
+    const walk = (dir: string, rel: string) => {
+      for (const name of readdirSync(dir).sort()) {
+        const full = join(dir, name);
+        const r = rel ? `${rel}/${name}` : name;
+        if (statSync(full).isDirectory()) walk(full, r);
+        else if (!/\.db(-wal|-shm|-journal)?$/.test(name)) out.push([r, readFileSync(full).toString("hex")]);
+      }
+    };
+    walk(HOME, "");
+    return out;
+  }) as never,
+  __query: ((sql: string) => (getDb().prepare(sql).all() as Record<string, unknown>[]).map((row) => Object.values(row))) as never,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
   __writeFile: ((path: string, hex: string) => {
     const full = join(HOME, path);
@@ -89,7 +126,13 @@ function resolve(value: unknown, results: unknown[]): unknown {
     const o = value as Record<string, unknown>;
     if ("$ref" in o) {
       const [i, field] = o.$ref as [number, string];
-      return (results[i] as Record<string, unknown> | undefined)?.[field];
+      return field.split(".").reduce<unknown>(
+        (acc, key) => (acc as Record<string, unknown> | undefined)?.[key],
+        results[i],
+      );
+    }
+    if ("$concat" in o) {
+      return (o.$concat as unknown[]).map((part) => String(resolve(part, results))).join("");
     }
     if ("$prefix" in o) {
       const [i, field, n] = o.$prefix as [number, string, number];
@@ -323,6 +366,100 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
       { fn: "removeImportedSnapshotOwnershipForFiles", args: [[]] },
       { fn: "removeImportedSnapshotOwnershipForFiles", args: [["g"], ""] },
       { fn: "findImportedSnapshotOwnersByFile", args: ["shared"] },
+    ],
+  },
+  {
+    name: "harness",
+    ops: [
+      { fn: "getHarnessPreference", args: [] },
+      { fn: "setHarnessPreference", args: [{ registered_harnesses: ["claude", "", "cursor", "claude", "codex"] }] },
+      { fn: "getHarnessPreference", args: [] },
+      { fn: "setHarnessPreference", args: [{ registered_harnesses: [] }] },
+      { fn: "__exec", args: [`UPDATE harness_preferences SET registered_harnesses = '["a",1,null,"b","a",""]'`] },
+      { fn: "getHarnessPreference", args: [] },
+      { fn: "__exec", args: [`UPDATE harness_preferences SET registered_harnesses = '{"a":1}'`] },
+      { fn: "getHarnessPreference", args: [] },
+      { fn: "__exec", args: [`UPDATE harness_preferences SET registered_harnesses = 'oops'`] },
+      { fn: "getHarnessPreference", args: [] },
+      { fn: "__exec", args: [`INSERT INTO projects (id, git_origin, local_id, name, local_path, created_at) VALUES ('P1', 'github.com/a/b', '', 'b', '/w/b', '${T}'), ('P2', '', 'l2', 'c', '/w/c', '${T}')`] },
+      { fn: "getProjectHarnessConfig", args: ["P1"] },
+      { fn: "setProjectHarnessConfig", args: [{ project_id: "P1", registered_harnesses: ["cursor", "cursor"] }] },
+      { fn: "setProjectHarnessConfig", args: [{ project_id: "P1", registered_harnesses: ["claude"], materialization_strategy: "copy", cursor_skill_mode: "always-on" }] },
+      { fn: "setProjectHarnessConfig", args: [{ project_id: "P1", registered_harnesses: ["claude", "cursor"] }] },
+      { fn: "getProjectHarnessConfig", args: ["P1"] },
+      { fn: "setProjectHarnessConfig", args: [{ project_id: "P1", registered_harnesses: [], cursor_skill_mode: "" }] },
+      { fn: "getProjectHarnessConfig", args: ["P1"] },
+      { fn: "setProjectHarnessConfig", args: [{ project_id: "P2", registered_harnesses: ["codex"], cursor_skill_mode: "agents-skills" }] },
+      { fn: "__exec", args: [`UPDATE project_harnesses SET materialization_strategy = 'weird', cursor_skill_mode = 'bogus' WHERE project_id = 'P2'`] },
+      { fn: "getProjectHarnessConfig", args: ["P2"] },
+      { fn: "setProjectHarnessConfig", args: [{ project_id: "NOPE", registered_harnesses: ["claude"] }] },
+      { fn: "deleteProjectHarnessConfig", args: ["P2"] },
+      { fn: "deleteProjectHarnessConfig", args: ["P2"] },
+      { fn: "getProjectHarnessConfig", args: ["P2"] },
+    ],
+  },
+  {
+    name: "resources",
+    ops: [
+      { fn: "createResource", args: [{ type: "skill", name: "alpha", description: "first", content: "hello\r\n\n", metadata: { b: 1, "2": 0, a: [1.5] }, source: "manual" }] },
+      { fn: "createResource", args: [{ type: "rule", name: "alpha", namespace: "ns1", description: "", content: "r", metadata: { globs: [], always_apply: false }, source: "manual" }] },
+      { fn: "createResource", args: [{ type: "rule", name: "alpha", description: "", content: "r2", metadata: {}, source: "import" }] },
+      { fn: "upsertResource", args: [{ type: "skill", name: "alpha", description: "ignored", content: "hello\n", metadata: { b: 1, "2": 0, a: [1.5] }, source: "x", origin_kind: "local_snapshot", origin_ref: "ref1" }] },
+      { fn: "upsertResource", args: [{ type: "skill", name: "alpha", description: "", content: "changed", metadata: {}, source: "x", origin_kind: "manual" }] },
+      { fn: "upsertResource", args: [{ type: "skill", name: "alpha", description: "", content: "changed", metadata: {}, source: "x", origin_kind: "manual" }, { policy: "fail" }] },
+      { fn: "upsertResource", args: [{ type: "rule", name: "alpha", namespace: "ns1", description: "", content: "other", metadata: {}, source: "x", origin_kind: "manual" }, { policy: "prompt" }] },
+      { fn: "upsertResource", args: [{ type: "skill", name: "alpha", description: "big now", content: "x".repeat(5000), metadata: { k: "v" }, source: "x", origin_kind: "marketplace_link" }, { policy: "overwrite" }] },
+      { fn: "createResource", args: [{ type: "instruction", name: "big", description: "accents", content: "\u00e9".repeat(3000), metadata: {}, source: "manual" }] },
+      { fn: "createResource", args: [{ type: "agent", name: "emoji", description: "", content: "\u{1F600}".repeat(2100), metadata: {}, source: "manual", origin_kind: "marketplace_link", origin_ref: "other" }] },
+      { fn: "__query", args: ["SELECT name, length(content), content_blob_ref FROM resources ORDER BY rowid"] },
+      { fn: "getResource", args: [{ $ref: [0, "id"] }] },
+      { fn: "getResource", args: ["alpha"] },
+      { fn: "resolveResource", args: ["alpha"] },
+      { fn: "resolveResource", args: ["rule:alpha"] },
+      { fn: "resolveResource", args: ["rule:alpha", { mode: "compose" }] },
+      { fn: "resolveResource", args: ["alpha@ns1"] },
+      { fn: "resolveResource", args: ["nothing"] },
+      { fn: "resolveResource", args: [{ $concat: ["rule:", { $ref: [0, "id"] }] }] },
+      { fn: "resolveResource", args: [{ $concat: ["skill:", { $ref: [0, "id"] }, "@ns"] }] },
+      { fn: "resolveResource", args: [{ $concat: [":", { $ref: [0, "id"] }] }] },
+      { fn: "resolveResource", args: [{ $concat: ["plugin_pin:", { $ref: [0, "id"] }] }] },
+      { fn: "takeSelectorDeprecations", args: [] },
+      { fn: "takeSelectorDeprecations", args: [] },
+      { fn: "listResources", args: [] },
+      { fn: "listResources", args: [{ type: "rule" }] },
+      { fn: "listResources", args: [{ search: "ccen" }] },
+      { fn: "listResources", args: [{ origin_kind: "marketplace_link" }] },
+      { fn: "__exec", args: [`INSERT INTO resources (id, type, name, namespace, origin_ref, created_at, updated_at) VALUES ('PLUGROW1', 'plugin', 'oldp', '', 'oldp', '${T}', '${T}'), ('PLUGROW2', 'plugin', 'oldp', 'ns2', 'other', '${T}', '${T}'), ('PLUGROW3', 'plugin', 'newp', 'ns2', 'x', '2026-01-01T00:00:00.500Z', '${T}')`] },
+      { fn: "listResources", args: [{ includeComposition: true }] },
+      { fn: "listLinkedResources", args: [] },
+      { fn: "listLinkedResources", args: ["alpha"] },
+      { fn: "listLinkedResources", args: ["big"] },
+      { fn: "listLinkedResources", args: ["emoji"] },
+      { fn: "getResourcesByIds", args: [[{ $ref: [0, "id"] }, "nope", "alpha", "emoji"]] },
+      { fn: "updateResource", args: ["nope", { name: "x" }] },
+      { fn: "updateResource", args: ["rule:alpha@ns1", { description: "d2" }] },
+      { fn: "createResource", args: [{ type: "rule", name: "beta", namespace: "ns1", description: "", content: "b", metadata: {}, source: "manual" }] },
+      { fn: "updateResource", args: ["rule:beta@ns1", { name: "alpha" }] },
+      { fn: "updateResource", args: ["rule:beta@ns1", { name: "gamma" }] },
+      { fn: "updateResource", args: ["big", { content: "small", metadata: { k: 1 } }] },
+      { fn: "updateResource", args: ["big", {}] },
+      { fn: "updateResource", args: ["emoji", { metadata: { z: 2 } }] },
+      { fn: "renamePluginTypedResources", args: ["oldp", "newp"] },
+      { fn: "listPluginResourcesByOriginRef", args: ["newp"] },
+      { fn: "listResourcesByOriginRef", args: ["other", "marketplace_link"] },
+      { fn: "listResourcesByOriginRef", args: ["ref1"] },
+      { fn: "listResourcesMatchingOriginRef", args: ["other"] },
+      { fn: "createResource", args: [{ type: "bogus", name: "orphan", description: "", content: "orphan body", metadata: {}, source: "manual" }] },
+      { fn: "__exec", args: [`UPDATE resources SET content = '', content_hash = ' sha256:missing ' WHERE name = 'gamma'`] },
+      { fn: "getResource", args: ["gamma"] },
+      { fn: "deleteResource", args: ["alpha"] },
+      { fn: "deleteResource", args: [{ $ref: [1, "id"] }] },
+      { fn: "deleteResource", args: ["big"] },
+      { fn: "deleteResource", args: ["big"] },
+      { fn: "findResourceByKey", args: ["skill", "alpha", ""] },
+      { fn: "findResourceByKey", args: ["rule", "alpha", "ns1"] },
+      { fn: "createResource", args: [{ type: "skill", name: "alpha2", description: "", content: "hello\n", metadata: { b: 1, "2": 0, a: [1.5] }, source: "manual" }] },
+      { fn: "__listFiles", args: [] },
     ],
   },
 ];
