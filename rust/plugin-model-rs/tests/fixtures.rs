@@ -8,6 +8,7 @@ use db_rs::connection::Db;
 use db_rs::schema::{InitializeSchemaOptions, initialize_schema};
 use models_rs::resource::{Resource, map_resource_row};
 use models_rs::{Clock, Ctx, Ids, Result, iso_from_millis};
+use plugin_model_rs::dependency::{self, AddDependencyOptions};
 use plugin_model_rs::origin::{self, AuthoredCapability};
 use plugin_model_rs::upstream::{self, PluginUpstream, UpstreamRow};
 use plugin_model_rs::versioning::{self, NameVersion, ResolveComposition};
@@ -425,6 +426,28 @@ fn call(ctx: &Ctx, home: &str, f: &str, a: &[Value]) -> Result<Value> {
             origin::assert_syncable(ctx, s(0))?;
             Value::Null
         }
+        "parseDependencyRef" => to_value(dependency::parse_dependency_ref(s(0))),
+        "ensureDependencyResource" => to_value(dependency::ensure_dependency_resource(
+            ctx,
+            s(0),
+            o(1, "versionConstraint"),
+            o(1, "portable"),
+        )?),
+        "addDependency" => {
+            let opts = AddDependencyOptions {
+                version_constraint: o(2, "versionConstraint"),
+                embed_on_export: a.get(2).is_some_and(|v| v["embedOnExport"] == true),
+                mark_dirty: a.get(2).and_then(|v| v["markDirty"].as_bool()),
+            };
+            to_value(dependency::add_dependency(ctx, &Stand, s(0), s(1), &opts)?)
+        }
+        "dependenciesFromResources" => to_value(dependency::dependencies_from_resources(&from::<
+            Vec<AttachedResource>,
+        >(
+            &a[0]
+        )?)),
+        "listDependencies" => to_value(dependency::list_dependencies(ctx, s(0))?),
+        "removeDependency" => json!(dependency::remove_dependency(ctx, &Stand, s(0), s(1))?),
         "__query" => {
             let mut stmt = ctx.db.conn.prepare(s(0)).unwrap();
             let n = stmt.column_count();

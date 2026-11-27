@@ -14,6 +14,7 @@
 //! JSON columns written by the app are read with `serde_json`. A column the
 //! original's `JSON.parse` rejects is an `Err` here too, with another message.
 
+pub mod dependency;
 pub mod name;
 pub mod origin;
 pub mod upstream;
