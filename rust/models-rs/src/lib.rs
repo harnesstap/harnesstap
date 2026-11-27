@@ -5,10 +5,13 @@
 //! Tests pass fixed ones, the way the original's tests pin them.
 
 pub mod apply_removal_backup;
+pub mod global_apply_snapshot;
+pub mod imported_snapshot;
 pub mod package_cache_entry;
 pub mod plugin_pin_materialization;
 pub mod preexisting_path;
 pub mod project;
+pub mod resource_materialization;
 pub mod snapshot;
 
 use db_rs::connection::Db;

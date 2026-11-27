@@ -15,6 +15,9 @@ import * as cache from "../../../src/models/package-cache-entry.ts";
 import * as project from "../../../src/models/project.ts";
 import * as backup from "../../../src/models/apply-removal-backup.ts";
 import * as pin from "../../../src/models/plugin-pin-materialization.ts";
+import * as gas from "../../../src/models/global-apply-snapshot.ts";
+import * as mat from "../../../src/models/resource-materialization.ts";
+import * as imp from "../../../src/models/imported-snapshot.ts";
 
 const HOME = "/tmp/ht-models-fixture";
 const BASE = Date.parse("2026-01-01T00:00:00.000Z");
@@ -48,6 +51,29 @@ const fns: Record<string, (...args: never[]) => unknown> = {
   upsertPluginPinMaterialization: pin.upsertPluginPinMaterialization,
   matchesPluginPinMaterialization: pin.matchesPluginPinMaterialization,
   findPluginPinResourceIdByOriginRef: pin.findPluginPinResourceIdByOriginRef,
+  createGlobalApplySnapshot: gas.createGlobalApplySnapshot,
+  recordGlobalApplySnapshotInstall: gas.recordGlobalApplySnapshotInstall,
+  getGlobalApplySnapshot: gas.getGlobalApplySnapshot,
+  listGlobalApplySnapshots: gas.listGlobalApplySnapshots,
+  getLatestGlobalApplySnapshotForProfile: gas.getLatestGlobalApplySnapshotForProfile,
+  listGlobalApplySnapshotHeads: gas.listGlobalApplySnapshotHeads,
+  renameGlobalApplySnapshotsProfile: gas.renameGlobalApplySnapshotsProfile,
+  listGlobalApplySnapshotInstalls: gas.listGlobalApplySnapshotInstalls,
+  recordResourceMaterialization: mat.recordResourceMaterialization,
+  listMaterializationsForRoot: mat.listMaterializationsForRoot,
+  listMaterializationsForRootPath: mat.listMaterializationsForRootPath,
+  deleteMaterializationsForRootPaths: mat.deleteMaterializationsForRootPaths,
+  listResourceMaterializations: mat.listResourceMaterializations,
+  deleteResourceMaterializations: mat.deleteResourceMaterializations,
+  replaceMaterializationsForPlatform: mat.replaceMaterializationsForPlatform,
+  createImportedSnapshot: imp.createImportedSnapshot,
+  listImportedSnapshots: imp.listImportedSnapshots,
+  getLatestImportedSnapshot: imp.getLatestImportedSnapshot,
+  getImportedSnapshot: imp.getImportedSnapshot,
+  recordImportedSnapshotInstall: imp.recordImportedSnapshotInstall,
+  removeImportedSnapshotOwnershipForFiles: imp.removeImportedSnapshotOwnershipForFiles,
+  listImportedSnapshotInstalls: imp.listImportedSnapshotInstalls,
+  findImportedSnapshotOwnersByFile: imp.findImportedSnapshotOwnersByFile,
   __exec: ((sql: string) => getDb().exec(sql)) as never,
   __writeFile: ((path: string, hex: string) => {
     const full = join(HOME, path);
@@ -63,7 +89,7 @@ function resolve(value: unknown, results: unknown[]): unknown {
     const o = value as Record<string, unknown>;
     if ("$ref" in o) {
       const [i, field] = o.$ref as [number, string];
-      return (results[i] as Record<string, unknown>)[field];
+      return (results[i] as Record<string, unknown> | undefined)?.[field];
     }
     if ("$prefix" in o) {
       const [i, field, n] = o.$prefix as [number, string, number];
@@ -226,6 +252,77 @@ const scenarios: Array<{ name: string; ops: Op[] }> = [
       { fn: "matchesPluginPinMaterialization", args: ["/p", { type: "rule", name: "r", source: "  " }] },
       { fn: "findPluginPinResourceIdByOriginRef", args: ["p@m"] },
       { fn: "findPluginPinResourceIdByOriginRef", args: ["none"] },
+    ],
+  },
+  {
+    name: "global apply snapshots",
+    ops: [
+      { fn: "createGlobalApplySnapshot", args: [{ profile_name: "default", plugin_ids: ["p1", "p2"] }] },
+      { fn: "createGlobalApplySnapshot", args: [{ profile_name: "default", plugin_ids: [], resolved_set: [{ name: "a", version: "1.0.0" }], state }] },
+      { fn: "createGlobalApplySnapshot", args: [{ profile_name: "work", plugin_ids: ["x"], resolved_set: null, state: null }] },
+      { fn: "__exec", args: ["UPDATE global_apply_snapshots SET state = 'not json' WHERE profile_name = 'work'"] },
+      { fn: "getGlobalApplySnapshot", args: [{ $ref: [1, "id"] }] },
+      { fn: "getGlobalApplySnapshot", args: [{ $ref: [2, "id"] }] },
+      { fn: "getGlobalApplySnapshot", args: ["none"] },
+      { fn: "listGlobalApplySnapshots", args: [] },
+      { fn: "getLatestGlobalApplySnapshotForProfile", args: ["default"] },
+      { fn: "getLatestGlobalApplySnapshotForProfile", args: ["nobody"] },
+      { fn: "listGlobalApplySnapshotHeads", args: [] },
+      { fn: "recordGlobalApplySnapshotInstall", args: [{ snapshot_id: { $ref: [0, "id"] }, platform_id: "claude", files: ["a", "b"] }] },
+      { fn: "recordGlobalApplySnapshotInstall", args: [{ snapshot_id: { $ref: [0, "id"] }, platform_id: "cursor", files: [] }] },
+      { fn: "recordGlobalApplySnapshotInstall", args: [{ snapshot_id: { $ref: [0, "id"] }, platform_id: "claude", files: ["c"] }] },
+      { fn: "listGlobalApplySnapshotInstalls", args: [{ $ref: [0, "id"] }] },
+      { fn: "renameGlobalApplySnapshotsProfile", args: ["default", "home"] },
+      { fn: "renameGlobalApplySnapshotsProfile", args: ["default", "home"] },
+      { fn: "getLatestGlobalApplySnapshotForProfile", args: ["home"] },
+    ],
+  },
+  {
+    name: "resource materializations",
+    ops: [
+      { fn: "__exec", args: [`INSERT INTO resources (id, type, name, created_at, updated_at) VALUES ('R1', 'skill', 'a', '${T}', '${T}'), ('R2', 'rule', 'b', '${T}', '${T}')`] },
+      { fn: "recordResourceMaterialization", args: [{ resource_id: "R1", scope: "global", root_path: "/h", platform_id: "claude", path: "skills/a", action: "edit-file", ownership_key: "k1", generated_hash: "h1", managed_container: true }] },
+      { fn: "recordResourceMaterialization", args: [{ resource_id: "R1", scope: "global", root_path: "/h", platform_id: "claude", path: "skills/a", action: "delete-file", ownership_key: "k1", generated_hash: "h2" }] },
+      { fn: "recordResourceMaterialization", args: [{ resource_id: "R2", scope: "project", project_id: null, root_path: "/p", platform_id: "cursor", path: "rules/b.md", action: "delete-directory", ownership_key: "k2", generated_hash: "h3" }] },
+      { fn: "recordResourceMaterialization", args: [{ resource_id: "R2", scope: "project", root_path: "/p", platform_id: "cursor", path: "a.md", action: "symlink", ownership_key: "k2", generated_hash: "h4" }] },
+      { fn: "recordResourceMaterialization", args: [{ resource_id: "R1", scope: "project", project_id: null, root_path: "/p", platform_id: "claude", path: "a.md", action: "edit-file", ownership_key: "k4", generated_hash: "h6" }] },
+      { fn: "listMaterializationsForRoot", args: ["/p"] },
+      { fn: "listMaterializationsForRootPath", args: ["/h", "skills/a"] },
+      { fn: "listResourceMaterializations", args: ["R2"] },
+      { fn: "replaceMaterializationsForPlatform", args: [{ scope: "project", root_path: "/p", platform_id: "cursor", entries: [{ resource_id: "GONE", path: "x", action: "edit-file", ownership_key: "k", generated_hash: "h", managed_container: false }] }] },
+      { fn: "listMaterializationsForRoot", args: ["/p"] },
+      { fn: "replaceMaterializationsForPlatform", args: [{ scope: "project", root_path: "/p", platform_id: "cursor", entries: [{ resource_id: "GONE", path: "x", action: "edit-file", ownership_key: "k", generated_hash: "h", managed_container: false }, { resource_id: "R1", path: "skills/a2", action: "delete-file", ownership_key: "k3", generated_hash: "h5", managed_container: true }] }] },
+      { fn: "listMaterializationsForRoot", args: ["/p"] },
+      { fn: "deleteMaterializationsForRootPaths", args: ["/h", ["skills/a", "nope"]] },
+      { fn: "deleteMaterializationsForRootPaths", args: ["/h", []] },
+      { fn: "deleteResourceMaterializations", args: ["R1"] },
+      { fn: "deleteResourceMaterializations", args: ["R1"] },
+      { fn: "replaceMaterializationsForPlatform", args: [{ scope: "global", root_path: "/h", platform_id: "claude", entries: [] }] },
+    ],
+  },
+  {
+    name: "imported snapshots",
+    ops: [
+      { fn: "createImportedSnapshot", args: [{ source_kind: "claude-plugin", source_label: "local", plugin_name: "a", plugin_version: "1.0.0", resource_ids: ["R1"], metadata: { k: [1, { z: 1, a: 2 }] } }] },
+      { fn: "createImportedSnapshot", args: [{ source_kind: "cursor-plugin", source_label: "x", plugin_name: "a", resource_ids: [], metadata: {} }] },
+      { fn: "createImportedSnapshot", args: [{ source_kind: "agent-plugin", source_label: "y", plugin_name: "b", resource_ids: [], metadata: {} }] },
+      { fn: "createImportedSnapshot", args: [{ source_kind: "skill-package", source_label: "y", plugin_name: "b", resource_ids: [], metadata: {} }] },
+      { fn: "listImportedSnapshots", args: [] },
+      { fn: "getLatestImportedSnapshot", args: ["a"] },
+      { fn: "getLatestImportedSnapshot", args: ["zz"] },
+      { fn: "getImportedSnapshot", args: [{ $ref: [0, "id"] }] },
+      { fn: "recordImportedSnapshotInstall", args: [{ snapshot_id: { $ref: [0, "id"] }, platform_id: "claude", files: ["f1", "f2", "shared"] }] },
+      { fn: "recordImportedSnapshotInstall", args: [{ snapshot_id: { $ref: [1, "id"] }, platform_id: "cursor", files: ["shared"] }] },
+      { fn: "recordImportedSnapshotInstall", args: [{ snapshot_id: { $ref: [3, "id"] }, platform_id: "codex", files: ["shared", "g"] }] },
+      { fn: "findImportedSnapshotOwnersByFile", args: ["shared"] },
+      { fn: "findImportedSnapshotOwnersByFile", args: ["none"] },
+      { fn: "removeImportedSnapshotOwnershipForFiles", args: [["shared", "f1"], { $ref: [3, "id"] }] },
+      { fn: "listImportedSnapshotInstalls", args: [{ $ref: [0, "id"] }] },
+      { fn: "listImportedSnapshotInstalls", args: [{ $ref: [1, "id"] }] },
+      { fn: "listImportedSnapshotInstalls", args: [{ $ref: [3, "id"] }] },
+      { fn: "removeImportedSnapshotOwnershipForFiles", args: [[]] },
+      { fn: "removeImportedSnapshotOwnershipForFiles", args: [["g"], ""] },
+      { fn: "findImportedSnapshotOwnersByFile", args: ["shared"] },
     ],
   },
 ];

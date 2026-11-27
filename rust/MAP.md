@@ -83,8 +83,52 @@ States: `open`, `claimed by <session> <date>`, `done`.
 
 ## Wave 1: core engine
 
-Harness writers (`src/platforms/`), resolve, package-cache, apm and lock,
-snapshots and revert.
+Models first, then harness writers (`src/platforms/`), resolve, package-cache,
+apm and lock, snapshots and revert.
+
+`rust/models-rs` is a plain crate on top of `db-rs`, like `db-rs` itself: every
+function takes a database handle, so it cannot go through `record`.
+`models-rs/tests/make-fixtures.ts` runs the original under bun with a pinned
+clock (`setSystemTime`), one scenario per model on a fresh database, and records
+every call's result or error plus a dump of every table afterwards. The Rust
+test replays the same calls with a step clock and creation-ordered ids, then
+compares results, errors and tables with ids renamed in order of appearance.
+
+| Unit | State | Notes |
+| --- | --- | --- |
+| `src/models/snapshot.ts` | done | `models-rs/src/snapshot.rs` |
+| `src/models/preexisting-path.ts` | done | `models-rs/src/preexisting_path.rs` |
+| `src/models/package-cache-entry.ts` | done | `models-rs/src/package_cache_entry.rs` |
+| `src/models/project.ts` | done | `models-rs/src/project.rs` |
+| `src/models/apply-removal-backup.ts` | done | `models-rs/src/apply_removal_backup.rs` |
+| `src/models/plugin-pin-materialization.ts` | done | `models-rs/src/plugin_pin_materialization.rs` |
+| `src/models/global-apply-snapshot.ts` | done | `models-rs/src/global_apply_snapshot.rs`; reads through (see note) |
+| `src/models/resource-materialization.ts` | done | `models-rs/src/resource_materialization.rs`; reads through (see note) |
+| `src/models/imported-snapshot.ts` | done | `models-rs/src/imported_snapshot.rs`; reads through (see note) |
+| `src/models/harness.ts` | open | needs `services/harness-targets` |
+| `src/models/plugin.ts` | open | |
+| `src/models/resource.ts` | open | needs `services/blob-store`, `resource-hash`, `resource-selector` |
+| `src/models/environment.ts` | open | needs `resource.ts` |
+| `src/models/plugin-model.ts` | open | 1203 lines over nine services |
+
+Read-through note: the original memoizes some reads while a status computation
+runs (`computationSlot`, `inStatusComputation`). The Rust ports always take the
+uncached path, which returns the same rows; the cache comes with the status
+port. Some original queries have no `ORDER BY` (for example
+`findImportedSnapshotOwnersByFile`), so their order follows the primary key
+index, which is why the fixture ids sort in creation order like real ULIDs.
+
+### Re-record after #658
+
+PR #658 (not merged yet) changes how shared `AGENTS.md` instruction emits are
+merged, and stops rewriting the lockfile when only `generated_at` differs. The
+recordings use current `main`. Once #658 merges, re-record these and re-check
+their ports:
+
+- `src/services/lockfile.ts`
+- `src/services/shared-emit-paths.ts` and `src/services/applier.ts`
+- `src/agent/parity-handlers/apply.ts` and `src/cli/commands/plugin.ts`
+- the `app-cases/` apply cases that write a shared `AGENTS.md` or the lockfile
 
 ### Wave 2: CLI surface
 

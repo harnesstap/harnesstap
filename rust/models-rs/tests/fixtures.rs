@@ -22,9 +22,11 @@ struct CountIds(Cell<u64>);
 impl Ids for CountIds {
     fn ulid(&self) -> String {
         self.0.set(self.0.get() + 1);
-        // spread the bits so ids differ early, like random ULIDs
+        // Ids sort in creation order, like the original's time-based ULIDs
+        // (queries without ORDER BY walk the primary key), and the random
+        // part is spread so ids also differ early.
         let n = u128::from(self.0.get()).wrapping_mul(0x9E37_79B9_7F4A_7C15_F39C_C060_5CED_C835);
-        ulid::Ulid::from_parts(1_767_225_600_000, n).to_string()
+        ulid::Ulid::from_parts(1_767_225_600_000 + self.0.get(), n).to_string()
     }
 }
 
@@ -231,6 +233,154 @@ fn call(ctx: &Ctx, home: &str, cwd: &str, f: &str, a: &[Value]) -> Result<Value>
                 )?
             )
         }
+        "createGlobalApplySnapshot" => {
+            to_value(global_apply_snapshot::create_global_apply_snapshot(
+                ctx,
+                s(&a0, "profile_name").unwrap(),
+                &a0["plugin_ids"],
+                a0.get("resolved_set"),
+                a0.get("state"),
+            )?)
+        }
+        "recordGlobalApplySnapshotInstall" => {
+            to_value(global_apply_snapshot::record_global_apply_snapshot_install(
+                ctx,
+                s(&a0, "snapshot_id").unwrap(),
+                s(&a0, "platform_id").unwrap(),
+                &a0["files"],
+            )?)
+        }
+        "getGlobalApplySnapshot" => to_value(global_apply_snapshot::get_global_apply_snapshot(
+            ctx,
+            &str_arg(0),
+        )?),
+        "listGlobalApplySnapshots" => {
+            to_value(global_apply_snapshot::list_global_apply_snapshots(ctx)?)
+        }
+        "getLatestGlobalApplySnapshotForProfile" => to_value(
+            global_apply_snapshot::get_latest_global_apply_snapshot_for_profile(ctx, &str_arg(0))?,
+        ),
+        "listGlobalApplySnapshotHeads" => to_value(
+            global_apply_snapshot::list_global_apply_snapshot_heads(ctx)?,
+        ),
+        "renameGlobalApplySnapshotsProfile" => json!(
+            global_apply_snapshot::rename_global_apply_snapshots_profile(
+                ctx,
+                &str_arg(0),
+                &str_arg(1)
+            )?
+        ),
+        "listGlobalApplySnapshotInstalls" => to_value(
+            global_apply_snapshot::list_global_apply_snapshot_installs(ctx, &str_arg(0))?,
+        ),
+        "recordResourceMaterialization" => {
+            to_value(resource_materialization::record_resource_materialization(
+                ctx,
+                &resource_materialization::MaterializationRecord {
+                    resource_id: s(&a0, "resource_id").unwrap(),
+                    scope: s(&a0, "scope").unwrap(),
+                    project_id: s(&a0, "project_id"),
+                    root_path: s(&a0, "root_path").unwrap(),
+                    platform_id: s(&a0, "platform_id").unwrap(),
+                    path: s(&a0, "path").unwrap(),
+                    action: s(&a0, "action").unwrap(),
+                    ownership_key: s(&a0, "ownership_key").unwrap(),
+                    generated_hash: s(&a0, "generated_hash").unwrap(),
+                    managed_container: a0["managed_container"].as_bool().unwrap_or(false),
+                },
+            )?)
+        }
+        "listMaterializationsForRoot" => to_value(
+            resource_materialization::list_materializations_for_root(ctx, &str_arg(0)),
+        ),
+        "listMaterializationsForRootPath" => to_value(
+            resource_materialization::list_materializations_for_root_path(
+                ctx,
+                &str_arg(0),
+                &str_arg(1),
+            ),
+        ),
+        "deleteMaterializationsForRootPaths" => {
+            let paths: Vec<String> = serde_json::from_value(a[1].clone()).unwrap();
+            resource_materialization::delete_materializations_for_root_paths(
+                ctx,
+                &str_arg(0),
+                &paths,
+            )?;
+            Value::Null
+        }
+        "listResourceMaterializations" => to_value(
+            resource_materialization::list_resource_materializations(ctx, &str_arg(0))?,
+        ),
+        "deleteResourceMaterializations" => json!(
+            resource_materialization::delete_resource_materializations(ctx, &str_arg(0))?
+        ),
+        "replaceMaterializationsForPlatform" => {
+            let entries: Vec<resource_materialization::PlatformEntry> = a0["entries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| resource_materialization::PlatformEntry {
+                    resource_id: s(e, "resource_id").unwrap().to_owned(),
+                    path: s(e, "path").unwrap().to_owned(),
+                    action: s(e, "action").unwrap().to_owned(),
+                    ownership_key: s(e, "ownership_key").unwrap().to_owned(),
+                    generated_hash: s(e, "generated_hash").unwrap().to_owned(),
+                    managed_container: e["managed_container"].as_bool().unwrap(),
+                })
+                .collect();
+            resource_materialization::replace_materializations_for_platform(
+                ctx,
+                s(&a0, "scope").unwrap(),
+                s(&a0, "project_id"),
+                s(&a0, "root_path").unwrap(),
+                s(&a0, "platform_id").unwrap(),
+                &entries,
+            )?;
+            Value::Null
+        }
+        "createImportedSnapshot" => to_value(imported_snapshot::create_imported_snapshot(
+            ctx,
+            &imported_snapshot::NewImportedSnapshot {
+                source_kind: s(&a0, "source_kind").unwrap(),
+                source_label: s(&a0, "source_label").unwrap(),
+                plugin_name: s(&a0, "plugin_name").unwrap(),
+                plugin_version: s(&a0, "plugin_version"),
+                resource_ids: &a0["resource_ids"],
+                metadata: &a0["metadata"],
+            },
+        )?),
+        "listImportedSnapshots" => to_value(imported_snapshot::list_imported_snapshots(ctx)?),
+        "getLatestImportedSnapshot" => to_value(imported_snapshot::get_latest_imported_snapshot(
+            ctx,
+            &str_arg(0),
+        )?),
+        "getImportedSnapshot" => {
+            to_value(imported_snapshot::get_imported_snapshot(ctx, &str_arg(0))?)
+        }
+        "recordImportedSnapshotInstall" => {
+            to_value(imported_snapshot::record_imported_snapshot_install(
+                ctx,
+                s(&a0, "snapshot_id").unwrap(),
+                s(&a0, "platform_id").unwrap(),
+                &a0["files"],
+            )?)
+        }
+        "removeImportedSnapshotOwnershipForFiles" => {
+            let paths: Vec<String> = serde_json::from_value(a0.clone()).unwrap();
+            imported_snapshot::remove_imported_snapshot_ownership_for_files(
+                ctx,
+                &paths,
+                a.get(1).and_then(Value::as_str),
+            )?;
+            Value::Null
+        }
+        "listImportedSnapshotInstalls" => to_value(
+            imported_snapshot::list_imported_snapshot_installs(ctx, &str_arg(0))?,
+        ),
+        "findImportedSnapshotOwnersByFile" => to_value(
+            imported_snapshot::find_imported_snapshot_owners_by_file(ctx, &str_arg(0))?,
+        ),
         "__exec" => {
             ctx.db.exec(&str_arg(0))?;
             Value::Null
